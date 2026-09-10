@@ -1,0 +1,2654 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="Acadova — peer-to-peer academic skill and knowledge sharing powered by learning credits." />
+  <title>Acadova — Learn. Teach. Grow.</title>
+
+  <style>
+    /* =========================================================
+       ACADOVA LANDING PAGE — SINGLE FILE
+       Design direction: Academic Blue
+       Primary: #1E3A8A
+       Action:  #3B82F6
+       Soft:    #93C5FD
+       Tint:    #E0E7FF
+       Canvas:  #F8FAFC
+       ========================================================= */
+
+    :root {
+      --navy: #0f2557;
+      --primary: #1E3A8A;
+      --blue: #3B82F6;
+      --blue-strong: #2563EB;
+      --sky: #93C5FD;
+      --tint: #E0E7FF;
+      --canvas: #F8FAFC;
+      --white: #ffffff;
+      --ink: #0f172a;
+      --muted: #64748b;
+      --line: #dbe7f6;
+      --success: #10b981;
+      --success-soft: #d1fae5;
+      --warning: #f59e0b;
+      --danger: #ef4444;
+      --shadow-sm: 0 10px 30px rgba(30, 58, 138, 0.08);
+      --shadow-md: 0 18px 60px rgba(30, 58, 138, 0.14);
+      --shadow-lg: 0 30px 90px rgba(15, 37, 87, 0.18);
+      --radius-sm: 14px;
+      --radius-md: 22px;
+      --radius-lg: 32px;
+      --max: 1180px;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    html {
+      scroll-behavior: smooth;
+      scroll-padding-top: 92px;
+    }
+
+    body {
+      font-family:
+        Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont,
+        "Segoe UI", sans-serif;
+      color: var(--ink);
+      background:
+        radial-gradient(circle at 80% 0%, rgba(147, 197, 253, 0.18), transparent 28rem),
+        var(--canvas);
+      line-height: 1.6;
+      overflow-x: hidden;
+    }
+
+    body.modal-open {
+      overflow: hidden;
+    }
+
+    a {
+      color: inherit;
+      text-decoration: none;
+    }
+
+    button,
+    input,
+    select,
+    textarea {
+      font: inherit;
+    }
+
+    button {
+      cursor: pointer;
+    }
+
+    img,
+    svg {
+      display: block;
+      max-width: 100%;
+    }
+
+    .container {
+      width: min(calc(100% - 40px), var(--max));
+      margin-inline: auto;
+    }
+
+    .section {
+      padding: 96px 0;
+      position: relative;
+    }
+
+    .section-kicker {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 7px 12px;
+      border: 1px solid rgba(59, 130, 246, 0.18);
+      border-radius: 999px;
+      background: rgba(224, 231, 255, 0.58);
+      color: var(--primary);
+      font-weight: 800;
+      font-size: 0.78rem;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .section-title {
+      max-width: 760px;
+      margin-top: 16px;
+      font-size: clamp(2rem, 5vw, 3.6rem);
+      letter-spacing: -0.055em;
+      line-height: 1.04;
+    }
+
+    .section-copy {
+      max-width: 710px;
+      margin-top: 18px;
+      color: var(--muted);
+      font-size: 1.05rem;
+    }
+
+    .eyebrow-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--success);
+      box-shadow: 0 0 0 6px rgba(16, 185, 129, 0.12);
+    }
+
+    /* NAV */
+    .site-header {
+      position: sticky;
+      top: 0;
+      z-index: 1000;
+      padding: 14px 0;
+      transition: 0.25s ease;
+    }
+
+    .site-header.scrolled {
+      background: rgba(248, 250, 252, 0.9);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border-bottom: 1px solid rgba(30, 58, 138, 0.08);
+    }
+
+    .nav-shell {
+      min-height: 64px;
+      display: grid;
+      grid-template-columns: 1fr auto 1fr;
+      align-items: center;
+      gap: 18px;
+      padding: 9px 10px 9px 16px;
+      border: 1px solid rgba(30, 58, 138, 0.09);
+      background: rgba(255, 255, 255, 0.82);
+      backdrop-filter: blur(16px);
+      border-radius: 20px;
+      box-shadow: 0 8px 30px rgba(15, 37, 87, 0.06);
+    }
+
+    .brand {
+      display: inline-flex;
+      align-items: center;
+      gap: 11px;
+      font-weight: 900;
+      font-size: 1.28rem;
+      letter-spacing: -0.04em;
+      width: max-content;
+    }
+
+    .brand-mark {
+      width: 36px;
+      height: 36px;
+      display: grid;
+      place-items: center;
+      border-radius: 11px;
+      color: var(--white);
+      background: linear-gradient(135deg, var(--primary), var(--blue));
+      box-shadow: 0 8px 20px rgba(59, 130, 246, 0.27);
+      font-size: 1.08rem;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .brand-mark::after {
+      content: "";
+      position: absolute;
+      width: 22px;
+      height: 22px;
+      background: rgba(255,255,255,.16);
+      border-radius: 50%;
+      right: -8px;
+      top: -8px;
+    }
+
+    .desktop-nav {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .nav-link {
+      border: 0;
+      background: transparent;
+      color: #475569;
+      font-size: 0.9rem;
+      font-weight: 750;
+      padding: 10px 12px;
+      border-radius: 10px;
+      transition: 0.2s ease;
+    }
+
+    .nav-link:hover,
+    .nav-link.active {
+      color: var(--primary);
+      background: var(--tint);
+    }
+
+    .nav-actions {
+      justify-self: end;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .api-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      font-size: 0.76rem;
+      font-weight: 800;
+      color: #047857;
+      background: var(--success-soft);
+      padding: 8px 10px;
+      border-radius: 999px;
+    }
+
+    .api-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: var(--success);
+      animation: pulse 1.8s infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { box-shadow: 0 0 0 0 rgba(16,185,129,.35); }
+      50% { box-shadow: 0 0 0 6px rgba(16,185,129,0); }
+    }
+
+    .btn {
+      border: 1px solid transparent;
+      border-radius: 12px;
+      min-height: 44px;
+      padding: 0 17px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      font-weight: 850;
+      transition: 0.2s ease;
+    }
+
+    .btn:hover {
+      transform: translateY(-2px);
+    }
+
+    .btn-primary {
+      color: var(--white);
+      background: linear-gradient(135deg, var(--primary), var(--blue));
+      box-shadow: 0 10px 25px rgba(59, 130, 246, 0.25);
+    }
+
+    .btn-primary:hover {
+      box-shadow: 0 15px 30px rgba(59, 130, 246, 0.34);
+    }
+
+    .btn-ghost {
+      color: var(--primary);
+      border-color: rgba(30, 58, 138, 0.13);
+      background: var(--white);
+    }
+
+    .btn-soft {
+      color: var(--primary);
+      background: var(--tint);
+    }
+
+    .mobile-toggle {
+      display: none;
+      width: 44px;
+      height: 44px;
+      border: 0;
+      border-radius: 12px;
+      background: var(--tint);
+      color: var(--primary);
+      align-items: center;
+      justify-content: center;
+      font-size: 1.3rem;
+    }
+
+    .mobile-panel {
+      display: none;
+      margin-top: 8px;
+      padding: 14px;
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      background: rgba(255,255,255,.96);
+      box-shadow: var(--shadow-md);
+    }
+
+    .mobile-panel.open {
+      display: grid;
+      gap: 6px;
+    }
+
+    .mobile-panel .nav-link {
+      text-align: left;
+      width: 100%;
+    }
+
+    .mobile-panel .btn {
+      margin-top: 6px;
+    }
+
+    /* HERO */
+    .hero {
+      padding: 72px 0 86px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .hero::before {
+      content: "";
+      position: absolute;
+      width: 520px;
+      height: 520px;
+      right: -150px;
+      top: 30px;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(59,130,246,.12), rgba(59,130,246,0) 70%);
+      pointer-events: none;
+    }
+
+    .hero-grid {
+      display: grid;
+      grid-template-columns: 1.04fr 0.96fr;
+      align-items: center;
+      gap: 64px;
+    }
+
+    .hero-badges {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-bottom: 22px;
+    }
+
+    .hero-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 12px;
+      border: 1px solid rgba(30,58,138,.11);
+      background: rgba(255,255,255,.72);
+      border-radius: 999px;
+      color: var(--primary);
+      font-size: .79rem;
+      font-weight: 850;
+    }
+
+    .hero h1 {
+      font-size: clamp(3.2rem, 7vw, 6.55rem);
+      line-height: .93;
+      letter-spacing: -0.075em;
+      max-width: 780px;
+    }
+
+    .hero h1 span {
+      background: linear-gradient(135deg, var(--primary) 12%, var(--blue) 70%);
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+    }
+
+    .hero-copy {
+      margin-top: 26px;
+      max-width: 650px;
+      color: var(--muted);
+      font-size: clamp(1rem, 2vw, 1.18rem);
+    }
+
+    .hero-actions {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      margin-top: 30px;
+    }
+
+    .hero-actions .btn {
+      min-height: 52px;
+      padding-inline: 21px;
+    }
+
+    .microcopy {
+      margin-top: 16px;
+      color: #64748b;
+      font-size: .86rem;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .check {
+      width: 20px;
+      height: 20px;
+      display: inline-grid;
+      place-items: center;
+      color: #047857;
+      background: var(--success-soft);
+      border-radius: 50%;
+      font-size: .75rem;
+      font-weight: 900;
+    }
+
+    /* hero visual */
+    .exchange-card {
+      position: relative;
+      min-height: 530px;
+      border-radius: var(--radius-lg);
+      border: 1px solid rgba(30, 58, 138, .11);
+      background:
+        linear-gradient(145deg, rgba(255,255,255,.96), rgba(224,231,255,.72));
+      box-shadow: var(--shadow-lg);
+      padding: 28px;
+      overflow: hidden;
+    }
+
+    .exchange-card::before {
+      content: "";
+      position: absolute;
+      inset: auto -80px -120px auto;
+      width: 300px;
+      height: 300px;
+      border-radius: 50%;
+      background: rgba(147,197,253,.34);
+      filter: blur(4px);
+    }
+
+    .exchange-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 20px;
+      position: relative;
+      z-index: 2;
+    }
+
+    .exchange-head small {
+      display: block;
+      font-size: .72rem;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: .1em;
+      font-weight: 850;
+    }
+
+    .exchange-head strong {
+      display: block;
+      margin-top: 3px;
+      font-size: 1.05rem;
+    }
+
+    .credit-chip {
+      color: #065f46;
+      background: var(--success-soft);
+      border: 1px solid rgba(16,185,129,.18);
+      padding: 8px 11px;
+      border-radius: 999px;
+      font-size: .78rem;
+      font-weight: 900;
+    }
+
+    .student-card {
+      position: absolute;
+      width: min(340px, calc(100% - 70px));
+      padding: 16px;
+      display: grid;
+      grid-template-columns: auto 1fr auto;
+      gap: 12px;
+      align-items: center;
+      background: rgba(255,255,255,.91);
+      backdrop-filter: blur(12px);
+      border: 1px solid rgba(30,58,138,.1);
+      border-radius: 18px;
+      box-shadow: var(--shadow-sm);
+      z-index: 3;
+      animation: float 5.3s ease-in-out infinite;
+    }
+
+    .student-card.one {
+      top: 130px;
+      left: 28px;
+    }
+
+    .student-card.two {
+      top: 252px;
+      right: 28px;
+      animation-delay: -1.3s;
+    }
+
+    .student-card.three {
+      bottom: 36px;
+      left: 62px;
+      animation-delay: -2.7s;
+    }
+
+    @keyframes float {
+      0%,100% { transform: translateY(0); }
+      50% { transform: translateY(-8px); }
+    }
+
+    .avatar {
+      width: 46px;
+      height: 46px;
+      display: grid;
+      place-items: center;
+      border-radius: 14px;
+      background: linear-gradient(135deg, var(--primary), var(--blue));
+      color: var(--white);
+      font-weight: 900;
+    }
+
+    .student-info strong {
+      display: block;
+      font-size: .92rem;
+    }
+
+    .student-info span {
+      display: block;
+      color: var(--muted);
+      font-size: .76rem;
+      margin-top: 2px;
+    }
+
+    .skill-arrow {
+      width: 36px;
+      height: 36px;
+      display: grid;
+      place-items: center;
+      border-radius: 50%;
+      color: var(--primary);
+      background: var(--tint);
+      font-weight: 900;
+    }
+
+    .exchange-loop {
+      position: absolute;
+      left: 50%;
+      top: 48%;
+      transform: translate(-50%,-50%);
+      width: 220px;
+      height: 220px;
+      border: 2px dashed rgba(59,130,246,.23);
+      border-radius: 50%;
+      z-index: 1;
+    }
+
+    .exchange-loop::after {
+      content: "LEARN ↔ TEACH";
+      position: absolute;
+      inset: 50% auto auto 50%;
+      transform: translate(-50%,-50%);
+      white-space: nowrap;
+      color: var(--primary);
+      font-size: .72rem;
+      font-weight: 950;
+      letter-spacing: .12em;
+    }
+
+    .stats {
+      margin-top: 52px;
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 12px;
+    }
+
+    .stat {
+      background: rgba(255,255,255,.72);
+      border: 1px solid rgba(30,58,138,.08);
+      border-radius: 18px;
+      padding: 18px 20px;
+      min-height: 92px;
+    }
+
+    .stat strong {
+      display: block;
+      font-size: clamp(1.35rem, 4vw, 2rem);
+      line-height: 1;
+      color: var(--primary);
+      letter-spacing: -.04em;
+    }
+
+    .stat span {
+      display: block;
+      margin-top: 8px;
+      color: var(--muted);
+      font-size: .81rem;
+      font-weight: 700;
+    }
+
+    /* PROBLEM / PURPOSE */
+    .purpose-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 18px;
+      margin-top: 42px;
+    }
+
+    .purpose-card {
+      border-radius: var(--radius-md);
+      padding: 30px;
+      border: 1px solid var(--line);
+      background: var(--white);
+    }
+
+    .purpose-card.bad {
+      background: linear-gradient(145deg, #fff, #fff7f7);
+    }
+
+    .purpose-card.good {
+      background: linear-gradient(145deg, #fff, #eef5ff);
+      border-color: rgba(59,130,246,.22);
+      box-shadow: var(--shadow-sm);
+    }
+
+    .purpose-card h3 {
+      margin-top: 10px;
+      font-size: 1.45rem;
+      letter-spacing: -.03em;
+    }
+
+    .purpose-card > p {
+      margin-top: 10px;
+      color: var(--muted);
+    }
+
+    .flow {
+      margin-top: 24px;
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      flex-wrap: wrap;
+    }
+
+    .flow-node {
+      padding: 10px 13px;
+      border-radius: 11px;
+      font-size: .83rem;
+      font-weight: 850;
+      border: 1px solid var(--line);
+      background: rgba(255,255,255,.9);
+    }
+
+    .flow-arrow {
+      color: var(--blue);
+      font-weight: 900;
+    }
+
+    .benefits {
+      margin-top: 22px;
+      display: grid;
+      gap: 10px;
+      list-style: none;
+    }
+
+    .benefits li {
+      display: flex;
+      gap: 10px;
+      color: #475569;
+      font-size: .91rem;
+    }
+
+    /* HOW IT WORKS */
+    .steps {
+      margin-top: 44px;
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 16px;
+    }
+
+    .step-card {
+      position: relative;
+      min-height: 260px;
+      padding: 24px;
+      overflow: hidden;
+      border: 1px solid var(--line);
+      border-radius: var(--radius-md);
+      background: var(--white);
+      transition: .25s ease;
+    }
+
+    .step-card:hover {
+      transform: translateY(-6px);
+      border-color: rgba(59,130,246,.32);
+      box-shadow: var(--shadow-md);
+    }
+
+    .step-no {
+      width: 42px;
+      height: 42px;
+      display: grid;
+      place-items: center;
+      border-radius: 13px;
+      color: var(--white);
+      background: linear-gradient(135deg, var(--primary), var(--blue));
+      font-size: .83rem;
+      font-weight: 950;
+    }
+
+    .step-card h3 {
+      margin-top: 22px;
+      font-size: 1.2rem;
+      letter-spacing: -.025em;
+    }
+
+    .step-card p {
+      margin-top: 10px;
+      color: var(--muted);
+      font-size: .9rem;
+    }
+
+    .step-tag {
+      position: absolute;
+      bottom: 20px;
+      left: 24px;
+      color: var(--primary);
+      background: var(--tint);
+      padding: 7px 10px;
+      border-radius: 999px;
+      font-size: .72rem;
+      font-weight: 900;
+    }
+
+    /* SWAP SIMULATOR */
+    .swap-section {
+      background:
+        linear-gradient(140deg, var(--navy), #183d8f 55%, #2563eb 125%);
+      color: var(--white);
+      overflow: hidden;
+    }
+
+    .swap-section .section-kicker {
+      color: #dbeafe;
+      border-color: rgba(255,255,255,.15);
+      background: rgba(255,255,255,.08);
+    }
+
+    .swap-section .section-copy {
+      color: #bfdbfe;
+    }
+
+    .swap-wrap {
+      display: grid;
+      grid-template-columns: .8fr 1.2fr;
+      gap: 46px;
+      align-items: center;
+    }
+
+    .economy-loop {
+      margin-top: 28px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .economy-loop span {
+      padding: 8px 11px;
+      border-radius: 999px;
+      background: rgba(255,255,255,.09);
+      border: 1px solid rgba(255,255,255,.12);
+      font-size: .76rem;
+      font-weight: 900;
+    }
+
+    .simulator {
+      border: 1px solid rgba(255,255,255,.16);
+      background: rgba(255,255,255,.08);
+      backdrop-filter: blur(18px);
+      border-radius: 28px;
+      padding: 25px;
+      box-shadow: 0 28px 70px rgba(0,0,0,.17);
+    }
+
+    .sim-top {
+      display: flex;
+      justify-content: space-between;
+      gap: 20px;
+      align-items: center;
+      padding-bottom: 18px;
+      border-bottom: 1px solid rgba(255,255,255,.13);
+    }
+
+    .wallet-label {
+      color: #bfdbfe;
+      font-size: .75rem;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: .08em;
+    }
+
+    .wallet-value {
+      font-size: 1.65rem;
+      font-weight: 950;
+      letter-spacing: -.04em;
+    }
+
+    .wallet-value.bump {
+      animation: bump .5s ease;
+    }
+
+    @keyframes bump {
+      50% { transform: scale(1.12); color: #6ee7b7; }
+    }
+
+    .sim-grid {
+      margin-top: 20px;
+      display: grid;
+      grid-template-columns: 1fr auto 1fr;
+      align-items: end;
+      gap: 14px;
+    }
+
+    .field label {
+      display: block;
+      margin-bottom: 7px;
+      color: #dbeafe;
+      font-size: .78rem;
+      font-weight: 850;
+    }
+
+    .field select {
+      width: 100%;
+      min-height: 48px;
+      padding: 0 13px;
+      color: var(--ink);
+      background: var(--white);
+      border: 0;
+      border-radius: 12px;
+      outline: none;
+    }
+
+    .swap-arrow {
+      height: 48px;
+      display: grid;
+      place-items: center;
+      color: #dbeafe;
+      font-weight: 950;
+    }
+
+    .sim-impact {
+      margin-top: 18px;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+
+    .impact-chip {
+      padding: 14px;
+      border-radius: 14px;
+      background: rgba(255,255,255,.08);
+      border: 1px solid rgba(255,255,255,.1);
+      font-size: .82rem;
+      color: #dbeafe;
+    }
+
+    .impact-chip strong {
+      display: block;
+      color: var(--white);
+      font-size: 1.12rem;
+    }
+
+    .simulate-btn {
+      width: 100%;
+      margin-top: 18px;
+      min-height: 50px;
+      border: 0;
+      border-radius: 13px;
+      color: var(--primary);
+      background: var(--white);
+      font-weight: 950;
+      transition: .2s ease;
+    }
+
+    .simulate-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 16px 30px rgba(0,0,0,.16);
+    }
+
+    .sim-result {
+      margin-top: 14px;
+      min-height: 48px;
+      padding: 12px 14px;
+      border-radius: 12px;
+      background: rgba(16,185,129,.13);
+      border: 1px solid rgba(110,231,183,.22);
+      color: #d1fae5;
+      font-size: .85rem;
+      opacity: 0;
+      transform: translateY(5px);
+      transition: .25s ease;
+    }
+
+    .sim-result.show {
+      opacity: 1;
+      transform: none;
+    }
+
+    /* FEATURES */
+    .feature-grid {
+      margin-top: 44px;
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 16px;
+    }
+
+    .feature-card {
+      padding: 24px;
+      min-height: 220px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius-md);
+      background: var(--white);
+      transition: .25s ease;
+    }
+
+    .feature-card:hover {
+      transform: translateY(-5px);
+      box-shadow: var(--shadow-md);
+      border-color: rgba(59,130,246,.25);
+    }
+
+    .feature-icon {
+      width: 44px;
+      height: 44px;
+      display: grid;
+      place-items: center;
+      border-radius: 13px;
+      color: var(--primary);
+      background: var(--tint);
+      font-size: 1.15rem;
+    }
+
+    .feature-card h3 {
+      margin-top: 19px;
+      font-size: 1.08rem;
+      letter-spacing: -.02em;
+    }
+
+    .feature-card p {
+      margin-top: 9px;
+      color: var(--muted);
+      font-size: .88rem;
+    }
+
+    /* SKILLS */
+    .skills-shell {
+      margin-top: 42px;
+      display: grid;
+      grid-template-columns: 310px 1fr;
+      gap: 18px;
+      min-height: 430px;
+    }
+
+    .skill-tabs {
+      display: grid;
+      align-content: start;
+      gap: 8px;
+      padding: 12px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius-md);
+      background: var(--white);
+    }
+
+    .skill-tab {
+      border: 0;
+      text-align: left;
+      padding: 14px;
+      border-radius: 13px;
+      background: transparent;
+      color: #475569;
+      font-weight: 850;
+      transition: .2s ease;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+    }
+
+    .skill-tab:hover,
+    .skill-tab.active {
+      color: var(--primary);
+      background: var(--tint);
+    }
+
+    .skill-tab small {
+      color: var(--muted);
+      font-weight: 700;
+    }
+
+    .skill-preview {
+      border: 1px solid var(--line);
+      border-radius: var(--radius-md);
+      background:
+        radial-gradient(circle at 90% 10%, rgba(147,197,253,.24), transparent 250px),
+        var(--white);
+      padding: 30px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .skill-meta {
+      display: flex;
+      gap: 9px;
+      flex-wrap: wrap;
+    }
+
+    .tiny-pill {
+      padding: 6px 9px;
+      border-radius: 999px;
+      background: var(--tint);
+      color: var(--primary);
+      font-size: .7rem;
+      font-weight: 900;
+    }
+
+    .skill-preview h3 {
+      margin-top: 18px;
+      font-size: clamp(1.8rem, 5vw, 2.8rem);
+      letter-spacing: -.05em;
+    }
+
+    .skill-preview > p {
+      max-width: 620px;
+      margin-top: 12px;
+      color: var(--muted);
+    }
+
+    .tutor-row {
+      margin-top: 28px;
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+    }
+
+    .tutor-mini {
+      padding: 14px;
+      border-radius: 14px;
+      border: 1px solid var(--line);
+      background: rgba(248,250,252,.8);
+    }
+
+    .tutor-mini strong {
+      display: block;
+      font-size: .88rem;
+    }
+
+    .tutor-mini span {
+      display: block;
+      margin-top: 4px;
+      color: var(--muted);
+      font-size: .75rem;
+    }
+
+    .match-score {
+      margin-top: 9px;
+      color: #047857 !important;
+      font-weight: 900;
+    }
+
+    /* DASHBOARD PREVIEW */
+    .dashboard-section {
+      background: #eef4ff;
+    }
+
+    .dashboard-frame {
+      margin-top: 44px;
+      border: 1px solid rgba(30,58,138,.12);
+      background: #0b1734;
+      border-radius: 28px;
+      padding: 12px;
+      box-shadow: var(--shadow-lg);
+    }
+
+    .browser-bar {
+      height: 42px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      color: #94a3b8;
+      padding: 0 13px;
+      font-size: .75rem;
+    }
+
+    .browser-dots {
+      display: flex;
+      gap: 6px;
+    }
+
+    .browser-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #475569;
+    }
+
+    .dashboard-ui {
+      min-height: 470px;
+      padding: 20px;
+      border-radius: 20px;
+      background: #f8fafc;
+      display: grid;
+      grid-template-columns: 190px 1fr;
+      gap: 18px;
+    }
+
+    .dash-sidebar {
+      padding: 18px;
+      background: var(--white);
+      border-radius: 16px;
+      border: 1px solid var(--line);
+    }
+
+    .dash-logo {
+      color: var(--primary);
+      font-weight: 950;
+      font-size: 1.1rem;
+      letter-spacing: -.04em;
+      margin-bottom: 22px;
+    }
+
+    .dash-nav {
+      display: grid;
+      gap: 7px;
+    }
+
+    .dash-nav span {
+      padding: 10px 11px;
+      border-radius: 10px;
+      font-size: .77rem;
+      color: var(--muted);
+      font-weight: 800;
+    }
+
+    .dash-nav span.active {
+      color: var(--primary);
+      background: var(--tint);
+    }
+
+    .dash-main {
+      min-width: 0;
+    }
+
+    .dash-greeting {
+      display: flex;
+      justify-content: space-between;
+      gap: 20px;
+      align-items: center;
+    }
+
+    .dash-greeting h3 {
+      font-size: 1.22rem;
+    }
+
+    .balance {
+      color: var(--primary);
+      background: var(--tint);
+      padding: 8px 10px;
+      border-radius: 999px;
+      font-size: .74rem;
+      font-weight: 900;
+    }
+
+    .dash-cards {
+      margin-top: 18px;
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+    }
+
+    .dash-card {
+      min-height: 108px;
+      padding: 14px;
+      border-radius: 13px;
+      border: 1px solid var(--line);
+      background: var(--white);
+    }
+
+    .dash-card span {
+      color: var(--muted);
+      font-size: .7rem;
+      font-weight: 750;
+    }
+
+    .dash-card strong {
+      display: block;
+      margin-top: 10px;
+      font-size: 1.5rem;
+      color: var(--primary);
+    }
+
+    .session-panel {
+      margin-top: 12px;
+      padding: 16px;
+      border: 1px solid var(--line);
+      background: var(--white);
+      border-radius: 14px;
+    }
+
+    .session-panel-head {
+      display: flex;
+      justify-content: space-between;
+      gap: 20px;
+      align-items: center;
+      margin-bottom: 10px;
+    }
+
+    .session-panel-head h4 {
+      font-size: .88rem;
+    }
+
+    .session-row {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 12px;
+      align-items: center;
+      padding: 12px 0;
+      border-top: 1px solid #eef2f7;
+    }
+
+    .session-row strong {
+      display: block;
+      font-size: .8rem;
+    }
+
+    .session-row span {
+      color: var(--muted);
+      font-size: .7rem;
+    }
+
+    .session-status {
+      color: #047857 !important;
+      background: var(--success-soft);
+      border-radius: 999px;
+      padding: 5px 8px;
+      font-weight: 900;
+      white-space: nowrap;
+    }
+
+    /* IMPACT */
+    .impact-grid {
+      margin-top: 44px;
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 16px;
+    }
+
+    .impact-card {
+      padding: 26px;
+      border-radius: var(--radius-md);
+      border: 1px solid var(--line);
+      background: var(--white);
+    }
+
+    .impact-card strong {
+      display: block;
+      color: var(--primary);
+      font-size: 2.2rem;
+      letter-spacing: -.05em;
+    }
+
+    .impact-card span {
+      display: block;
+      margin-top: 5px;
+      color: var(--muted);
+      font-size: .84rem;
+    }
+
+    .sdg-banner {
+      margin-top: 18px;
+      padding: 30px;
+      border-radius: var(--radius-md);
+      background: linear-gradient(135deg, #133c85, #2563eb);
+      color: var(--white);
+      display: grid;
+      grid-template-columns: auto 1fr auto;
+      gap: 20px;
+      align-items: center;
+    }
+
+    .sdg-box {
+      width: 78px;
+      height: 78px;
+      display: grid;
+      place-items: center;
+      border-radius: 18px;
+      background: var(--white);
+      color: var(--primary);
+      font-weight: 950;
+      line-height: 1.05;
+      text-align: center;
+      font-size: .85rem;
+    }
+
+    .sdg-banner p {
+      color: #dbeafe;
+      font-size: .88rem;
+      margin-top: 5px;
+    }
+
+    /* CTA / FOOTER */
+    .final-cta {
+      padding: 80px 0;
+    }
+
+    .cta-shell {
+      padding: 54px 44px;
+      border-radius: 32px;
+      background:
+        radial-gradient(circle at 85% 20%, rgba(147,197,253,.34), transparent 240px),
+        linear-gradient(135deg, #0f2557, #1E3A8A);
+      color: var(--white);
+      text-align: center;
+      overflow: hidden;
+      position: relative;
+    }
+
+    .cta-shell h2 {
+      font-size: clamp(2.2rem, 6vw, 4.3rem);
+      letter-spacing: -.06em;
+      line-height: 1;
+      max-width: 800px;
+      margin-inline: auto;
+    }
+
+    .cta-shell p {
+      color: #bfdbfe;
+      max-width: 650px;
+      margin: 18px auto 0;
+    }
+
+    .cta-actions {
+      margin-top: 26px;
+      display: flex;
+      justify-content: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .cta-shell .btn-primary {
+      background: var(--white);
+      color: var(--primary);
+    }
+
+    .cta-shell .btn-ghost {
+      background: transparent;
+      color: var(--white);
+      border-color: rgba(255,255,255,.25);
+    }
+
+    footer {
+      padding: 24px 0 42px;
+      color: var(--muted);
+    }
+
+    .footer-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 18px;
+      padding-top: 22px;
+      border-top: 1px solid var(--line);
+      font-size: .82rem;
+    }
+
+    .footer-links {
+      display: flex;
+      gap: 16px;
+      flex-wrap: wrap;
+    }
+
+    /* MODAL */
+    .modal-backdrop {
+      position: fixed;
+      inset: 0;
+      z-index: 1500;
+      display: none;
+      place-items: center;
+      padding: 20px;
+      background: rgba(15,23,42,.58);
+      backdrop-filter: blur(8px);
+    }
+
+    .modal-backdrop.show {
+      display: grid;
+    }
+
+    .modal {
+      width: min(100%, 540px);
+      max-height: min(760px, calc(100vh - 40px));
+      overflow-y: auto;
+      border-radius: 24px;
+      background: var(--white);
+      box-shadow: 0 30px 100px rgba(0,0,0,.25);
+      padding: 24px;
+      animation: modalIn .2s ease;
+    }
+
+    @keyframes modalIn {
+      from { opacity: 0; transform: translateY(10px) scale(.98); }
+    }
+
+    .modal-head {
+      display: flex;
+      justify-content: space-between;
+      gap: 20px;
+      align-items: flex-start;
+    }
+
+    .modal-head h3 {
+      font-size: 1.6rem;
+      letter-spacing: -.04em;
+    }
+
+    .modal-head p {
+      margin-top: 5px;
+      color: var(--muted);
+      font-size: .86rem;
+    }
+
+    .close-btn {
+      width: 38px;
+      height: 38px;
+      border: 0;
+      border-radius: 11px;
+      background: #eef2ff;
+      color: var(--primary);
+      font-size: 1.15rem;
+      flex: 0 0 auto;
+    }
+
+    .form-grid {
+      display: grid;
+      gap: 14px;
+      margin-top: 22px;
+    }
+
+    .form-field label {
+      display: block;
+      margin-bottom: 6px;
+      color: #334155;
+      font-size: .78rem;
+      font-weight: 850;
+    }
+
+    .form-field input {
+      width: 100%;
+      min-height: 48px;
+      padding: 0 13px;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      outline: 0;
+      transition: .2s ease;
+    }
+
+    .form-field input:focus {
+      border-color: var(--blue);
+      box-shadow: 0 0 0 4px rgba(59,130,246,.1);
+    }
+
+    .form-grid .btn {
+      margin-top: 3px;
+      min-height: 49px;
+    }
+
+    .form-note {
+      color: var(--muted);
+      font-size: .74rem;
+      text-align: center;
+    }
+
+    /* TOAST */
+    .toast {
+      position: fixed;
+      right: 22px;
+      bottom: 22px;
+      z-index: 2000;
+      max-width: 360px;
+      padding: 14px 16px;
+      border-radius: 14px;
+      color: var(--white);
+      background: #0f2557;
+      box-shadow: var(--shadow-lg);
+      transform: translateY(20px);
+      opacity: 0;
+      pointer-events: none;
+      transition: .25s ease;
+      font-size: .85rem;
+    }
+
+    .toast.show {
+      opacity: 1;
+      transform: none;
+    }
+
+    /* SCROLL REVEAL */
+    .reveal {
+      opacity: 0;
+      transform: translateY(24px);
+      transition: opacity .65s ease, transform .65s ease;
+    }
+
+    .reveal.visible {
+      opacity: 1;
+      transform: none;
+    }
+
+    /* RESPONSIVE */
+    @media (max-width: 1050px) {
+      .desktop-nav,
+      .api-pill,
+      .nav-actions .btn-ghost {
+        display: none;
+      }
+
+      .nav-shell {
+        grid-template-columns: 1fr auto;
+      }
+
+      .nav-actions {
+        grid-column: 2;
+      }
+
+      .mobile-toggle {
+        display: inline-flex;
+      }
+
+      .hero-grid,
+      .swap-wrap {
+        grid-template-columns: 1fr;
+      }
+
+      .exchange-card {
+        min-height: 500px;
+      }
+
+      .steps {
+        grid-template-columns: repeat(2, 1fr);
+      }
+
+      .feature-grid {
+        grid-template-columns: repeat(2, 1fr);
+      }
+
+      .impact-grid {
+        grid-template-columns: repeat(2, 1fr);
+      }
+    }
+
+    @media (max-width: 760px) {
+      .container {
+        width: min(calc(100% - 26px), var(--max));
+      }
+
+      .section {
+        padding: 72px 0;
+      }
+
+      .site-header {
+        padding: 8px 0;
+      }
+
+      .nav-shell {
+        min-height: 58px;
+        border-radius: 16px;
+      }
+
+      .nav-actions > .btn-primary {
+        display: none;
+      }
+
+      .hero {
+        padding: 52px 0 64px;
+      }
+
+      .hero h1 {
+        font-size: clamp(3.15rem, 15vw, 5rem);
+      }
+
+      .stats {
+        grid-template-columns: repeat(2, 1fr);
+      }
+
+      .purpose-grid,
+      .skills-shell {
+        grid-template-columns: 1fr;
+      }
+
+      .steps,
+      .feature-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .sim-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .swap-arrow {
+        height: 20px;
+        transform: rotate(90deg);
+      }
+
+      .tutor-row {
+        grid-template-columns: 1fr;
+      }
+
+      .dashboard-ui {
+        grid-template-columns: 1fr;
+      }
+
+      .dash-sidebar {
+        display: none;
+      }
+
+      .dash-cards {
+        grid-template-columns: 1fr 1fr;
+      }
+
+      .dash-cards .dash-card:last-child {
+        grid-column: 1 / -1;
+      }
+
+      .sdg-banner {
+        grid-template-columns: auto 1fr;
+      }
+
+      .sdg-banner .btn {
+        grid-column: 1 / -1;
+      }
+
+      .footer-row {
+        flex-direction: column;
+        align-items: flex-start;
+      }
+    }
+
+    @media (max-width: 520px) {
+      .brand {
+        font-size: 1.08rem;
+      }
+
+      .brand-mark {
+        width: 32px;
+        height: 32px;
+      }
+
+      .hero-actions .btn {
+        width: 100%;
+      }
+
+      .exchange-card {
+        min-height: 470px;
+        padding: 20px;
+      }
+
+      .student-card {
+        width: calc(100% - 38px);
+      }
+
+      .student-card.one {
+        left: 18px;
+      }
+
+      .student-card.two {
+        right: 18px;
+      }
+
+      .student-card.three {
+        left: 18px;
+      }
+
+      .stats,
+      .impact-grid,
+      .sim-impact {
+        grid-template-columns: 1fr;
+      }
+
+      .purpose-card,
+      .skill-preview,
+      .simulator {
+        padding: 20px;
+      }
+
+      .cta-shell {
+        padding: 42px 22px;
+      }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *,
+      *::before,
+      *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        scroll-behavior: auto !important;
+        transition-duration: 0.01ms !important;
+      }
+
+      .reveal {
+        opacity: 1;
+        transform: none;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <!-- ========================= NAVIGATION ========================= -->
+  <header class="site-header" id="siteHeader">
+    <div class="container">
+      <div class="nav-shell">
+        <a class="brand" href="#home" aria-label="Acadova home">
+          <span class="brand-mark">A</span>
+          <span>Acadova</span>
+        </a>
+
+        <nav class="desktop-nav" aria-label="Primary navigation">
+          <a class="nav-link active" href="#home">Home</a>
+          <a class="nav-link" href="#how">How It Works</a>
+          <a class="nav-link" href="#swap">Skill Swap</a>
+          <a class="nav-link" href="#features">Features</a>
+          <a class="nav-link" href="#skills">Explore Skills</a>
+          <a class="nav-link" href="#impact">Impact</a>
+        </nav>
+
+        <div class="nav-actions">
+          <span class="api-pill"><span class="api-dot"></span> API Online</span>
+          <button class="btn btn-ghost" type="button" data-login>Log In</button>
+          <button class="btn btn-primary" type="button" data-open-modal>Get Started</button>
+          <button class="mobile-toggle" id="mobileToggle" aria-expanded="false" aria-controls="mobilePanel" aria-label="Open menu">
+            ☰
+          </button>
+        </div>
+      </div>
+
+      <div class="mobile-panel" id="mobilePanel">
+        <a class="nav-link" href="#home">Home</a>
+        <a class="nav-link" href="#how">How It Works</a>
+        <a class="nav-link" href="#swap">Skill Swap</a>
+        <a class="nav-link" href="#features">Features</a>
+        <a class="nav-link" href="#skills">Explore Skills</a>
+        <a class="nav-link" href="#impact">Impact</a>
+        <button class="btn btn-ghost" type="button" data-login>Log In</button>
+        <button class="btn btn-primary" type="button" data-open-modal>Get Started — +2 Credits</button>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <!-- ========================= HERO ========================= -->
+    <section class="hero" id="home">
+      <div class="container">
+        <div class="hero-grid">
+          <div class="reveal">
+            <div class="hero-badges">
+              <span class="hero-badge"><span class="eyebrow-dot"></span> SDG 4 — Quality Education</span>
+              <span class="hero-badge">Zero-money knowledge exchange</span>
+            </div>
+
+            <h1>
+              Learn what you need.<br />
+              <span>Teach what you know.</span>
+            </h1>
+
+            <p class="hero-copy">
+              Acadova turns student knowledge into opportunity. Find compatible peers, exchange academic skills,
+              earn learning credits by teaching, and use those credits to learn something new.
+            </p>
+
+            <div class="hero-actions">
+              <button class="btn btn-primary" type="button" data-open-modal>
+                Start Learning <span aria-hidden="true">→</span>
+              </button>
+              <a class="btn btn-ghost" href="#how">See How It Works</a>
+            </div>
+
+            <div class="microcopy">
+              <span class="check">✓</span>
+              Start with 2 learning credits. No card. No tutoring fees.
+            </div>
+          </div>
+
+          <div class="exchange-card reveal" aria-label="Peer knowledge exchange preview">
+            <div class="exchange-head">
+              <div>
+                <small>Acadova Exchange</small>
+                <strong>Knowledge becomes opportunity.</strong>
+              </div>
+              <span class="credit-chip">+2 Credits / Teach</span>
+            </div>
+
+            <div class="exchange-loop"></div>
+
+            <article class="student-card one">
+              <div class="avatar">MS</div>
+              <div class="student-info">
+                <strong>Maria</strong>
+                <span>Teaches Calculus</span>
+              </div>
+              <span class="skill-arrow">+2</span>
+            </article>
+
+            <article class="student-card two">
+              <div class="avatar">JD</div>
+              <div class="student-info">
+                <strong>Joshua</strong>
+                <span>Teaches React</span>
+              </div>
+              <span class="skill-arrow">↔</span>
+            </article>
+
+            <article class="student-card three">
+              <div class="avatar">AR</div>
+              <div class="student-info">
+                <strong>Alex</strong>
+                <span>Learns Networking</span>
+              </div>
+              <span class="skill-arrow">−2</span>
+            </article>
+          </div>
+        </div>
+
+        <div class="stats reveal">
+          <div class="stat">
+            <strong class="counter" data-target="4800" data-suffix="+">0</strong>
+            <span>Study sessions exchanged</span>
+          </div>
+          <div class="stat">
+            <strong class="counter" data-target="1200" data-suffix="+">0</strong>
+            <span>Peer tutors in the community</span>
+          </div>
+          <div class="stat">
+            <strong class="counter" data-target="98" data-suffix="%">0</strong>
+            <span>Student satisfaction target</span>
+          </div>
+          <div class="stat">
+            <strong>₱0</strong>
+            <span>Required tutoring payment</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ========================= PURPOSE ========================= -->
+    <section class="section" id="purpose">
+      <div class="container">
+        <span class="section-kicker reveal">Why Acadova Exists</span>
+        <h2 class="section-title reveal">Learning support should not depend on a student's budget.</h2>
+        <p class="section-copy reveal">
+          Many students need help in one subject while already being capable of helping someone else in another.
+          Acadova makes that unused knowledge exchangeable.
+        </p>
+
+        <div class="purpose-grid">
+          <article class="purpose-card bad reveal">
+            <span class="section-kicker">Traditional Tutoring</span>
+            <h3>Knowledge is locked behind money.</h3>
+            <p>A learner pays for every hour, while their own strengths rarely create value for the community.</p>
+
+            <div class="flow">
+              <span class="flow-node">Money</span>
+              <span class="flow-arrow">→</span>
+              <span class="flow-node">Paid Tutor</span>
+              <span class="flow-arrow">→</span>
+              <span class="flow-node">One-way Help</span>
+            </div>
+
+            <ul class="benefits">
+              <li><span class="check">!</span> Cost can prevent students from getting support.</li>
+              <li><span class="check">!</span> Learning remains mostly one-directional.</li>
+              <li><span class="check">!</span> Student knowledge is underused.</li>
+            </ul>
+          </article>
+
+          <article class="purpose-card good reveal">
+            <span class="section-kicker">The Acadova Model</span>
+            <h3>Knowledge becomes learning currency.</h3>
+            <p>Students teach what they know, earn credits, and use those credits to receive help from another peer.</p>
+
+            <div class="flow">
+              <span class="flow-node">Teach</span>
+              <span class="flow-arrow">→</span>
+              <span class="flow-node">Earn Credits</span>
+              <span class="flow-arrow">→</span>
+              <span class="flow-node">Learn</span>
+            </div>
+
+            <ul class="benefits">
+              <li><span class="check">✓</span> No monetary transaction is required.</li>
+              <li><span class="check">✓</span> Teaching reinforces the tutor's own mastery.</li>
+              <li><span class="check">✓</span> Every learner can also become a contributor.</li>
+            </ul>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <!-- ========================= HOW IT WORKS ========================= -->
+    <section class="section" id="how">
+      <div class="container">
+        <span class="section-kicker reveal">Simple by Design</span>
+        <h2 class="section-title reveal">Four steps from “I need help” to “we both grew.”</h2>
+        <p class="section-copy reveal">
+          The product should feel easy to explain during your project defense and equally easy for a first-time student to use.
+        </p>
+
+        <div class="steps">
+          <article class="step-card reveal">
+            <div class="step-no">01</div>
+            <h3>Build your skill profile</h3>
+            <p>Add the subjects you can teach, what you want to learn, your preferred study style, and availability.</p>
+            <span class="step-tag">Teach + Learn</span>
+          </article>
+
+          <article class="step-card reveal">
+            <div class="step-no">02</div>
+            <h3>Find your best peer match</h3>
+            <p>Acadova compares skill compatibility, schedule overlap, reputation, and mutual skill-swap potential.</p>
+            <span class="step-tag">Match Score</span>
+          </article>
+
+          <article class="step-card reveal">
+            <div class="step-no">03</div>
+            <h3>Exchange knowledge</h3>
+            <p>Request and schedule a focused session. Teaching earns credits; learning uses credits.</p>
+            <span class="step-tag">2 Credits / Session</span>
+          </article>
+
+          <article class="step-card reveal">
+            <div class="step-no">04</div>
+            <h3>Grow your reputation</h3>
+            <p>Complete the session, review each other, strengthen your profile, and unlock better matches.</p>
+            <span class="step-tag">Trust + Progress</span>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <!-- ========================= INTERACTIVE SWAP ========================= -->
+    <section class="section swap-section" id="swap">
+      <div class="container">
+        <div class="swap-wrap">
+          <div class="reveal">
+            <span class="section-kicker">Interactive Credit Model</span>
+            <h2 class="section-title">Your knowledge has value.</h2>
+            <p class="section-copy">
+              Let students understand the Acadova economy before they even create an account.
+              Try the simulator and see how one teaching session can fund the next learning session.
+            </p>
+
+            <div class="economy-loop">
+              <span>1. TEACH</span>
+              <b>→</b>
+              <span>2. EARN</span>
+              <b>→</b>
+              <span>3. LEARN</span>
+              <b>→</b>
+              <span>4. GROW</span>
+            </div>
+          </div>
+
+          <div class="simulator reveal">
+            <div class="sim-top">
+              <div>
+                <div class="wallet-label">Demo wallet</div>
+                <div class="wallet-value" id="walletValue">2 Credits</div>
+              </div>
+              <span class="credit-chip">No money involved</span>
+            </div>
+
+            <div class="sim-grid">
+              <div class="field">
+                <label for="teachSkill">I can teach</label>
+                <select id="teachSkill">
+                  <option>JavaScript & React</option>
+                  <option>Calculus</option>
+                  <option>Networking</option>
+                  <option>Database Systems</option>
+                  <option>Academic English</option>
+                </select>
+              </div>
+
+              <div class="swap-arrow">→</div>
+
+              <div class="field">
+                <label for="learnSkill">I want to learn</label>
+                <select id="learnSkill">
+                  <option>Cybersecurity</option>
+                  <option>Python</option>
+                  <option>UI/UX Design</option>
+                  <option>Statistics</option>
+                  <option>Algorithms</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="sim-impact">
+              <div class="impact-chip">
+                Teaching earns
+                <strong>+2 Credits</strong>
+              </div>
+              <div class="impact-chip">
+                Learning uses
+                <strong>−2 Credits</strong>
+              </div>
+            </div>
+
+            <button class="simulate-btn" id="simulateBtn" type="button">Simulate Knowledge Swap</button>
+            <div class="sim-result" id="simResult" aria-live="polite"></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ========================= FEATURES ========================= -->
+    <section class="section" id="features">
+      <div class="container">
+        <span class="section-kicker reveal">Built Around Student Outcomes</span>
+        <h2 class="section-title reveal">Not another generic tutoring marketplace.</h2>
+        <p class="section-copy reveal">
+          Every major feature reinforces the same idea: match the right peers, make sessions reliable,
+          reward contribution, and show measurable learning impact.
+        </p>
+
+        <div class="feature-grid">
+          <article class="feature-card reveal">
+            <div class="feature-icon">◎</div>
+            <h3>Smart Peer Matching</h3>
+            <p>Rank peer tutors using compatible skills, schedule overlap, ratings, reliability, and potential two-way swaps.</p>
+          </article>
+
+          <article class="feature-card reveal">
+            <div class="feature-icon">↔</div>
+            <h3>Mutual Skill Swap</h3>
+            <p>Detect when two students can directly help each other and highlight that match as a special opportunity.</p>
+          </article>
+
+          <article class="feature-card reveal">
+            <div class="feature-icon">◷</div>
+            <h3>Session Scheduling</h3>
+            <p>Request, accept, reschedule, complete, or cancel sessions with a clear student-friendly workflow.</p>
+          </article>
+
+          <article class="feature-card reveal">
+            <div class="feature-icon">★</div>
+            <h3>Ratings & Reputation</h3>
+            <p>Combine peer feedback, attendance, completed sessions, and reliability into a meaningful trust signal.</p>
+          </article>
+
+          <article class="feature-card reveal">
+            <div class="feature-icon">◉</div>
+            <h3>Learning Credit Ledger</h3>
+            <p>Keep a transparent record of earned and spent credits so the knowledge economy remains understandable and fair.</p>
+          </article>
+
+          <article class="feature-card reveal">
+            <div class="feature-icon">⌁</div>
+            <h3>Community Impact</h3>
+            <p>Show how many learning hours, skills, sessions, and student-to-student contributions Acadova creates.</p>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <!-- ========================= SKILL EXPLORER ========================= -->
+    <section class="section" id="skills">
+      <div class="container">
+        <span class="section-kicker reveal">Explore the Knowledge Network</span>
+        <h2 class="section-title reveal">Every student knows something useful.</h2>
+        <p class="section-copy reveal">
+          Use this interactive area on the landing page to preview real categories and show the matching concept before login.
+        </p>
+
+        <div class="skills-shell reveal">
+          <div class="skill-tabs" id="skillTabs"></div>
+
+          <article class="skill-preview" id="skillPreview">
+            <!-- Populated by JavaScript -->
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <!-- ========================= DASHBOARD PREVIEW ========================= -->
+    <section class="section dashboard-section" id="dashboard">
+      <div class="container">
+        <span class="section-kicker reveal">Student Cockpit Preview</span>
+        <h2 class="section-title reveal">The next action should always be obvious.</h2>
+        <p class="section-copy reveal">
+          Instead of a generic dashboard, Acadova should immediately show learning credits, recommended matches,
+          upcoming sessions, and personal impact.
+        </p>
+
+        <div class="dashboard-frame reveal">
+          <div class="browser-bar">
+            <div class="browser-dots">
+              <span class="browser-dot"></span>
+              <span class="browser-dot"></span>
+              <span class="browser-dot"></span>
+            </div>
+            <span>acadova.app/dashboard</span>
+            <span>● Live</span>
+          </div>
+
+          <div class="dashboard-ui">
+            <aside class="dash-sidebar">
+              <div class="dash-logo">Acadova</div>
+              <div class="dash-nav">
+                <span class="active">Overview</span>
+                <span>Find Peers</span>
+                <span>Sessions</span>
+                <span>Learning Goals</span>
+                <span>Credits</span>
+                <span>Profile</span>
+              </div>
+            </aside>
+
+            <div class="dash-main">
+              <div class="dash-greeting">
+                <div>
+                  <h3>Good evening, Alex 👋</h3>
+                  <span style="font-size:.74rem;color:#64748b">Here's your learning momentum.</span>
+                </div>
+                <span class="balance">4 AC available</span>
+              </div>
+
+              <div class="dash-cards">
+                <div class="dash-card">
+                  <span>Best peer match</span>
+                  <strong>94%</strong>
+                  <span>Mutual skill swap found</span>
+                </div>
+                <div class="dash-card">
+                  <span>Hours shared</span>
+                  <strong>18h</strong>
+                  <span>Across 12 completed sessions</span>
+                </div>
+                <div class="dash-card">
+                  <span>Tutor rating</span>
+                  <strong>4.9★</strong>
+                  <span>Trusted by your peers</span>
+                </div>
+              </div>
+
+              <div class="session-panel">
+                <div class="session-panel-head">
+                  <h4>Upcoming sessions</h4>
+                  <span style="font-size:.7rem;color:#2563EB;font-weight:850">View all</span>
+                </div>
+
+                <div class="session-row">
+                  <div>
+                    <strong>Python Algorithms with Liam</strong>
+                    <span>Today · 4:00 PM · Learning</span>
+                  </div>
+                  <span class="session-status">Confirmed</span>
+                </div>
+
+                <div class="session-row">
+                  <div>
+                    <strong>Tutoring Maria in Networking</strong>
+                    <span>Friday · 6:00 PM · Teaching</span>
+                  </div>
+                  <span class="session-status">+2 AC</span>
+                </div>
+
+                <div class="session-row">
+                  <div>
+                    <strong>React Fundamentals with Joshua</strong>
+                    <span>Saturday · 2:00 PM · Mutual Swap</span>
+                  </div>
+                  <span class="session-status">94% Match</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ========================= IMPACT / SDG ========================= -->
+    <section class="section" id="impact">
+      <div class="container">
+        <span class="section-kicker reveal">Purpose You Can Measure</span>
+        <h2 class="section-title reveal">Make the judges see impact, not just features.</h2>
+        <p class="section-copy reveal">
+          Acadova can turn normal platform analytics into an educational impact story connected to SDG 4.
+        </p>
+
+        <div class="impact-grid">
+          <div class="impact-card reveal">
+            <strong class="counter" data-target="5640" data-suffix="h">0</strong>
+            <span>Peer learning hours shared</span>
+          </div>
+          <div class="impact-card reveal">
+            <strong class="counter" data-target="87" data-suffix="">0</strong>
+            <span>Academic and technical skills</span>
+          </div>
+          <div class="impact-card reveal">
+            <strong class="counter" data-target="1284" data-suffix="">0</strong>
+            <span>Students in the knowledge network</span>
+          </div>
+          <div class="impact-card reveal">
+            <strong>₱0</strong>
+            <span>Tutoring payment required by Acadova</span>
+          </div>
+        </div>
+
+        <div class="sdg-banner reveal">
+          <div class="sdg-box">SDG 4<br>QUALITY<br>EDUCATION</div>
+          <div>
+            <strong>Supporting more accessible peer learning.</strong>
+            <p>Acadova's purpose is to reduce financial barriers to academic support while helping students become both learners and contributors.</p>
+          </div>
+          <a class="btn btn-ghost" href="#home">Back to Top ↑</a>
+        </div>
+      </div>
+    </section>
+
+    <!-- ========================= CTA ========================= -->
+    <section class="final-cta">
+      <div class="container">
+        <div class="cta-shell reveal">
+          <h2>Your next skill could come from your next peer.</h2>
+          <p>
+            Join a community where knowledge is exchanged, contribution is rewarded,
+            and every student has something valuable to teach.
+          </p>
+
+          <div class="cta-actions">
+            <button class="btn btn-primary" type="button" data-open-modal>Claim 2 Starter Credits</button>
+            <a class="btn btn-ghost" href="#skills">Explore Skills</a>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- ========================= FOOTER ========================= -->
+  <footer>
+    <div class="container">
+      <div class="footer-row">
+        <div>
+          <strong style="color:#1E3A8A">Acadova</strong> · Peer-to-Peer Academic Skill & Knowledge Sharing
+        </div>
+        <div class="footer-links">
+          <a href="#how">How It Works</a>
+          <a href="#features">Features</a>
+          <a href="#skills">Explore Skills</a>
+          <a href="#impact">SDG 4</a>
+        </div>
+        <span>© 2026 Acadova</span>
+      </div>
+    </div>
+  </footer>
+
+  <!-- ========================= REGISTER MODAL ========================= -->
+  <div class="modal-backdrop" id="registerModal" role="dialog" aria-modal="true" aria-labelledby="registerTitle">
+    <div class="modal">
+      <div class="modal-head">
+        <div>
+          <h3 id="registerTitle">Create your peer profile</h3>
+          <p>Demo landing-page form. Connect this to your React registration route/API later.</p>
+        </div>
+        <button class="close-btn" id="closeModal" type="button" aria-label="Close">×</button>
+      </div>
+
+      <form class="form-grid" id="registerForm">
+        <div class="form-field">
+          <label for="fullName">Full name</label>
+          <input id="fullName" required placeholder="e.g. Maria Santos" />
+        </div>
+        <div class="form-field">
+          <label for="email">Student email</label>
+          <input id="email" type="email" required placeholder="student@university.edu" />
+        </div>
+        <div class="form-field">
+          <label for="teach">Skills you can teach</label>
+          <input id="teach" required placeholder="e.g. Calculus, JavaScript, SQL" />
+        </div>
+        <div class="form-field">
+          <label for="learn">Skills you want to learn</label>
+          <input id="learn" required placeholder="e.g. Python, Networking, UI/UX" />
+        </div>
+
+        <button class="btn btn-primary" type="submit">Join & Claim 2 Starter Credits</button>
+        <p class="form-note">This prototype does not save data. Replace the submit handler with your MERN API call.</p>
+      </form>
+    </div>
+  </div>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+  <script>
+    /* =========================================================
+       1) DATA FOR INTERACTIVE SKILL EXPLORER
+       ========================================================= */
+    const skillData = [
+      {
+        icon: "💻",
+        name: "Web Development",
+        students: "148 peers",
+        level: "Beginner → Advanced",
+        description:
+          "Learn modern HTML, CSS, JavaScript, React, responsive interfaces, REST APIs, and practical frontend architecture.",
+        tutors: [
+          { name: "Joshua", detail: "React · 4.9★", match: "94% Match" },
+          { name: "Mika", detail: "Frontend · 4.8★", match: "91% Match" },
+          { name: "Daniel", detail: "Node.js · 4.8★", match: "88% Match" }
+        ]
+      },
+      {
+        icon: "📐",
+        name: "Mathematics",
+        students: "121 peers",
+        level: "Foundation → College",
+        description:
+          "Connect with peer tutors for algebra, trigonometry, calculus, statistics, discrete math, and problem-solving practice.",
+        tutors: [
+          { name: "Maria", detail: "Calculus · 4.9★", match: "96% Match" },
+          { name: "Anna", detail: "Statistics · 4.8★", match: "92% Match" },
+          { name: "Ken", detail: "Discrete Math · 4.7★", match: "89% Match" }
+        ]
+      },
+      {
+        icon: "🌐",
+        name: "Networking",
+        students: "83 peers",
+        level: "Fundamentals → CCNA",
+        description:
+          "Practice subnetting, network design, routing, switching, troubleshooting, protocols, and practical lab concepts.",
+        tutors: [
+          { name: "Alex", detail: "CCNA · 4.9★", match: "95% Match" },
+          { name: "Ron", detail: "Networking · 4.8★", match: "93% Match" },
+          { name: "Chris", detail: "Routing · 4.7★", match: "87% Match" }
+        ]
+      },
+      {
+        icon: "🛡️",
+        name: "Cybersecurity",
+        students: "104 peers",
+        level: "Core Concepts → Labs",
+        description:
+          "Study secure communication, access control, threat concepts, hardening, web security, and defensive practices with peers.",
+        tutors: [
+          { name: "Sam", detail: "Blue Team · 4.9★", match: "93% Match" },
+          { name: "Aira", detail: "Web Security · 4.8★", match: "90% Match" },
+          { name: "Marco", detail: "Security Basics · 4.7★", match: "86% Match" }
+        ]
+      },
+      {
+        icon: "🗄️",
+        name: "Databases",
+        students: "96 peers",
+        level: "SQL → NoSQL",
+        description:
+          "Get peer help with SQL, normalization, MongoDB, Mongoose, schema design, CRUD operations, and data modeling.",
+        tutors: [
+          { name: "Daniel", detail: "SQL · 4.9★", match: "95% Match" },
+          { name: "Sophia", detail: "MongoDB · 4.8★", match: "91% Match" },
+          { name: "Nico", detail: "Data Modeling · 4.7★", match: "89% Match" }
+        ]
+      }
+    ];
+
+    /* =========================================================
+       2) MOBILE MENU
+       ========================================================= */
+    const mobileToggle = document.getElementById("mobileToggle");
+    const mobilePanel = document.getElementById("mobilePanel");
+
+    mobileToggle.addEventListener("click", () => {
+      const open = mobilePanel.classList.toggle("open");
+      mobileToggle.setAttribute("aria-expanded", String(open));
+      mobileToggle.textContent = open ? "×" : "☰";
+    });
+
+    mobilePanel.querySelectorAll("a").forEach(link => {
+      link.addEventListener("click", () => {
+        mobilePanel.classList.remove("open");
+        mobileToggle.setAttribute("aria-expanded", "false");
+        mobileToggle.textContent = "☰";
+      });
+    });
+
+    /* =========================================================
+       3) STICKY HEADER + ACTIVE NAV LINK
+       ========================================================= */
+    const header = document.getElementById("siteHeader");
+    const navLinks = [...document.querySelectorAll(".desktop-nav .nav-link")];
+    const observedSections = ["home", "how", "swap", "features", "skills", "impact"]
+      .map(id => document.getElementById(id))
+      .filter(Boolean);
+
+    window.addEventListener("scroll", () => {
+      header.classList.toggle("scrolled", window.scrollY > 20);
+    }, { passive: true });
+
+    const sectionObserver = new IntersectionObserver(entries => {
+      entries.forEach(entry => {
+        if (!entry.isIntersecting) return;
+        navLinks.forEach(link => {
+          link.classList.toggle(
+            "active",
+            link.getAttribute("href") === "#" + entry.target.id
+          );
+        });
+      });
+    }, {
+      rootMargin: "-35% 0px -55% 0px",
+      threshold: 0
+    });
+
+    observedSections.forEach(section => sectionObserver.observe(section));
+
+    /* =========================================================
+       4) SCROLL REVEAL
+       ========================================================= */
+    const revealObserver = new IntersectionObserver(entries => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) {
+          entry.target.classList.add("visible");
+          revealObserver.unobserve(entry.target);
+        }
+      });
+    }, { threshold: 0.12 });
+
+    document.querySelectorAll(".reveal").forEach(el => revealObserver.observe(el));
+
+    /* =========================================================
+       5) COUNTER ANIMATION
+       ========================================================= */
+    const counters = document.querySelectorAll(".counter");
+
+    const counterObserver = new IntersectionObserver(entries => {
+      entries.forEach(entry => {
+        if (!entry.isIntersecting) return;
+
+        const el = entry.target;
+        const target = Number(el.dataset.target || 0);
+        const suffix = el.dataset.suffix || "";
+        const duration = 1200;
+        const start = performance.now();
+
+        function update(now) {
+          const progress = Math.min((now - start) / duration, 1);
+          const eased = 1 - Math.pow(1 - progress, 3);
+          const value = Math.floor(target * eased);
+          el.textContent = value.toLocaleString() + suffix;
+
+          if (progress < 1) requestAnimationFrame(update);
+        }
+
+        requestAnimationFrame(update);
+        counterObserver.unobserve(el);
+      });
+    }, { threshold: 0.55 });
+
+    counters.forEach(counter => counterObserver.observe(counter));
+
+    /* =========================================================
+       6) CREDIT / KNOWLEDGE SWAP SIMULATOR
+       ========================================================= */
+    const teachSkill = document.getElementById("teachSkill");
+    const learnSkill = document.getElementById("learnSkill");
+    const simulateBtn = document.getElementById("simulateBtn");
+    const simResult = document.getElementById("simResult");
+    const walletValue = document.getElementById("walletValue");
+
+    let demoWallet = 2;
+
+    simulateBtn.addEventListener("click", () => {
+      const teach = teachSkill.value;
+      const learn = learnSkill.value;
+
+      demoWallet += 2;
+      walletValue.textContent = `${demoWallet} Credits`;
+      walletValue.classList.remove("bump");
+      void walletValue.offsetWidth;
+      walletValue.classList.add("bump");
+
+      setTimeout(() => {
+        demoWallet -= 2;
+        walletValue.textContent = `${demoWallet} Credits`;
+        walletValue.classList.remove("bump");
+        void walletValue.offsetWidth;
+        walletValue.classList.add("bump");
+      }, 600);
+
+      simResult.innerHTML =
+        `You teach <strong>${teach}</strong> and earn +2 credits. ` +
+        `Those credits can fund a peer session in <strong>${learn}</strong>. ` +
+        `Your knowledge paid for your next learning opportunity — without money.`;
+
+      simResult.classList.add("show");
+    });
+
+    /* =========================================================
+       7) INTERACTIVE SKILL EXPLORER
+       ========================================================= */
+    const skillTabs = document.getElementById("skillTabs");
+    const skillPreview = document.getElementById("skillPreview");
+    let activeSkill = 0;
+
+    function renderSkills() {
+      skillTabs.innerHTML = skillData.map((skill, index) => `
+        <button
+          type="button"
+          class="skill-tab ${index === activeSkill ? "active" : ""}"
+          data-skill-index="${index}"
+        >
+          <span>${skill.icon} ${skill.name}</span>
+          <small>${skill.students}</small>
+        </button>
+      `).join("");
+
+      const skill = skillData[activeSkill];
+
+      skillPreview.innerHTML = `
+        <div class="skill-meta">
+          <span class="tiny-pill">${skill.level}</span>
+          <span class="tiny-pill">2 Credits / Session</span>
+          <span class="tiny-pill">${skill.students}</span>
+        </div>
+
+        <h3>${skill.icon} ${skill.name}</h3>
+        <p>${skill.description}</p>
+
+        <div class="tutor-row">
+          ${skill.tutors.map(tutor => `
+            <div class="tutor-mini">
+              <strong>${tutor.name}</strong>
+              <span>${tutor.detail}</span>
+              <span class="match-score">${tutor.match}</span>
+            </div>
+          `).join("")}
+        </div>
+
+        <button
+          class="btn btn-primary"
+          type="button"
+          style="margin-top:22px"
+          data-open-modal
+        >
+          Find a ${skill.name} Peer
+        </button>
+      `;
+
+      // Rebind newly-created modal button.
+      skillPreview.querySelector("[data-open-modal]")
+        .addEventListener("click", openRegisterModal);
+    }
+
+    skillTabs.addEventListener("click", event => {
+      const button = event.target.closest("[data-skill-index]");
+      if (!button) return;
+
+      activeSkill = Number(button.dataset.skillIndex);
+      renderSkills();
+    });
+
+    renderSkills();
+
+    /* =========================================================
+       8) MODAL / CALL-TO-ACTION INTERACTION
+       ========================================================= */
+    const registerModal = document.getElementById("registerModal");
+    const closeModalButton = document.getElementById("closeModal");
+    const registerForm = document.getElementById("registerForm");
+    const toast = document.getElementById("toast");
+
+    function openRegisterModal() {
+      registerModal.classList.add("show");
+      document.body.classList.add("modal-open");
+      setTimeout(() => document.getElementById("fullName").focus(), 80);
+    }
+
+    function closeRegisterModal() {
+      registerModal.classList.remove("show");
+      document.body.classList.remove("modal-open");
+    }
+
+    document.querySelectorAll("[data-open-modal]").forEach(button => {
+      button.addEventListener("click", openRegisterModal);
+    });
+
+    closeModalButton.addEventListener("click", closeRegisterModal);
+
+    registerModal.addEventListener("click", event => {
+      if (event.target === registerModal) closeRegisterModal();
+    });
+
+    document.addEventListener("keydown", event => {
+      if (event.key === "Escape" && registerModal.classList.contains("show")) {
+        closeRegisterModal();
+      }
+    });
+
+    function showToast(message) {
+      toast.textContent = message;
+      toast.classList.add("show");
+      clearTimeout(showToast.timer);
+      showToast.timer = setTimeout(() => toast.classList.remove("show"), 3200);
+    }
+
+    registerForm.addEventListener("submit", event => {
+      event.preventDefault();
+      closeRegisterModal();
+      showToast("Prototype complete — connect this form to your MERN register endpoint.");
+      registerForm.reset();
+    });
+
+    /* Demo login buttons.
+       Replace with: window.location.href = "/login";
+       or your React Router navigation in the real project. */
+    document.querySelectorAll("[data-login]").forEach(button => {
+      button.addEventListener("click", () => {
+        showToast("Connect this button to your existing /login route.");
+      });
+    });
+  </script>
+</body>
+</html>

@@ -50,14 +50,19 @@ app.use('/api/admin', require('./routes/adminRoutes'));
 
 app.get('/api/health', (req, res) => res.json({ status: 'Acadova API Running' }));
 
+// The Express service is API-only. The user-facing application is served by Vite.
+app.get('/', (req, res) => {
+  res.json({ success: true, message: 'Acadova API' });
+});
+
 // Unmatched API routes get a real JSON 404 instead of falling through to the SPA page.
 app.use('/api', (req, res) => {
   res.status(404).json({ success: false, message: 'API route not found' });
 });
 
-// Express v5 compatible catch-all for serving the landing page
+// Keep non-API backend responses machine-readable instead of serving legacy HTML.
 app.use((req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'index.html'));
+  res.status(404).json({ success: false, message: 'Route not found' });
 });
 
 // Centralized error handler: never leak stack traces or internals to clients.

@@ -23,8 +23,11 @@ export const TutorProfilePage = () => {
   // Request form state
   const [sessionSubject, setSessionSubject] = useState('');
   const [scheduledAt, setScheduledAt] = useState('');
+  const [meetingMethod, setMeetingMethod] = useState('online');
+  const [requestMessage, setRequestMessage] = useState('');
   const [creditCost, setCreditCost] = useState(1);
   const [submitting, setSubmitting] = useState(false);
+  const [fieldErrors, setFieldErrors] = useState({});
 
   useEffect(() => {
     const fetchTutor = async () => {
@@ -61,8 +64,15 @@ export const TutorProfilePage = () => {
     setError('');
     setSuccessMsg('');
 
-    if (!sessionSubject.trim()) {
-      setError('Please specify the subject for the study session.');
+    const errors = {};
+    if (!sessionSubject.trim()) errors.subject = 'Choose a subject.';
+    if (!scheduledAt) errors.scheduledAt = 'Enter a preferred session date.';
+    if (!meetingMethod) errors.meetingMethod = 'Choose a session method.';
+    if (!requestMessage.trim()) errors.requestMessage = 'Tell your peer what you would like help with.';
+    if (requestMessage.trim().length > 500) errors.requestMessage = 'Your message must be 500 characters or fewer.';
+    setFieldErrors(errors);
+    if (Object.keys(errors).length > 0) {
+      setError('Check the highlighted session details.');
       return;
     }
 
@@ -77,6 +87,8 @@ export const TutorProfilePage = () => {
         tutorId: id,
         subject: sessionSubject.trim(),
         scheduledAt: scheduledAt || undefined,
+        meetingMethod,
+        requestMessage: requestMessage.trim(),
         creditAmount: creditCost,
       });
 
@@ -175,7 +187,7 @@ export const TutorProfilePage = () => {
             Request a Study Session
           </h3>
           <p style={{ fontSize: '0.88rem', color: 'var(--ink-600)', marginBottom: '20px' }}>
-            Book a 1-on-1 collaborative study room with {tutor.name}. Credits are transferred safely after completion.
+            Book a 1-on-1 collaborative study room with {tutor.name}. Credits transfer only after you confirm completion.
           </p>
 
           <form onSubmit={handleRequestSession}>
@@ -187,9 +199,11 @@ export const TutorProfilePage = () => {
                 className="form-input"
                 placeholder="e.g. Java Data Structures"
                 value={sessionSubject}
-                onChange={(e) => setSessionSubject(e.target.value)}
-                required
-              />
+              onChange={(e) => setSessionSubject(e.target.value)}
+              aria-invalid={Boolean(fieldErrors.subject)}
+              required
+            />
+              {fieldErrors.subject && <span className="form-error">{fieldErrors.subject}</span>}
             </div>
 
             <div className="form-group">
@@ -198,9 +212,38 @@ export const TutorProfilePage = () => {
                 id="scheduledAt"
                 type="datetime-local"
                 className="form-input"
-                value={scheduledAt}
-                onChange={(e) => setScheduledAt(e.target.value)}
+              value={scheduledAt}
+              onChange={(e) => setScheduledAt(e.target.value)}
+              aria-invalid={Boolean(fieldErrors.scheduledAt)}
+              required
+            />
+              <span className="form-hint">Required · propose a time that works for you.</span>
+              {fieldErrors.scheduledAt && <span className="form-error">{fieldErrors.scheduledAt}</span>}
+            </div>
+
+            <div className="form-group">
+              <label className="form-label" htmlFor="meetingMethod">Session Method</label>
+              <select id="meetingMethod" className="form-select" value={meetingMethod} onChange={(e) => setMeetingMethod(e.target.value)} required>
+                <option value="online">Online</option>
+                <option value="in-person">In Person</option>
+              </select>
+            </div>
+
+            <div className="form-group">
+              <label className="form-label" htmlFor="requestMessage">Short Request Message</label>
+              <textarea
+                id="requestMessage"
+                className="form-textarea"
+                rows={3}
+                maxLength={500}
+                value={requestMessage}
+                onChange={(e) => setRequestMessage(e.target.value)}
+                placeholder="Tell your peer what you would like help with."
+                aria-invalid={Boolean(fieldErrors.requestMessage)}
+                required
               />
+              <span className="form-hint">{500 - requestMessage.length} characters remaining</span>
+              {fieldErrors.requestMessage && <span className="form-error">{fieldErrors.requestMessage}</span>}
             </div>
 
             <div className="form-group">

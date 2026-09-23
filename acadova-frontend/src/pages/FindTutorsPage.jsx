@@ -42,9 +42,12 @@ export const FindTutorsPage = () => {
   const [selectedTutor, setSelectedTutor] = useState(null);
   const [sessionSubject, setSessionSubject] = useState('');
   const [scheduledAt, setScheduledAt] = useState('');
+  const [meetingMethod, setMeetingMethod] = useState('online');
+  const [requestMessage, setRequestMessage] = useState('');
   const [creditCost, setCreditCost] = useState(1);
   const [modalSubmitting, setModalSubmitting] = useState(false);
   const [modalError, setModalError] = useState('');
+  const [fieldErrors, setFieldErrors] = useState({});
   const [successMessage, setSuccessMessage] = useState('');
 
   const fetchTutors = useCallback(async (subject = '') => {
@@ -96,16 +99,25 @@ export const FindTutorsPage = () => {
     setSessionSubject(tutor.skillsToTeach?.[0] || searchQuery || '');
     setCreditCost(1);
     setScheduledAt('');
+    setMeetingMethod('online');
+    setRequestMessage('');
     setModalError('');
+    setFieldErrors({});
     setIsModalOpen(true);
   };
 
   const handleCreateSession = async (e) => {
     e.preventDefault();
     setModalError('');
-
-    if (!sessionSubject.trim()) {
-      setModalError('Please specify the subject/topic.');
+    const errors = {};
+    if (!sessionSubject.trim()) errors.subject = 'Choose a subject.';
+    if (!scheduledAt) errors.scheduledAt = 'Enter a preferred session date.';
+    if (!meetingMethod) errors.meetingMethod = 'Choose a session method.';
+    if (!requestMessage.trim()) errors.requestMessage = 'Tell your peer what you would like help with.';
+    if (requestMessage.trim().length > 500) errors.requestMessage = 'Your message must be 500 characters or fewer.';
+    setFieldErrors(errors);
+    if (Object.keys(errors).length > 0) {
+      setModalError('Check the highlighted session details.');
       return;
     }
 
@@ -120,6 +132,8 @@ export const FindTutorsPage = () => {
         tutorId: selectedTutor._id,
         subject: sessionSubject.trim(),
         scheduledAt: scheduledAt || undefined,
+        meetingMethod,
+        requestMessage: requestMessage.trim(),
         creditAmount: creditCost,
       });
 
@@ -256,14 +270,17 @@ export const FindTutorsPage = () => {
               placeholder="e.g. React Component State, Java Recursion"
               value={sessionSubject}
               onChange={(e) => setSessionSubject(e.target.value)}
+              aria-invalid={Boolean(fieldErrors.subject)}
+              aria-describedby={fieldErrors.subject ? 'subject-error' : undefined}
               required
               autoFocus
             />
+            {fieldErrors.subject && <span className="form-error" id="subject-error">{fieldErrors.subject}</span>}
           </div>
 
           <div className="form-group">
             <label className="form-label" htmlFor="scheduledAt">
-              Preferred Date & Time (Optional)
+              Preferred Date & Time
             </label>
             <input
               id="scheduledAt"
@@ -271,7 +288,39 @@ export const FindTutorsPage = () => {
               className="form-input"
               value={scheduledAt}
               onChange={(e) => setScheduledAt(e.target.value)}
+              aria-invalid={Boolean(fieldErrors.scheduledAt)}
+              aria-describedby={fieldErrors.scheduledAt ? 'scheduled-error' : undefined}
+              required
             />
+            <span className="form-hint">Required · propose a time that works for you.</span>
+            {fieldErrors.scheduledAt && <span className="form-error" id="scheduled-error">{fieldErrors.scheduledAt}</span>}
+          </div>
+
+          <div className="form-group">
+            <label className="form-label" htmlFor="meetingMethod">Session Method</label>
+            <select id="meetingMethod" className="form-select" value={meetingMethod} onChange={(e) => setMeetingMethod(e.target.value)} required>
+              <option value="online">Online</option>
+              <option value="in-person">In Person</option>
+            </select>
+            <span className="form-hint">The Tutor will add the meeting link or location after accepting.</span>
+          </div>
+
+          <div className="form-group">
+            <label className="form-label" htmlFor="requestMessage">Short Request Message</label>
+            <textarea
+              id="requestMessage"
+              className="form-textarea"
+              rows={3}
+              maxLength={500}
+              value={requestMessage}
+              onChange={(e) => setRequestMessage(e.target.value)}
+              placeholder="Tell your peer what you would like help with."
+              aria-invalid={Boolean(fieldErrors.requestMessage)}
+              aria-describedby={fieldErrors.requestMessage ? 'request-message-error' : 'request-message-hint'}
+              required
+            />
+            <span className="form-hint" id="request-message-hint">Example: “I need help understanding Java arrays and loops.” · {500 - requestMessage.length} characters remaining</span>
+            {fieldErrors.requestMessage && <span className="form-error" id="request-message-error">{fieldErrors.requestMessage}</span>}
           </div>
 
           <div className="form-group">
@@ -288,7 +337,7 @@ export const FindTutorsPage = () => {
               <option value={2}>2 Credits (Deep Dive 60-90m session)</option>
             </select>
             <span className="form-hint">
-              Credits remain safely in your wallet until the tutor completes the session.
+              Credits remain in your wallet until you confirm the completed session.
             </span>
           </div>
 

@@ -8,6 +8,10 @@ const CreditTransactionSchema = new mongoose.Schema({
   type: { type: String, enum: ['session_payment'], default: 'session_payment' },
 }, { timestamps: true });
 
+// A session can settle only once. This database constraint backs up the
+// confirmation controller's idempotency checks during concurrent requests.
+CreditTransactionSchema.index({ session: 1 }, { unique: true });
+
 // This collection is an append-only audit log; credits are never written to
-// directly by clients, only derived here from completed sessions.
+// directly by clients, only created by learner confirmation.
 module.exports = mongoose.model('CreditTransaction', CreditTransactionSchema);

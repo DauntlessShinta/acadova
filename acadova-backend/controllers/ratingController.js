@@ -19,8 +19,8 @@ exports.submitRating = async (req, res) => {
     if (!session) {
       return res.status(404).json({ success: false, message: 'Session not found' });
     }
-    if (session.status !== 'completed') {
-      return res.status(400).json({ success: false, message: 'You can only rate completed sessions' });
+    if (session.status !== 'completed' || !session.confirmedAt || !session.creditsSettledAt) {
+      return res.status(400).json({ success: false, message: 'You can rate this session after the Learner confirms completion.' });
     }
 
     const isLearner = session.learner.toString() === req.user.id;

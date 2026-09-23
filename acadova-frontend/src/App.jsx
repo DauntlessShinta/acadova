@@ -15,6 +15,7 @@ import DashboardPage from './pages/DashboardPage';
 import FindTutorsPage from './pages/FindTutorsPage';
 import TutorProfilePage from './pages/TutorProfilePage';
 import SessionsPage from './pages/SessionsPage';
+import SessionRoomPage from './pages/SessionRoomPage';
 import CreditsPage from './pages/CreditsPage';
 import ProfilePage from './pages/ProfilePage';
 
@@ -40,6 +41,7 @@ export const App = () => {
         <Route path="/tutors" element={<FindTutorsPage />} />
         <Route path="/tutors/:id" element={<TutorProfilePage />} />
         <Route path="/sessions" element={<SessionsPage />} />
+        <Route path="/sessions/:id" element={<SessionRoomPage />} />
         <Route path="/credits" element={<CreditsPage />} />
         <Route path="/profile" element={<ProfilePage />} />
       </Route>

@@ -5,6 +5,10 @@ const SessionSchema = new mongoose.Schema({
   tutor: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
   subject: { type: String, required: true, trim: true },
   scheduledAt: { type: Date },
+  meetingMethod: { type: String, enum: ['online', 'in-person'] },
+  meetingLink: { type: String, trim: true, maxlength: 500 },
+  location: { type: String, trim: true, maxlength: 300 },
+  requestMessage: { type: String, trim: true, maxlength: 500 },
   status: {
     type: String,
     enum: ['pending', 'accepted', 'rejected', 'completed', 'cancelled'],
@@ -12,6 +16,8 @@ const SessionSchema = new mongoose.Schema({
   },
   creditAmount: { type: Number, required: true, min: [1, 'Credit amount must be positive'] },
   completedAt: { type: Date },
+  confirmedAt: { type: Date },
+  creditsSettledAt: { type: Date },
 }, { timestamps: true });
 
 // Speeds up "my sessions" and subject-demand analytics queries.

@@ -1,133 +1,55 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { ArrowRight, Eye, EyeOff } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
-import { LogIn, ArrowRight } from 'lucide-react';
 import Alert from '../components/common/Alert';
 import { getRoleHomeRoute } from '../config/roleNavigation';
+
+const loginError = (error) => {
+  if (error.status === 401) return 'Email or password is incorrect.';
+  if (error.status >= 500) return 'Acadova is temporarily unavailable. Please try again.';
+  return error.data?.message || 'Unable to sign in. Please try again.';
+};
 
 export const LoginPage = () => {
   const { login } = useAuth();
   const navigate = useNavigate();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [fields, setFields] = useState({});
+  const [submitting, setSubmitting] = useState(false);
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
+  const handleSubmit = async (event) => {
+    event.preventDefault();
+    const next = {};
+    if (!email.trim()) next.email = 'Enter your email address.';
+    if (!password) next.password = 'Enter your password.';
+    setFields(next);
     setError('');
-
-    if (!email.trim() || !password) {
-      setError('Please enter your email and password.');
-      return;
-    }
-
+    if (Object.keys(next).length) return;
     try {
-      setIsSubmitting(true);
+      setSubmitting(true);
       const response = await login(email.trim(), password);
       navigate(getRoleHomeRoute(response?.data?.user?.role), { replace: true });
     } catch (err) {
-      setError(err.message || 'Invalid email or password. Please try again.');
-    } finally {
-      setIsSubmitting(false);
-    }
+      setError(loginError(err));
+    } finally { setSubmitting(false); }
   };
 
-  return (
-    <div style={{ padding: '60px 0 80px' }}>
-      <div className="container-sm">
-        <div className="card" style={{ boxShadow: 'var(--shadow-lg)' }}>
-          <div style={{ textAlign: 'center', marginBottom: '28px' }}>
-            <div style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              width: 48,
-              height: 48,
-              borderRadius: '50%',
-              background: 'var(--brass-100)',
-              color: 'var(--brass-700)',
-              marginBottom: '14px',
-            }}>
-              <LogIn size={22} />
-            </div>
-            <h2 style={{ color: 'var(--navy-900)', marginBottom: '8px' }}>Sign in to Acadova</h2>
-            <p style={{ fontSize: '0.92rem', color: 'var(--ink-600)' }}>
-              Enter your Acadova credentials to access your role workspace.
-            </p>
-          </div>
-
-          <Alert type="danger" message={error} onClose={() => setError('')} />
-
-          <form onSubmit={handleSubmit}>
-            <div className="form-group">
-              <label className="form-label" htmlFor="email">
-                Academic Email Address
-              </label>
-              <div style={{ position: 'relative' }}>
-                <input
-                  id="email"
-                  type="email"
-                  className="form-input"
-                  placeholder="student@university.edu"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  required
-                  autoFocus
-                />
-              </div>
-            </div>
-
-            <div className="form-group">
-              <label className="form-label" htmlFor="password">
-                Password
-              </label>
-              <div style={{ position: 'relative' }}>
-                <input
-                  id="password"
-                  type="password"
-                  className="form-input"
-                  placeholder="••••••••"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  required
-                />
-              </div>
-            </div>
-
-            <button
-              type="submit"
-              className="btn btn-primary"
-              style={{ width: '100%', marginTop: '12px', padding: '12px' }}
-              disabled={isSubmitting}
-            >
-              {isSubmitting ? (
-                <span>Signing in...</span>
-              ) : (
-                <>
-                  <span>Sign In</span> <ArrowRight size={16} />
-                </>
-              )}
-            </button>
-          </form>
-
-          <div style={{
-            marginTop: '24px',
-            paddingTop: '20px',
-            borderTop: '1px solid var(--border-subtle)',
-            textAlign: 'center',
-            fontSize: '0.9rem',
-            color: 'var(--ink-600)',
-          }}>
-            Don't have an account yet?{' '}
-            <Link to="/register" style={{ color: 'var(--brass-700)', fontWeight: 600 }}>
-              Create an account (+2 Credits)
-            </Link>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
+  return <>
+    <span className="auth-form-eyebrow">Welcome back</span>
+    <h2>Log in to Acadova</h2>
+    <p className="auth-form-intro">Continue your peer learning journey.</p>
+    <Alert type="danger" message={error} onClose={() => setError('')} />
+    <form onSubmit={handleSubmit} noValidate>
+      <div className="form-group"><label className="form-label" htmlFor="login-email">Email address</label><input id="login-email" type="email" className="form-input" autoComplete="email" inputMode="email" value={email} onChange={(event) => setEmail(event.target.value)} aria-invalid={Boolean(fields.email)} aria-describedby={fields.email ? 'login-email-error' : undefined} required autoFocus />{fields.email && <span className="form-error" id="login-email-error">{fields.email}</span>}</div>
+      <div className="form-group"><label className="form-label" htmlFor="login-password">Password</label><div className="auth-password-field"><input id="login-password" type={showPassword ? 'text' : 'password'} className="form-input" autoComplete="current-password" value={password} onChange={(event) => setPassword(event.target.value)} aria-invalid={Boolean(fields.password)} aria-describedby={fields.password ? 'login-password-error' : undefined} required /><button type="button" onClick={() => setShowPassword((value) => !value)} aria-label={showPassword ? 'Hide password' : 'Show password'} aria-pressed={showPassword}>{showPassword ? <EyeOff size={19} /> : <Eye size={19} />}</button></div>{fields.password && <span className="form-error" id="login-password-error">{fields.password}</span>}</div>
+      <button type="submit" className="btn btn-primary auth-submit" disabled={submitting}>{submitting ? 'Logging in...' : <>Log in <ArrowRight size={17} /></>}</button>
+    </form>
+    <div className="auth-switch"><span>New to Acadova?</span><Link to="/register" className="btn btn-secondary">Create an account</Link></div>
+  </>;
 };
 
 export default LoginPage;

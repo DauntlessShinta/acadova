@@ -1,10 +1,11 @@
 const User = require('../models/User');
+const Session = require('../models/Session');
 const { isValidObjectId } = require('../middleware/validation');
+const { logSecurityEvent } = require('../utils/securityLogger');
 
 const MANAGEABLE_ROLES = new Set(['student', 'moderator']);
 
-// GET /api/admin/users - lists all platform users for the admin dashboard.
-// Read-only by design: no ban/promote actions yet (not part of current scope).
+// GET /api/admin/users - lists platform accounts for user management.
 exports.listUsers = async (req, res) => {
   try {
     const users = await User.find()
@@ -14,6 +15,21 @@ exports.listUsers = async (req, res) => {
     res.json({ success: true, message: 'Users retrieved', data: users });
   } catch (error) {
     res.status(500).json({ success: false, message: 'Server error while retrieving users' });
+  }
+};
+
+// Admin session directory exposes coordination metadata, never private messages.
+exports.listSessions = async (req, res) => {
+  try {
+    const sessions = await Session.find()
+      .select('subject learner tutor scheduledAt status confirmedAt creditAmount createdAt')
+      .populate('learner', 'name')
+      .populate('tutor', 'name')
+      .sort({ createdAt: -1 })
+      .lean();
+    return res.json({ success: true, message: 'Sessions retrieved', data: sessions });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: 'Sessions could not be loaded.' });
   }
 };
 
@@ -46,6 +62,11 @@ exports.updateUserRole = async (req, res) => {
       { role },
       { returnDocument: 'after', runValidators: true }
     ).select('name email role credits rating skillsToTeach skillsToLearn createdAt');
+    if (!updatedUser) {
+      return res.status(404).json({ success: false, message: 'User not found' });
+    }
+
+    logSecurityEvent('admin.role_changed', req, { targetId: id, newRole: role });
 
     return res.json({ success: true, message: `User role updated to ${role}`, data: updatedUser });
   } catch (error) {

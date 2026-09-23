@@ -1,10 +1,11 @@
 const express = require('express');
 const router = express.Router();
-const { authenticateToken } = require('../middleware/authMiddleware');
+const { authenticateToken, requireRole } = require('../middleware/authMiddleware');
 const { getMyCreditHistory } = require('../controllers/creditController');
+const { validateQuery } = require('../middleware/validation');
 
-router.use(authenticateToken);
+router.use(authenticateToken, requireRole('student'));
 
-router.get('/mine', getMyCreditHistory);
+router.get('/mine', validateQuery(), getMyCreditHistory);
 
 module.exports = router;

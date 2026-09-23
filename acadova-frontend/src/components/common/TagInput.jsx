@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { X } from 'lucide-react';
 
 export const TagInput = ({
+  id,
   tags = [],
   onChange = () => {},
   placeholder = 'Type a skill and press Enter...',
@@ -46,6 +47,7 @@ export const TagInput = ({
       ))}
       {tags.length < maxTags && (
         <input
+          id={id}
           type="text"
           className="tag-input-field"
           value={inputValue}
@@ -60,4 +62,3 @@ export const TagInput = ({
 };
 
 export default TagInput;
-

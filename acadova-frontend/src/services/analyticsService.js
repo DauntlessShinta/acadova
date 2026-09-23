@@ -21,6 +21,8 @@ export const analyticsService = {
     return api.get('/api/admin/users');
   },
 
+  getAdminSessions: async () => api.get('/api/admin/sessions'),
+
   updateUserRole: async (id, role) => {
     return api.patch(`/api/admin/users/${id}/role`, { role });
   },

@@ -1,6 +1,7 @@
 const jwt = require('jsonwebtoken');
-const mongoose = require('mongoose');
 const User = require('../models/User');
+const { isValidObjectId } = require('./validation');
+const { logSecurityEvent } = require('../utils/securityLogger');
 
 // Authentication: confirms WHO the user is by validating their JWT.
 async function authenticateToken(req, res, next) {
@@ -15,10 +16,12 @@ async function authenticateToken(req, res, next) {
   try {
     payload = jwt.verify(token, process.env.JWT_SECRET);
   } catch (error) {
+    logSecurityEvent('auth.token_rejected', req, { status: 401 });
     return res.status(401).json({ success: false, message: 'Invalid or expired token' });
   }
 
-  if (!payload.id || !mongoose.Types.ObjectId.isValid(payload.id)) {
+  if (!isValidObjectId(payload.id)) {
+    logSecurityEvent('auth.token_rejected', req, { status: 401 });
     return res.status(401).json({ success: false, message: 'Invalid or expired token' });
   }
 
@@ -53,6 +56,7 @@ function requireRole(...allowedRoles) {
       return res.status(401).json({ success: false, message: 'Authentication required' });
     }
     if (!allowedRoles.includes(req.user.role)) {
+      logSecurityEvent('access.role_denied', req, { status: 403 });
       return res.status(403).json({ success: false, message: 'You do not have permission to perform this action' });
     }
     next();

@@ -2,6 +2,7 @@ const User = require('../models/User');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const { isValidEmail, isValidPassword } = require('../middleware/validation');
+const { logSecurityEvent } = require('../utils/securityLogger');
 
 function signToken(user) {
   // Token payload stays minimal: never put passwords or extra PII in a JWT.
@@ -61,7 +62,10 @@ exports.login = async (req, res) => {
 
     // Generic message on every failure path below - never reveal whether
     // the account exists or which field (email vs password) was wrong.
-    const genericFailure = () => res.status(401).json({ success: false, message: 'Invalid email or password' });
+    const genericFailure = () => {
+      logSecurityEvent('auth.login_failed', req, { status: 401, sourceIp: req.ip });
+      return res.status(401).json({ success: false, message: 'Invalid email or password' });
+    };
 
     if (!email || !password) return genericFailure();
 

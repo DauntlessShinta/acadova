@@ -19,6 +19,7 @@ const originals = {
   transactionFindOne: CreditTransaction.findOne,
   transactionCreate: CreditTransaction.create,
   ratingFindOne: Rating.findOne,
+  ratingExists: Rating.exists,
   ratingCreate: Rating.create,
   ratingAggregate: Rating.aggregate,
   userFindByIdAndUpdate: User.findByIdAndUpdate,
@@ -35,6 +36,7 @@ test.afterEach(() => {
   CreditTransaction.findOne = originals.transactionFindOne;
   CreditTransaction.create = originals.transactionCreate;
   Rating.findOne = originals.ratingFindOne;
+  Rating.exists = originals.ratingExists;
   Rating.create = originals.ratingCreate;
   Rating.aggregate = originals.ratingAggregate;
   User.findByIdAndUpdate = originals.userFindByIdAndUpdate;
@@ -59,6 +61,7 @@ const sessionDoc = (overrides = {}) => ({
   creditAmount: 1,
   async save() {},
   async populate() {},
+  toObject() { return { ...this }; },
   ...overrides,
 });
 
@@ -120,6 +123,7 @@ test('unrelated student cannot open the Session Room', async () => {
   const session = sessionDoc();
   Session.findById = async () => session;
   const res = response();
+  Rating.exists = async () => assert.fail('Reviews must not be read before participant authorization');
 
   await controller.getSessionById({
     params: { id: session._id },
@@ -128,6 +132,84 @@ test('unrelated student cannot open the Session Room', async () => {
 
   assert.equal(res.statusCode, 403);
 });
+
+test('room refresh returns review state only for its current participant, including hidden reviews', async () => {
+  const session = sessionDoc({ status: 'completed', confirmedAt: new Date(), creditsSettledAt: new Date() });
+  Session.findById = async () => session;
+  Rating.exists = async (query) => {
+    assert.deepEqual(Object.keys(query).sort(), ['fromUser', 'session']);
+    assert.equal(query.session, session._id);
+    return query.fromUser === session.learner ? { _id: 'existing-hidden-review' } : null;
+  };
+  for (const author of [session.learner, session.tutor, session.learner]) {
+    const res = response();
+    await controller.getSessionById({ params: { id: session._id }, user: { id: author } }, res);
+    assert.equal(res.statusCode, 200);
+    assert.equal(res.body.data.myReview, author === session.learner);
+  }
+  assert.equal(session.myReview, undefined);
+});
+
+test('reading a legacy room does not save or backfill historical fields', async () => {
+  const session = sessionDoc({ meetingMethod: undefined, meetingLink: undefined, scheduledAt: undefined,
+    save: async () => assert.fail('A room read must not modify its session') });
+  const before = JSON.stringify(session);
+  Session.findById = async () => session;
+  Rating.exists = async () => null;
+  const res = response();
+  await controller.getSessionById({ params: { id: session._id }, user: { id: session.learner } }, res);
+  assert.equal(res.statusCode, 200);
+  assert.equal(res.body.data.myReview, false);
+  assert.equal(JSON.stringify(session), before);
+});
+
+test('review lookup failure is not reported as an unsubmitted review', async () => {
+  const session = sessionDoc();
+  Session.findById = async () => session;
+  Rating.exists = async () => { throw new Error('lookup failed'); };
+  const res = response();
+  await controller.getSessionById({ params: { id: session._id }, user: { id: session.learner } }, res);
+  assert.equal(res.statusCode, 500);
+  assert.equal(res.body.data, undefined);
+});
+
+for (const meetingMethod of ['online', 'in-person']) {
+  test(`fresh ${meetingMethod} request preserves its UTC instant and supports coordination and messages`, async () => {
+    const fixture = sessionDoc();
+    let session;
+    User.findById = () => ({ select: async () => ({ _id: fixture.tutor, role: 'student' }) });
+    Session.create = async (data) => { session = sessionDoc({ ...data, status: 'pending', meetingLink: undefined }); return session; };
+    const created = response();
+    await controller.createSession({ user: { id: fixture.learner }, body: {
+      tutorId: fixture.tutor, subject: 'Java demo', scheduledAt: '2026-09-25T06:30:00.000Z',
+      meetingMethod, requestMessage: 'Please help with arrays.', creditAmount: 1,
+    } }, created);
+    assert.equal(created.statusCode, 201);
+    assert.equal(session.scheduledAt.toISOString(), '2026-09-25T06:30:00.000Z');
+    assert.equal(session.meetingMethod, meetingMethod);
+    assert.equal(session.requestMessage, 'Please help with arrays.');
+    Session.findById = async () => session;
+    const accepted = response();
+    await controller.updateSessionStatus({ params: { id: session._id }, user: { id: fixture.tutor }, body: { status: 'accepted' } }, accepted);
+    assert.equal(accepted.statusCode, 200);
+    const details = meetingMethod === 'online' ? { meetingLink: 'https://meet.example.com/demo' } : { location: 'Library room 2' };
+    const coordinated = response();
+    await controller.updateCoordination({ params: { id: session._id }, user: { id: fixture.tutor }, body: details }, coordinated);
+    assert.equal(coordinated.statusCode, 200);
+    for (const [key, value] of Object.entries(details)) assert.equal(session[key], value);
+    const messages = [];
+    SessionMessage.create = async (data) => { const message = { ...data, _id: String(messages.length), async populate() {} }; messages.push(message); return message; };
+    SessionMessage.find = () => ({ populate: () => ({ sort: async () => messages }) });
+    for (const sender of [fixture.learner, fixture.tutor]) {
+      const sent = response();
+      await controller.createMessage({ params: { id: session._id }, user: { id: sender }, body: { body: 'Demo message' } }, sent);
+      assert.equal(sent.statusCode, 201);
+    }
+    const received = response();
+    await controller.getMessages({ params: { id: session._id }, user: { id: fixture.learner } }, received);
+    assert.equal(received.body.data.length, 2);
+  });
+}
 
 test('unrelated student cannot read session messages', async () => {
   const session = sessionDoc();

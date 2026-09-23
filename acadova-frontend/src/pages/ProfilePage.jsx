@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import userService from '../services/userService';
 import TagInput from '../components/common/TagInput';
@@ -18,22 +18,20 @@ import {
 } from 'lucide-react';
 
 export const ProfilePage = () => {
+  const { user } = useAuth();
+  // Reset drafts only when switching accounts, not on focus/credit refreshes.
+  return <ProfileEditor key={user?._id || user?.id} />;
+};
+
+const ProfileEditor = () => {
   const { user, credits, refreshUser } = useAuth();
 
-  const [name, setName] = useState('');
-  const [skillsToTeach, setSkillsToTeach] = useState([]);
-  const [skillsToLearn, setSkillsToLearn] = useState([]);
+  const [name, setName] = useState(() => user?.name || '');
+  const [skillsToTeach, setSkillsToTeach] = useState(() => user?.skillsToTeach || []);
+  const [skillsToLearn, setSkillsToLearn] = useState(() => user?.skillsToLearn || []);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
-
-  useEffect(() => {
-    if (user) {
-      setName(user.name || '');
-      setSkillsToTeach(user.skillsToTeach || []);
-      setSkillsToLearn(user.skillsToLearn || []);
-    }
-  }, [user]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -52,6 +50,9 @@ export const ProfilePage = () => {
         skillsToTeach,
         skillsToLearn,
       });
+
+      // Normalize the saved name, but preserve any newer edit made in flight.
+      setName((current) => current === name ? name.trim() : current);
 
       await refreshUser();
       setSuccess('Profile and academic skills successfully updated!');

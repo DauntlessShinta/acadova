@@ -1,5 +1,13 @@
 const entityId = (entity) => String(entity?._id || entity?.id || entity || '');
 
+// datetime-local is a wall-clock time in the browser's timezone. Send an
+// explicit UTC instant so the API never interprets it in the server's timezone.
+export const toSessionInstant = (value) => {
+  const date = value ? new Date(value) : null;
+  if (!date || Number.isNaN(date.getTime())) throw new Error('Enter a valid session date and time.');
+  return date.toISOString();
+};
+
 export const getSessionPerspective = (session, currentUser) => {
   const currentUserId = entityId(currentUser);
   const isTeaching = entityId(session?.tutor) === currentUserId;
@@ -22,6 +30,7 @@ export const formatSessionDateTime = (value) => {
     day: 'numeric',
     hour: 'numeric',
     minute: '2-digit',
+    timeZoneName: 'short',
   }).format(date);
 };
 

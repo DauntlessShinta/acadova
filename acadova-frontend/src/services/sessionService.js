@@ -1,11 +1,12 @@
 import api from './api';
+import { toSessionInstant } from '../utils/sessionPresentation';
 
 export const sessionService = {
   createSession: async ({ tutorId, subject, scheduledAt, meetingMethod, requestMessage, creditAmount = 1 }) => {
     return api.post('/api/sessions', {
       tutorId,
       subject,
-      scheduledAt,
+      scheduledAt: toSessionInstant(scheduledAt),
       meetingMethod,
       requestMessage,
       creditAmount: Number(creditAmount) || 1,

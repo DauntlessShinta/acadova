@@ -13,14 +13,15 @@ const authenticatedNavigation = {
     { to: '/profile', label: 'Profile' },
   ],
   moderator: [
-    { to: '/moderator', label: 'Moderator Overview' },
-    { to: '/moderator#reviews', label: 'Reviews' },
+    { to: '/moderator', label: 'Overview' },
+    { to: '/moderator/reviews', label: 'Reviews' },
   ],
   admin: [
     { to: '/admin', label: 'Overview' },
-    { to: '/admin#users', label: 'Users' },
-    { to: '/admin#analytics', label: 'Analytics' },
-    { to: '/moderator', label: 'Moderation' },
+    { to: '/admin/users', label: 'Users' },
+    { to: '/admin/sessions', label: 'Sessions' },
+    { to: '/admin/analytics', label: 'Analytics' },
+    { to: '/admin/moderation', label: 'Moderation' },
   ],
 };
 
@@ -31,3 +32,7 @@ export const normalizeRole = (role) => (
 export const getRoleHomeRoute = (role) => ROLE_HOME_ROUTES[normalizeRole(role)];
 
 export const getRoleNavigation = (role) => authenticatedNavigation[normalizeRole(role)];
+
+export const canAccessStaffArea = (role, area) => (
+  area === 'admin' ? role === 'admin' : area === 'moderator' && (role === 'moderator' || role === 'admin')
+);

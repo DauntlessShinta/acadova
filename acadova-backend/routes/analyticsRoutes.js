@@ -7,9 +7,11 @@ const {
   getRatingAnalytics,
   getCreditAnalytics,
 } = require('../controllers/analyticsController');
+const { validateQuery } = require('../middleware/validation');
 
 // Analytics are platform-level insight, not exposed to ordinary students.
 router.use(authenticateToken, requireRole('admin'));
+router.use(validateQuery());
 
 router.get('/subjects', getSubjectAnalytics);
 router.get('/sessions', getSessionAnalytics);

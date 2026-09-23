@@ -1,5 +1,5 @@
 const User = require('../models/User');
-const { isValidObjectId } = require('../middleware/validation');
+const { isValidObjectId, escapeRegExp } = require('../middleware/validation');
 
 // GET /api/users/me - the logged-in user's own profile.
 exports.getMe = async (req, res) => {
@@ -51,12 +51,12 @@ exports.updateMe = async (req, res) => {
 // GET /api/users/tutors?subject=Java - tutor discovery for the matching hub.
 exports.searchTutors = async (req, res) => {
   try {
-    const { subject } = req.query;
+    const { subject } = req.validatedQuery;
     const filter = {
       role: 'student',
       _id: { $ne: req.user.id },
       skillsToTeach: subject
-        ? { $regex: subject, $options: 'i' }
+        ? { $regex: escapeRegExp(subject), $options: 'i' }
         : { $exists: true, $ne: [] },
     };
 

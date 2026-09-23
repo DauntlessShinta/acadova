@@ -2,6 +2,8 @@ import React from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import PublicLayout from './layouts/PublicLayout';
 import AppLayout from './layouts/AppLayout';
+import StaffLayout from './layouts/StaffLayout';
+import AuthLayout from './layouts/AuthLayout';
 
 // Public Pages
 import LandingPage from './pages/LandingPage';
@@ -20,8 +22,13 @@ import CreditsPage from './pages/CreditsPage';
 import ProfilePage from './pages/ProfilePage';
 
 // Admin Page
-import AdminDashboardPage from './pages/AdminDashboardPage';
-import ModeratorDashboardPage from './pages/ModeratorDashboardPage';
+import AdminOverviewPage from './pages/admin/AdminOverviewPage';
+import AdminUsersPage from './pages/admin/AdminUsersPage';
+import AdminSessionsPage from './pages/admin/AdminSessionsPage';
+import AdminAnalyticsPage from './pages/admin/AdminAnalyticsPage';
+import AdminModerationPage from './pages/admin/AdminModerationPage';
+import ModeratorOverviewPage from './pages/moderator/ModeratorOverviewPage';
+import ModeratorReviewsPage from './pages/moderator/ModeratorReviewsPage';
 
 export const App = () => {
   return (
@@ -31,6 +38,9 @@ export const App = () => {
         <Route path="/" element={<LandingPage />} />
         <Route path="/about" element={<AboutPage />} />
         <Route path="/features" element={<FeaturesPage />} />
+      </Route>
+
+      <Route element={<AuthLayout />}>
         <Route path="/login" element={<LoginPage />} />
         <Route path="/register" element={<RegisterPage />} />
       </Route>
@@ -47,13 +57,18 @@ export const App = () => {
       </Route>
 
       {/* Protected Moderator Routes */}
-      <Route element={<AppLayout allowedRoles={['moderator', 'admin']} />}>
-        <Route path="/moderator" element={<ModeratorDashboardPage />} />
+      <Route path="/moderator" element={<StaffLayout area="moderator" />}>
+        <Route index element={<ModeratorOverviewPage />} />
+        <Route path="reviews" element={<ModeratorReviewsPage />} />
       </Route>
 
       {/* Protected Admin Routes */}
-      <Route element={<AppLayout allowedRoles={['admin']} />}>
-        <Route path="/admin" element={<AdminDashboardPage />} />
+      <Route path="/admin" element={<StaffLayout area="admin" />}>
+        <Route index element={<AdminOverviewPage />} />
+        <Route path="users" element={<AdminUsersPage />} />
+        <Route path="sessions" element={<AdminSessionsPage />} />
+        <Route path="analytics" element={<AdminAnalyticsPage />} />
+        <Route path="moderation" element={<AdminModerationPage />} />
       </Route>
 
       {/* Fallback */}

@@ -1,10 +1,11 @@
 const Rating = require('../models/Rating');
 const { isValidObjectId } = require('../middleware/validation');
 const { recalculateAverageRating } = require('../utils/ratingReputation');
+const { logSecurityEvent } = require('../utils/securityLogger');
 
 const populateModerationRating = (query) => query
-  .populate('fromUser', 'name email')
-  .populate('toUser', 'name email')
+  .populate('fromUser', 'name')
+  .populate('toUser', 'name')
   .populate('session', 'subject completedAt')
   .populate('moderatedBy', 'name role');
 
@@ -43,6 +44,7 @@ exports.updateRatingVisibility = async (req, res) => {
     rating.moderatedBy = req.user.id;
     rating.moderatedAt = new Date();
     await rating.save();
+    logSecurityEvent('moderation.visibility_changed', req, { reviewId: id, hidden });
 
     await recalculateAverageRating(rating.toUser);
     const populatedRating = await populateModerationRating(Rating.findById(rating._id));

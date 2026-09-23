@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import {
   ArrowLeft,
@@ -20,6 +20,7 @@ import Alert from '../components/common/Alert';
 import Badge from '../components/common/Badge';
 import LoadingSpinner from '../components/common/LoadingSpinner';
 import StarRating from '../components/common/StarRating';
+import { createRefreshGate } from '../utils/refreshGate';
 import {
   formatSessionDateTime,
   getSessionNextStep,
@@ -31,11 +32,16 @@ const idOf = (value) => String(value?._id || value?.id || value || '');
 
 export const SessionRoomPage = () => {
   const { id } = useParams();
+  return <SessionRoom key={id} id={id} />;
+};
+
+const SessionRoom = ({ id }) => {
   const { user, refreshUser } = useAuth();
   const [session, setSession] = useState(null);
   const [messages, setMessages] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [messagesLoading, setMessagesLoading] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+  const [refreshError, setRefreshError] = useState('');
   const [actionLoading, setActionLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
@@ -44,48 +50,85 @@ export const SessionRoomPage = () => {
   const [ratingStars, setRatingStars] = useState(5);
   const [ratingComment, setRatingComment] = useState('');
   const [ratingSubmitted, setRatingSubmitted] = useState(false);
+  const gate = useRef(createRefreshGate());
+  const actionInProgress = useRef(false);
+  const meetingDirty = useRef(false);
+  const lastSettlement = useRef(null);
 
-  const loadSession = useCallback(async ({ showLoading = false } = {}) => {
+  const refreshRoom = useCallback(async ({ showLoading = false } = {}) => {
+    if (actionInProgress.current) return;
+    const ticket = gate.current.start();
+    if (ticket === null) return;
+    setRefreshing(true);
     if (showLoading) setLoading(true);
     try {
       const response = await sessionService.getSession(id);
-      setSession(response.data);
-      setMeetingValue(response.data.meetingMethod === 'online'
-        ? response.data.meetingLink || ''
-        : response.data.location || '');
+      if (!gate.current.isCurrent(ticket)) return;
+      const latest = response.data;
+      setSession(latest);
+      setRatingSubmitted(Boolean(latest.myReview));
+      if (!meetingDirty.current) {
+        setMeetingValue(latest.meetingMethod === 'online' ? latest.meetingLink || '' : latest.location || '');
+      }
+      if (latest.creditsSettledAt && latest.creditsSettledAt !== lastSettlement.current) {
+        lastSettlement.current = latest.creditsSettledAt;
+        void refreshUser();
+      }
+      if (['accepted', 'completed'].includes(latest.status)) {
+        const messageResponse = await sessionService.getMessages(id);
+        if (!gate.current.isCurrent(ticket)) return;
+        setMessages(messageResponse.data || []);
+      } else {
+        setMessages([]);
+      }
+      setRefreshError('');
     } catch (err) {
-      setError(err.message || 'Session could not be loaded.');
+      if (gate.current.isCurrent(ticket)) setRefreshError(err.message || 'Session refresh failed. Try Refresh session.');
     } finally {
-      if (showLoading) setLoading(false);
+      if (gate.current.isCurrent(ticket)) {
+        gate.current.finish(ticket);
+        setRefreshing(false);
+        setLoading(false);
+      }
     }
-  }, [id]);
-
-  const loadMessages = useCallback(async ({ showLoading = false } = {}) => {
-    if (showLoading) setMessagesLoading(true);
-    try {
-      const response = await sessionService.getMessages(id);
-      setMessages(response.data || []);
-    } catch (err) {
-      setError(err.message || 'Session messages could not be loaded.');
-    } finally {
-      if (showLoading) setMessagesLoading(false);
-    }
-  }, [id]);
+  }, [id, refreshUser]);
 
   useEffect(() => {
-    Promise.resolve().then(() => loadSession({ showLoading: true }));
-  }, [loadSession]);
+    let active = true;
+    const refreshVisibleRoom = () => {
+      if (document.visibilityState === 'visible') void refreshRoom();
+    };
+    Promise.resolve().then(() => { if (active) void refreshRoom({ showLoading: true }); });
+    const intervalId = window.setInterval(refreshVisibleRoom, 5000);
+    window.addEventListener('focus', refreshVisibleRoom);
+    document.addEventListener('visibilitychange', refreshVisibleRoom);
+    const refreshGate = gate.current;
+    return () => {
+      active = false;
+      refreshGate.invalidate();
+      window.clearInterval(intervalId);
+      window.removeEventListener('focus', refreshVisibleRoom);
+      document.removeEventListener('visibilitychange', refreshVisibleRoom);
+    };
+  }, [refreshRoom]);
 
   const messagesAvailable = ['accepted', 'completed'].includes(session?.status);
 
-  useEffect(() => {
-    if (!messagesAvailable) return undefined;
-    Promise.resolve().then(() => loadMessages({ showLoading: true }));
-    const intervalId = window.setInterval(() => {
-      if (document.visibilityState === 'visible') loadMessages();
-    }, 10000);
-    return () => window.clearInterval(intervalId);
-  }, [loadMessages, messagesAvailable]);
+  const beginAction = () => {
+    if (actionInProgress.current) return false;
+    actionInProgress.current = true;
+    gate.current.invalidate();
+    setRefreshing(false);
+    setActionLoading(true);
+    setError('');
+    return true;
+  };
+
+  const finishAction = () => {
+    actionInProgress.current = false;
+    setActionLoading(false);
+    void refreshRoom();
+  };
 
   const perspective = useMemo(() => (
     session ? getSessionPerspective(session, user) : null
@@ -104,41 +147,40 @@ export const SessionRoomPage = () => {
       completed: `Mark this ${session.subject} session as finished?\n\n${session.learner?.name || 'The learner'} will be asked to confirm before credits are transferred.`,
     };
     if (prompts[status] && !window.confirm(prompts[status])) return;
+    if (!beginAction()) return;
     try {
-      setActionLoading(true);
-      setError('');
       const response = await sessionService.updateSessionStatus(id, status);
       setSession(response.data);
       setSuccess(response.message);
     } catch (err) {
       setError(err.message || 'The session could not be updated.');
     } finally {
-      setActionLoading(false);
+      finishAction();
     }
   };
 
   const handleCoordinationSave = async (event) => {
     event.preventDefault();
+    if (!beginAction()) return;
     try {
-      setActionLoading(true);
-      setError('');
       const field = session.meetingMethod === 'online' ? 'meetingLink' : 'location';
       const response = await sessionService.updateCoordination(id, { [field]: meetingValue });
       setSession(response.data);
+      meetingDirty.current = false;
+      setMeetingValue(response.data.meetingMethod === 'online' ? response.data.meetingLink || '' : response.data.location || '');
       setSuccess(response.message);
     } catch (err) {
       setError(err.message || 'Meeting details could not be saved.');
     } finally {
-      setActionLoading(false);
+      finishAction();
     }
   };
 
   const handleConfirm = async () => {
     const credits = `${session.creditAmount} credit${session.creditAmount === 1 ? '' : 's'}`;
     if (!window.confirm(`Confirm that this session was completed and transfer ${credits} to ${session.tutor?.name || 'the Tutor'}?`)) return;
+    if (!beginAction()) return;
     try {
-      setActionLoading(true);
-      setError('');
       const response = await sessionService.confirmSession(id);
       setSession(response.data);
       setSuccess(response.message);
@@ -146,7 +188,7 @@ export const SessionRoomPage = () => {
     } catch (err) {
       setError(err.message || 'Session confirmation could not be completed.');
     } finally {
-      setActionLoading(false);
+      finishAction();
     }
   };
 
@@ -156,28 +198,25 @@ export const SessionRoomPage = () => {
       setError('Enter a message before sending.');
       return;
     }
+    if (!beginAction()) return;
     try {
-      setActionLoading(true);
-      setError('');
       const response = await sessionService.sendMessage(id, messageBody);
       setMessages((current) => current.some((item) => item._id === response.data._id)
         ? current
         : [...current, response.data]);
       setMessageBody('');
       setSuccess('Message sent.');
-      await loadMessages();
     } catch (err) {
       setError(err.message || 'Message could not be sent.');
     } finally {
-      setActionLoading(false);
+      finishAction();
     }
   };
 
   const handleRating = async (event) => {
     event.preventDefault();
+    if (!beginAction()) return;
     try {
-      setActionLoading(true);
-      setError('');
       await ratingService.submitRating({ sessionId: id, rating: ratingStars, comment: ratingComment });
       setRatingSubmitted(true);
       setSuccess('Your peer rating and feedback were submitted.');
@@ -185,7 +224,7 @@ export const SessionRoomPage = () => {
     } catch (err) {
       setError(err.message || 'The rating could not be submitted.');
     } finally {
-      setActionLoading(false);
+      finishAction();
     }
   };
 
@@ -194,7 +233,8 @@ export const SessionRoomPage = () => {
     return (
       <div className="session-room-page">
         <Link to="/sessions" className="btn btn-secondary btn-sm"><ArrowLeft size={14} /> Back to Sessions</Link>
-        <Alert type="danger" message={error || 'Session could not be loaded.'} />
+        <Alert type="danger" message={refreshError || error || 'Session could not be loaded.'} />
+        <button type="button" className="btn btn-secondary btn-sm" disabled={refreshing} onClick={() => refreshRoom({ showLoading: true })}>Retry</button>
       </div>
     );
   }
@@ -223,7 +263,9 @@ export const SessionRoomPage = () => {
       </header>
 
       <Alert type="danger" message={error} onClose={() => setError('')} />
+      <Alert type="danger" message={refreshError} />
       <Alert type="success" message={success} onClose={() => setSuccess('')} />
+      <p className="form-hint">Session details and messages refresh every 5 seconds while this page is visible, and when you return to it.</p>
 
       <section className="session-next-step" aria-labelledby="next-step-heading">
         <div><CheckCircle2 size={22} aria-hidden="true" /></div>
@@ -251,7 +293,10 @@ export const SessionRoomPage = () => {
               <div className="session-meeting-result"><span>Meeting location</span><strong>{session.location}</strong></div>
             )}
 
-            {isTeaching && session.status === 'accepted' && (
+            {!['online', 'in-person'].includes(session.meetingMethod) && (
+              <p className="session-muted-copy">This older session has no recorded meeting method. Use a new request for the current coordination workflow; this record is unchanged.</p>
+            )}
+            {isTeaching && session.status === 'accepted' && ['online', 'in-person'].includes(session.meetingMethod) && (
               <form className="coordination-form" onSubmit={handleCoordinationSave}>
                 <label className="form-label" htmlFor="meeting-detail">
                   {session.meetingMethod === 'online' ? 'HTTPS meeting link' : 'Meeting location'}
@@ -264,8 +309,9 @@ export const SessionRoomPage = () => {
                     value={meetingValue}
                     maxLength={session.meetingMethod === 'online' ? 500 : 300}
                     required
+                    disabled={actionLoading}
                     placeholder={session.meetingMethod === 'online' ? 'https://meet.example.com/...' : 'University Library – Study Area 2'}
-                    onChange={(event) => setMeetingValue(event.target.value)}
+                    onChange={(event) => { meetingDirty.current = true; setMeetingValue(event.target.value); }}
                   />
                   <button type="submit" className="btn btn-secondary" disabled={actionLoading}>Save details</button>
                 </div>
@@ -282,20 +328,18 @@ export const SessionRoomPage = () => {
           <section className="card session-room-section" aria-labelledby="messages-heading">
             <div className="session-section-heading">
               <div><MessageSquare size={18} /><h2 id="messages-heading">Session messages</h2></div>
-              {messagesAvailable && (
-                <button type="button" className="btn btn-ghost btn-sm" onClick={() => loadMessages({ showLoading: true })} disabled={messagesLoading}>
-                  <RefreshCw size={14} /> Refresh
-                </button>
-              )}
+              <button type="button" className="btn btn-ghost btn-sm" onClick={() => refreshRoom()} disabled={refreshing || actionLoading}>
+                <RefreshCw size={14} /> {refreshing ? 'Refreshing...' : 'Refresh session'}
+              </button>
             </div>
             {!messagesAvailable ? (
               <p className="session-muted-copy">Messages become available after the Tutor accepts this session.</p>
-            ) : messagesLoading && messages.length === 0 ? (
+            ) : refreshing && messages.length === 0 ? (
               <LoadingSpinner text="Loading session messages..." size={28} />
             ) : (
               <>
                 <div className="session-messages" aria-live="polite">
-                  {messages.length === 0 && <p className="session-muted-copy">No messages yet. Start with the detail your peer needs most.</p>}
+                  {messages.length === 0 && !refreshError && <p className="session-muted-copy">No messages yet. Start with the detail your peer needs most.</p>}
                   {messages.map((message) => {
                     const isMine = idOf(message.sender) === idOf(user);
                     return (
@@ -323,7 +367,8 @@ export const SessionRoomPage = () => {
             )}
           </section>
 
-          {session.confirmedAt && !ratingSubmitted && (
+          {ratingSubmitted && <Alert type="success" message="Your review for this session has been submitted." />}
+          {session.confirmedAt && session.creditsSettledAt && !ratingSubmitted && (
             <section className="card session-room-section" aria-labelledby="review-heading">
               <h2 id="review-heading">Review your peer</h2>
               <form onSubmit={handleRating}>

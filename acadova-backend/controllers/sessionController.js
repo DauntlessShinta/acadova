@@ -3,6 +3,7 @@ const Session = require('../models/Session');
 const SessionMessage = require('../models/SessionMessage');
 const User = require('../models/User');
 const CreditTransaction = require('../models/CreditTransaction');
+const Rating = require('../models/Rating');
 const { isValidObjectId, isPositiveCreditAmount } = require('../middleware/validation');
 
 const ALLOWED_TRANSITIONS = {
@@ -123,7 +124,11 @@ exports.getSessionById = async (req, res) => {
     const result = await findParticipantSession(req, res);
     if (!result) return;
     await result.session.populate(SESSION_POPULATE);
-    res.json({ success: true, message: 'Session retrieved.', data: result.session });
+    // Read the existing rating, including moderated ratings. Hiding a review
+    // does not make its author eligible to submit another one. Never persist
+    // this viewer-specific field on the shared session document.
+    const myReview = Boolean(await Rating.exists({ session: result.session._id, fromUser: req.user.id }));
+    res.json({ success: true, message: 'Session retrieved.', data: { ...result.session.toObject(), myReview } });
   } catch (error) {
     res.status(500).json({ success: false, message: 'Session could not be loaded.' });
   }

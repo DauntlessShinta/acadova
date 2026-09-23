@@ -292,7 +292,7 @@ export const FindTutorsPage = () => {
               aria-describedby={fieldErrors.scheduledAt ? 'scheduled-error' : undefined}
               required
             />
-            <span className="form-hint">Required · propose a time that works for you.</span>
+            <span className="form-hint">Enter your local date and time. Each participant sees it in their own timezone.</span>
             {fieldErrors.scheduledAt && <span className="form-error" id="scheduled-error">{fieldErrors.scheduledAt}</span>}
           </div>
 

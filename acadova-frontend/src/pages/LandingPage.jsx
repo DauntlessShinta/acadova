@@ -446,7 +446,7 @@ export const LandingPage = () => {
                 {selectedSkill.topics.map((topic) => <span key={topic}>{topic}</span>)}
               </div>
               <Link to={isAuthenticated ? `/tutors?subject=${encodeURIComponent(selectedSkill.title)}` : '/register'} className="btn btn-primary">
-                {isAuthenticated ? 'Find matching tutors' : 'Join to explore skills'} <ArrowRight size={16} />
+                {isAuthenticated ? 'Find matching peers' : 'Join to explore skills'} <ArrowRight size={16} />
               </Link>
               <small>This explorer is a category preview, not a list of live tutors.</small>
             </article>

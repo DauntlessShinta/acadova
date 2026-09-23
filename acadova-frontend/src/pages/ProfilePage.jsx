@@ -157,14 +157,14 @@ export const ProfilePage = () => {
 
             <div className="form-group">
               <label className="form-label">
-                Skills You Can Teach (Tutor Role)
+                Skills You Can Teach
               </label>
               <TagInput
                 tags={skillsToTeach}
                 onChange={setSkillsToTeach}
                 placeholder="Add skill (e.g. React, Java, Database)..."
               />
-              <span className="form-hint">These appear on the public tutor matching search.</span>
+              <span className="form-hint">These appear in student peer discovery.</span>
             </div>
 
             <div className="form-group">
@@ -176,7 +176,7 @@ export const ProfilePage = () => {
                 onChange={setSkillsToLearn}
                 placeholder="Add skill (e.g. Python, Calculus)..."
               />
-              <span className="form-hint">Used to recommend relevant peer tutors.</span>
+              <span className="form-hint">Used to recommend relevant student peers.</span>
             </div>
 
             <button
@@ -196,4 +196,3 @@ export const ProfilePage = () => {
 };
 
 export default ProfilePage;
-

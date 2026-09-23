@@ -22,13 +22,18 @@ export const Alert = ({ type = 'info', message, onClose, children }) => {
   const alertClass = type === 'error' ? 'alert-danger' : `alert-${type}`;
 
   return (
-    <div className={`alert ${alertClass}`}>
+    <div
+      className={`alert ${alertClass}`}
+      role={type === 'danger' || type === 'error' ? 'alert' : 'status'}
+      aria-live={type === 'danger' || type === 'error' ? 'assertive' : 'polite'}
+    >
       {getIcon()}
       <div style={{ flex: 1 }}>{message || children}</div>
       {onClose && (
         <button
           type="button"
           onClick={onClose}
+          aria-label="Dismiss message"
           style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'inherit', padding: 2 }}
         >
           <X size={16} />
@@ -39,4 +44,3 @@ export const Alert = ({ type = 'info', message, onClose, children }) => {
 };
 
 export default Alert;
-

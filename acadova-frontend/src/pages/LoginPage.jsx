@@ -1,16 +1,13 @@
 import React, { useState } from 'react';
-import { Link, useNavigate, useLocation } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { LogIn, ArrowRight, Lock, Mail, Sparkles } from 'lucide-react';
+import { LogIn, ArrowRight } from 'lucide-react';
 import Alert from '../components/common/Alert';
+import { getRoleHomeRoute } from '../config/roleNavigation';
 
 export const LoginPage = () => {
   const { login } = useAuth();
   const navigate = useNavigate();
-  const location = useLocation();
-
-  const from = location.state?.from?.pathname || '/dashboard';
-
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -27,8 +24,8 @@ export const LoginPage = () => {
 
     try {
       setIsSubmitting(true);
-      await login(email.trim(), password);
-      navigate(from, { replace: true });
+      const response = await login(email.trim(), password);
+      navigate(getRoleHomeRoute(response?.data?.user?.role), { replace: true });
     } catch (err) {
       setError(err.message || 'Invalid email or password. Please try again.');
     } finally {
@@ -56,7 +53,7 @@ export const LoginPage = () => {
             </div>
             <h2 style={{ color: 'var(--navy-900)', marginBottom: '8px' }}>Sign in to Acadova</h2>
             <p style={{ fontSize: '0.92rem', color: 'var(--ink-600)' }}>
-              Enter your student credentials to access your dashboard.
+              Enter your Acadova credentials to access your role workspace.
             </p>
           </div>
 
@@ -134,4 +131,3 @@ export const LoginPage = () => {
 };
 
 export default LoginPage;
-

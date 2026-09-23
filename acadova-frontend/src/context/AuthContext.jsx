@@ -50,6 +50,21 @@ export const AuthProvider = ({ children }) => {
     refreshUser();
   }, [refreshUser, logout]);
 
+  useEffect(() => {
+    const refreshAuthoritativeRole = () => {
+      if (document.visibilityState === 'visible' && localStorage.getItem('acadova_token')) {
+        refreshUser();
+      }
+    };
+
+    window.addEventListener('focus', refreshAuthoritativeRole);
+    document.addEventListener('visibilitychange', refreshAuthoritativeRole);
+    return () => {
+      window.removeEventListener('focus', refreshAuthoritativeRole);
+      document.removeEventListener('visibilitychange', refreshAuthoritativeRole);
+    };
+  }, [refreshUser]);
+
   const login = async (email, password) => {
     const res = await authService.login(email, password);
     if (res && res.success && res.data) {
@@ -101,7 +116,9 @@ export const AuthProvider = ({ children }) => {
     loading,
     isAuthenticated: Boolean(token && user),
     isAdmin: user?.role === 'admin',
-    isStudent: user?.role === 'student' || !user?.role || user?.role !== 'admin',
+    isModerator: user?.role === 'moderator',
+    canModerate: user?.role === 'moderator' || user?.role === 'admin',
+    isStudent: user?.role === 'student' || !user?.role,
     credits: user?.credits ?? 0,
     login,
     register,
@@ -121,4 +138,3 @@ export const useAuth = () => {
 };
 
 export default AuthContext;
-

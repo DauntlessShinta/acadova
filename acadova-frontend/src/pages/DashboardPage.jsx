@@ -1,95 +1,89 @@
-import React, { useState, useEffect } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { BookOpen, Coins, GraduationCap, Inbox, Search, Users } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import sessionService from '../services/sessionService';
 import userService from '../services/userService';
-import creditService from '../services/creditService';
-import StatCard from '../components/common/StatCard';
-import StarRating from '../components/common/StarRating';
-import Badge from '../components/common/Badge';
 import Alert from '../components/common/Alert';
-import LoadingSpinner from '../components/common/LoadingSpinner';
 import EmptyState from '../components/common/EmptyState';
-import {
-  BookOpen,
-  Coins,
-  GraduationCap,
-  Star,
-  Clock,
-  CheckCircle2,
-  ArrowRight,
-  UserCheck,
-  Calendar,
-  Sparkles,
-  Inbox,
-  Check,
-  X,
-  ExternalLink,
-} from 'lucide-react';
+import LoadingSpinner from '../components/common/LoadingSpinner';
+import StatCard from '../components/common/StatCard';
+import PeerCard from '../components/student/PeerCard';
+import SessionCard from '../components/student/SessionCard';
+import { getSessionPerspective } from '../utils/sessionPresentation';
 
 export const DashboardPage = () => {
   const { user, credits, refreshUser } = useAuth();
-
-  const [activeTab, setActiveTab] = useState('learner'); // 'learner' | 'tutor'
   const [sessions, setSessions] = useState([]);
-  const [recommendedTutors, setRecommendedTutors] = useState([]);
+  const [recommendedPeers, setRecommendedPeers] = useState([]);
+  const [availability, setAvailability] = useState({ sessions: false, peers: false });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [actionSuccess, setActionSuccess] = useState('');
   const [actionLoading, setActionLoading] = useState(false);
 
-  const loadDashboardData = async () => {
-    try {
+  const loadDashboardData = useCallback(async ({ showLoading = true } = {}) => {
+    if (showLoading) {
       setLoading(true);
       setError('');
-
-      const [sessionsRes, tutorsRes] = await Promise.all([
-        sessionService.getMySessions().catch(() => ({ data: [] })),
-        userService.searchTutors().catch(() => ({ data: [] })),
-      ]);
-
-      const allSessions = sessionsRes?.data || [];
-      setSessions(allSessions);
-
-      // Filter out current user from tutors list
-      const tutorsList = (tutorsRes?.data || []).filter((t) => t._id !== user?._id && t._id !== user?.id);
-      setRecommendedTutors(tutorsList.slice(0, 4));
-    } catch (err) {
-      setError(err.message || 'Failed to load dashboard data');
-    } finally {
-      setLoading(false);
     }
-  };
+
+    const [sessionsResult, peersResult] = await Promise.allSettled([
+      sessionService.getMySessions(),
+      userService.searchTutors(),
+    ]);
+
+    setAvailability({
+      sessions: sessionsResult.status === 'fulfilled',
+      peers: peersResult.status === 'fulfilled',
+    });
+
+    if (sessionsResult.status === 'fulfilled') {
+      setSessions(sessionsResult.value?.data || []);
+    }
+    if (peersResult.status === 'fulfilled') {
+      const currentUserId = String(user?._id || user?.id || '');
+      const studentPeers = (peersResult.value?.data || []).filter((peer) => (
+        peer.role === 'student' && String(peer._id) !== currentUserId
+      ));
+      setRecommendedPeers(studentPeers.slice(0, 4));
+    }
+
+    const failedCount = [sessionsResult, peersResult].filter((result) => result.status === 'rejected').length;
+    if (failedCount > 0) {
+      setError('Some dashboard information could not be loaded. Refresh the page to try again.');
+    }
+    setLoading(false);
+  }, [user?._id, user?.id]);
 
   useEffect(() => {
-    loadDashboardData();
-  }, [user?._id]);
+    Promise.resolve().then(() => loadDashboardData({ showLoading: false }));
+  }, [loadDashboardData]);
 
-  // Derived metrics
-  const myLearnerSessions = sessions.filter((s) => s.learner?._id === user?._id || s.learner?._id === user?.id || s.learner === user?._id || s.learner === user?.id);
-  const myTutorSessions = sessions.filter((s) => s.tutor?._id === user?._id || s.tutor?._id === user?.id || s.tutor === user?._id || s.tutor === user?.id);
+  const upcomingSessions = useMemo(() => sessions
+    .filter((session) => session.status === 'accepted')
+    .sort((left, right) => {
+      const leftDate = left.scheduledAt ? new Date(left.scheduledAt).getTime() : Number.MAX_SAFE_INTEGER;
+      const rightDate = right.scheduledAt ? new Date(right.scheduledAt).getTime() : Number.MAX_SAFE_INTEGER;
+      return leftDate - rightDate;
+    }), [sessions]);
 
-  const pendingIncomingRequests = myTutorSessions.filter((s) => s.status === 'pending');
-  const activeLearnerSessions = myLearnerSessions.filter((s) => s.status === 'accepted' || s.status === 'pending');
-  const activeTutorSessions = myTutorSessions.filter((s) => s.status === 'accepted');
-  const completedLearnerSessions = myLearnerSessions.filter((s) => s.status === 'completed');
-  const completedTutorSessions = myTutorSessions.filter((s) => s.status === 'completed');
+  const pendingSessions = sessions.filter((session) => session.status === 'pending');
+  const pendingTeachingRequests = pendingSessions.filter((session) => (
+    getSessionPerspective(session, user).isTeaching
+  ));
 
-  // Handle Quick Session Actions (Accept / Reject / Complete)
-  const handleUpdateStatus = async (sessionId, newStatus) => {
+  const handleUpdateStatus = async (sessionId, nextStatus) => {
     try {
       setActionLoading(true);
       setError('');
       setActionSuccess('');
-
-      await sessionService.updateSessionStatus(sessionId, newStatus);
-      setActionSuccess(`Session marked as "${newStatus}" successfully!`);
-
-      // Refresh credits and sessions
+      await sessionService.updateSessionStatus(sessionId, nextStatus);
+      setActionSuccess(`Session updated to ${nextStatus}.`);
       await refreshUser();
-      await loadDashboardData();
+      await loadDashboardData({ showLoading: false });
     } catch (err) {
-      setError(err.message || `Failed to update session status to ${newStatus}`);
+      setError(err.message || `The session could not be updated to ${nextStatus}.`);
     } finally {
       setActionLoading(false);
     }
@@ -100,377 +94,141 @@ export const DashboardPage = () => {
   }
 
   return (
-    <div>
-      {/* Welcome Banner */}
-      <div style={{
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        flexWrap: 'wrap',
-        gap: '16px',
-        marginBottom: '28px',
-      }}>
+    <div className="student-dashboard">
+      <header className="student-page-header">
         <div>
-          <span style={{ fontSize: '0.85rem', color: 'var(--brass-600)', fontFamily: 'var(--font-mono)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
-            Academic Portal
-          </span>
-          <h1 style={{ fontSize: '2rem', color: 'var(--navy-900)', margin: '4px 0 0' }}>
-            Welcome back, {user?.name || 'Scholar'}!
-          </h1>
+          <span className="student-eyebrow">Student workspace</span>
+          <h1>Welcome back, {user?.name || 'Student'}</h1>
+          <p>Learn from peers, share what you know, and keep your sessions moving.</p>
         </div>
-
-        {/* Learner / Tutor Mode Switcher */}
-        <div style={{
-          background: 'var(--bg-subtle)',
-          padding: '4px',
-          borderRadius: 'var(--radius-md)',
-          display: 'flex',
-          gap: '4px',
-          border: '1px solid var(--border-subtle)',
-        }}>
-          <button
-            type="button"
-            className="btn btn-sm"
-            onClick={() => setActiveTab('learner')}
-            style={{
-              background: activeTab === 'learner' ? 'var(--navy-900)' : 'transparent',
-              color: activeTab === 'learner' ? '#ffffff' : 'var(--ink-700)',
-              border: 'none',
-              borderRadius: 'var(--radius-sm)',
-            }}
-          >
-            <BookOpen size={14} /> Learner Mode
-          </button>
-          <button
-            type="button"
-            className="btn btn-sm"
-            onClick={() => setActiveTab('tutor')}
-            style={{
-              background: activeTab === 'tutor' ? 'var(--navy-900)' : 'transparent',
-              color: activeTab === 'tutor' ? '#ffffff' : 'var(--ink-700)',
-              border: 'none',
-              borderRadius: 'var(--radius-sm)',
-            }}
-          >
-            <GraduationCap size={14} /> Tutor Mode
-            {pendingIncomingRequests.length > 0 && (
-              <span style={{
-                background: 'var(--brass-500)',
-                color: '#fff',
-                borderRadius: '50%',
-                width: 18,
-                height: 18,
-                display: 'inline-flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                fontSize: '0.72rem',
-                marginLeft: 4,
-              }}>
-                {pendingIncomingRequests.length}
-              </span>
-            )}
-          </button>
-        </div>
-      </div>
+        <Link to="/tutors" className="btn btn-primary">
+          <Search size={16} /> Find Peers
+        </Link>
+      </header>
 
       <Alert type="danger" message={error} onClose={() => setError('')} />
       <Alert type="success" message={actionSuccess} onClose={() => setActionSuccess('')} />
 
-      {/* METRIC STAT CARDS */}
-      <div className="stat-grid" style={{ marginBottom: '32px' }}>
-        <StatCard
-          title="Available Credits"
-          value={`${credits} Credits`}
-          subtitle="100% Cashless Balance"
-          icon={Coins}
-          color="var(--brass-600)"
-        />
+      <section aria-labelledby="student-summary-heading">
+        <h2 id="student-summary-heading" className="sr-only">Student summary</h2>
+        <div className="stat-grid student-summary-grid">
+          <StatCard title="Credit Balance" value={credits} subtitle="Available learning credits" icon={Coins} color="var(--acadova-action)" />
+          <StatCard title="Upcoming Sessions" value={availability.sessions ? upcomingSessions.length : '—'} subtitle={availability.sessions ? 'Accepted sessions' : 'Data unavailable'} icon={BookOpen} color="var(--acadova-success)" />
+          <StatCard title="Pending Requests" value={availability.sessions ? pendingSessions.length : '—'} subtitle={availability.sessions ? `${pendingTeachingRequests.length} awaiting your response` : 'Data unavailable'} icon={Inbox} color="var(--acadova-warning)" />
+          <StatCard title="Recommended Peers" value={availability.peers ? recommendedPeers.length : '—'} subtitle={availability.peers ? 'Available student peers' : 'Data unavailable'} icon={Users} color="var(--acadova-primary)" />
+        </div>
+      </section>
 
-        {activeTab === 'learner' ? (
-          <>
-            <StatCard
-              title="Active Sessions"
-              value={activeLearnerSessions.length}
-              subtitle="Pending & Scheduled"
-              icon={Clock}
-              color="var(--info-text)"
-            />
-            <StatCard
-              title="Completed as Learner"
-              value={completedLearnerSessions.length}
-              subtitle="Knowledge Acquired"
-              icon={CheckCircle2}
-              color="var(--success-text)"
-            />
-            <StatCard
-              title="Learning Subjects"
-              value={(user?.skillsToLearn || []).length}
-              subtitle="In your wishlist"
+      <div className="student-dashboard-grid">
+        <section className="student-dashboard-main" aria-labelledby="upcoming-heading">
+          <div className="student-section-heading">
+            <div>
+              <span>Sessions</span>
+              <h2 id="upcoming-heading">Upcoming sessions</h2>
+            </div>
+            <Link to="/sessions">View all sessions</Link>
+          </div>
+          {!availability.sessions ? (
+            <EmptyState icon={BookOpen} title="Sessions unavailable" description="Refresh the page to load your upcoming sessions." />
+          ) : upcomingSessions.length === 0 ? (
+            <EmptyState
               icon={BookOpen}
-              color="var(--navy-700)"
+              title="No upcoming sessions"
+              description="Accepted learning and teaching sessions will appear here."
+              actionText="Find a Peer"
+              onAction={() => { window.location.href = '/tutors'; }}
             />
-          </>
-        ) : (
-          <>
-            <StatCard
-              title="Pending Requests"
-              value={pendingIncomingRequests.length}
-              subtitle="Awaiting your response"
-              icon={Inbox}
-              color="var(--warning-text)"
-            />
-            <StatCard
-              title="Completed as Tutor"
-              value={completedTutorSessions.length}
-              subtitle="Credits Earned"
-              icon={CheckCircle2}
-              color="var(--success-text)"
-            />
-            <StatCard
-              title="Tutor Rating"
-              value={Number(user?.rating || 5.0).toFixed(1)}
-              subtitle="Verified peer average"
-              icon={Star}
-              color="var(--brass-500)"
-            />
-          </>
-        )}
+          ) : (
+            <div className="student-card-list">
+              {upcomingSessions.slice(0, 3).map((session) => (
+                <SessionCard
+                  key={session._id}
+                  session={session}
+                  currentUser={user}
+                  actionLoading={actionLoading}
+                  onStatusChange={handleUpdateStatus}
+                  compact
+                />
+              ))}
+            </div>
+          )}
+        </section>
+
+        <aside className="student-dashboard-side" aria-labelledby="pending-heading">
+          <div className="student-section-heading">
+            <div>
+              <span>My teaching</span>
+              <h2 id="pending-heading">Pending requests</h2>
+            </div>
+            <span className="badge badge-pending">{pendingTeachingRequests.length}</span>
+          </div>
+          {!availability.sessions ? (
+            <EmptyState icon={Inbox} title="Requests unavailable" description="Refresh the page to load incoming requests." />
+          ) : pendingTeachingRequests.length === 0 ? (
+            <EmptyState icon={Inbox} title="No requests to review" description="New requests from students learning your subjects will appear here." />
+          ) : (
+            <div className="student-card-list">
+              {pendingTeachingRequests.slice(0, 3).map((session) => (
+                <SessionCard
+                  key={session._id}
+                  session={session}
+                  currentUser={user}
+                  actionLoading={actionLoading}
+                  onStatusChange={handleUpdateStatus}
+                  compact
+                />
+              ))}
+            </div>
+          )}
+        </aside>
       </div>
 
-      {/* TAB CONTENT: LEARNER HUB */}
-      {activeTab === 'learner' && (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '28px' }}>
-          {/* Left Column: My Learning Sessions */}
+      <section className="student-skills-section" aria-labelledby="skills-heading">
+        <div className="student-section-heading">
           <div>
-            <div className="card">
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '18px' }}>
-                <h3 style={{ margin: 0, color: 'var(--navy-900)', fontSize: '1.2rem' }}>Upcoming & Active Study Rooms</h3>
-                <Link to="/sessions" style={{ fontSize: '0.85rem', color: 'var(--brass-700)', fontWeight: 600 }}>
-                  View All ({myLearnerSessions.length})
-                </Link>
-              </div>
-
-              {activeLearnerSessions.length === 0 ? (
-                <EmptyState
-                  icon={BookOpen}
-                  title="No active sessions requested"
-                  description="Find a student tutor in your area of study and book a 1-on-1 session."
-                  actionText="Browse Available Tutors"
-                  onAction={() => window.location.href = '/tutors'}
-                />
-              ) : (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                  {activeLearnerSessions.slice(0, 4).map((session) => (
-                    <div
-                      key={session._id}
-                      style={{
-                        padding: '16px',
-                        borderRadius: 'var(--radius-md)',
-                        border: '1px solid var(--border-subtle)',
-                        background: '#ffffff',
-                      }}
-                    >
-                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
-                        <strong style={{ color: 'var(--navy-900)', fontSize: '1rem' }}>{session.subject}</strong>
-                        <Badge status={session.status} />
-                      </div>
-                      <div style={{ fontSize: '0.85rem', color: 'var(--ink-600)', marginBottom: 8 }}>
-                        Tutor: <strong>{session.tutor?.name || 'Peer Tutor'}</strong> ({session.tutor?.email})
-                      </div>
-                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '0.82rem', color: 'var(--ink-500)' }}>
-                        <span>Fee: {session.creditAmount} Credits</span>
-                        <span>{new Date(session.createdAt).toLocaleDateString()}</span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
+            <span>Academic profile</span>
+            <h2 id="skills-heading">Learning and teaching</h2>
+          </div>
+          <Link to="/profile">Manage skills</Link>
+        </div>
+        <div className="grid-2">
+          <div className="card skill-panel">
+            <div className="skill-panel-heading"><BookOpen size={19} /><h3>My learning</h3></div>
+            <div className="skill-chip-list">
+              {(user?.skillsToLearn || []).map((skill) => <span key={skill} className="badge badge-info">{skill}</span>)}
+              {(user?.skillsToLearn || []).length === 0 && <p>Add subjects you want to learn from other students.</p>}
             </div>
           </div>
-
-          {/* Right Column: Recommended Peer Tutors */}
-          <div>
-            <div className="card">
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '18px' }}>
-                <h3 style={{ margin: 0, color: 'var(--navy-900)', fontSize: '1.2rem' }}>Recommended Peer Tutors</h3>
-                <Link to="/tutors" style={{ fontSize: '0.85rem', color: 'var(--brass-700)', fontWeight: 600 }}>
-                  Search All
-                </Link>
-              </div>
-
-              {recommendedTutors.length === 0 ? (
-                <EmptyState
-                  icon={GraduationCap}
-                  title="No tutors found"
-                  description="Be the first to list your skills or check back soon."
-                />
-              ) : (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-                  {recommendedTutors.map((tutor) => (
-                    <div
-                      key={tutor._id}
-                      style={{
-                        padding: '14px',
-                        borderRadius: 'var(--radius-md)',
-                        background: 'var(--bg-subtle)',
-                        border: '1px solid var(--border-subtle)',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'space-between',
-                        gap: '12px',
-                      }}
-                    >
-                      <div>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
-                          <strong style={{ color: 'var(--navy-900)' }}>{tutor.name}</strong>
-                          <StarRating rating={tutor.rating || 5.0} size={13} />
-                        </div>
-                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
-                          {(tutor.skillsToTeach || []).map((s, idx) => (
-                            <span key={idx} className="badge badge-navy" style={{ fontSize: '0.7rem', textTransform: 'none' }}>
-                              {s}
-                            </span>
-                          ))}
-                        </div>
-                      </div>
-                      <Link
-                        to={`/tutors/${tutor._id}`}
-                        className="btn btn-primary btn-sm"
-                        style={{ flexShrink: 0 }}
-                      >
-                        Request
-                      </Link>
-                    </div>
-                  ))}
-                </div>
-              )}
+          <div className="card skill-panel">
+            <div className="skill-panel-heading"><GraduationCap size={19} /><h3>My teaching</h3></div>
+            <div className="skill-chip-list">
+              {(user?.skillsToTeach || []).map((skill) => <span key={skill} className="badge badge-navy">{skill}</span>)}
+              {(user?.skillsToTeach || []).length === 0 && <p>Add subjects you can teach to receive peer requests.</p>}
             </div>
           </div>
         </div>
-      )}
+      </section>
 
-      {/* TAB CONTENT: TUTOR HUB */}
-      {activeTab === 'tutor' && (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '28px' }}>
-          {/* Left Column: Incoming Requests */}
+      <section className="student-peers-section" aria-labelledby="recommended-peers-heading">
+        <div className="student-section-heading">
           <div>
-            <div className="card">
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '18px' }}>
-                <h3 style={{ margin: 0, color: 'var(--navy-900)', fontSize: '1.2rem' }}>
-                  Incoming Session Requests
-                </h3>
-                <span className="badge badge-pending">{pendingIncomingRequests.length} Pending</span>
-              </div>
-
-              {pendingIncomingRequests.length === 0 ? (
-                <EmptyState
-                  icon={Inbox}
-                  title="No pending requests"
-                  description="When fellow students request tutoring for your listed skills, they will appear here."
-                />
-              ) : (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-                  {pendingIncomingRequests.map((req) => (
-                    <div
-                      key={req._id}
-                      style={{
-                        padding: '16px',
-                        borderRadius: 'var(--radius-md)',
-                        border: '1px solid var(--warning-border)',
-                        background: '#ffffff',
-                      }}
-                    >
-                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
-                        <strong style={{ color: 'var(--navy-900)', fontSize: '1.05rem' }}>{req.subject}</strong>
-                        <span className="badge badge-brass">+{req.creditAmount} Credits</span>
-                      </div>
-                      <p style={{ fontSize: '0.85rem', color: 'var(--ink-600)', margin: '0 0 12px' }}>
-                        Requested by: <strong>{req.learner?.name || 'Student'}</strong> ({req.learner?.email})
-                      </p>
-                      <div style={{ display: 'flex', gap: '10px' }}>
-                        <button
-                          type="button"
-                          className="btn btn-primary btn-sm"
-                          style={{ flex: 1 }}
-                          disabled={actionLoading}
-                          onClick={() => handleUpdateStatus(req._id, 'accepted')}
-                        >
-                          <Check size={14} /> Accept
-                        </button>
-                        <button
-                          type="button"
-                          className="btn btn-danger btn-sm"
-                          style={{ flex: 1 }}
-                          disabled={actionLoading}
-                          onClick={() => handleUpdateStatus(req._id, 'rejected')}
-                        >
-                          <X size={14} /> Decline
-                        </button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
+            <span>Peer discovery</span>
+            <h2 id="recommended-peers-heading">Recommended peers</h2>
           </div>
-
-          {/* Right Column: Active Tutoring Slots */}
-          <div>
-            <div className="card">
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '18px' }}>
-                <h3 style={{ margin: 0, color: 'var(--navy-900)', fontSize: '1.2rem' }}>
-                  Accepted & Active Tutoring Slots
-                </h3>
-                <Link to="/profile" style={{ fontSize: '0.85rem', color: 'var(--brass-700)', fontWeight: 600 }}>
-                  Manage Skills
-                </Link>
-              </div>
-
-              {activeTutorSessions.length === 0 ? (
-                <EmptyState
-                  icon={Clock}
-                  title="No active sessions to teach"
-                  description="Accept pending requests to begin teaching and earning credits."
-                />
-              ) : (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-                  {activeTutorSessions.map((session) => (
-                    <div
-                      key={session._id}
-                      style={{
-                        padding: '16px',
-                        borderRadius: 'var(--radius-md)',
-                        border: '1px solid var(--border-subtle)',
-                        background: '#ffffff',
-                      }}
-                    >
-                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
-                        <strong style={{ color: 'var(--navy-900)' }}>{session.subject}</strong>
-                        <Badge status={session.status} />
-                      </div>
-                      <p style={{ fontSize: '0.85rem', color: 'var(--ink-600)', margin: '0 0 12px' }}>
-                        Learner: <strong>{session.learner?.name || 'Student'}</strong>
-                      </p>
-                      <button
-                        type="button"
-                        className="btn btn-navy btn-sm"
-                        style={{ width: '100%' }}
-                        disabled={actionLoading}
-                        onClick={() => handleUpdateStatus(session._id, 'completed')}
-                      >
-                        <CheckCircle2 size={14} /> Mark as Completed (+{session.creditAmount} Credits)
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
+          <Link to="/tutors">Browse all peers</Link>
         </div>
-      )}
+        {!availability.peers ? (
+          <EmptyState icon={Users} title="Peer discovery unavailable" description="Refresh the page to load recommended students." />
+        ) : recommendedPeers.length === 0 ? (
+          <EmptyState icon={Users} title="No peers available yet" description="Check back as more students add subjects they can teach." />
+        ) : (
+          <div className="student-peer-grid">
+            {recommendedPeers.map((peer) => <PeerCard key={peer._id} peer={peer} compact />)}
+          </div>
+        )}
+      </section>
     </div>
   );
 };
 
 export default DashboardPage;
-

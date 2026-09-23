@@ -4,9 +4,10 @@ import { useAuth } from '../context/AuthContext';
 import Navbar from '../components/common/Navbar';
 import Footer from '../components/common/Footer';
 import LoadingSpinner from '../components/common/LoadingSpinner';
+import { getRoleHomeRoute } from '../config/roleNavigation';
 
-export const AppLayout = ({ adminOnly = false }) => {
-  const { isAuthenticated, isAdmin, loading } = useAuth();
+export const AppLayout = ({ allowedRoles = null }) => {
+  const { user, isAuthenticated, loading } = useAuth();
 
   if (loading) {
     return (
@@ -20,14 +21,14 @@ export const AppLayout = ({ adminOnly = false }) => {
     return <Navigate to="/login" replace />;
   }
 
-  if (adminOnly && !isAdmin) {
-    return <Navigate to="/dashboard" replace />;
+  if (allowedRoles && !allowedRoles.includes(user?.role)) {
+    return <Navigate to={getRoleHomeRoute(user?.role)} replace />;
   }
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh', backgroundColor: 'var(--bg-main)' }}>
+    <div className={`app-shell app-shell-${user?.role || 'student'}`}>
       <Navbar />
-      <main style={{ flex: 1, padding: '36px 0 60px' }}>
+      <main className="app-main">
         <div className="container">
           <Outlet />
         </div>
@@ -38,4 +39,3 @@ export const AppLayout = ({ adminOnly = false }) => {
 };
 
 export default AppLayout;
-

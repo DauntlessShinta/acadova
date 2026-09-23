@@ -45,10 +45,12 @@ exports.getSessionAnalytics = async (req, res) => {
 exports.getRatingAnalytics = async (req, res) => {
   try {
     const [summary] = await Rating.aggregate([
+      { $match: { isHidden: { $ne: true } } },
       { $group: { _id: null, average: { $avg: '$rating' }, count: { $sum: 1 } } },
     ]);
 
     const distribution = await Rating.aggregate([
+      { $match: { isHidden: { $ne: true } } },
       { $group: { _id: '$rating', count: { $sum: 1 } } },
       { $sort: { _id: 1 } },
     ]);

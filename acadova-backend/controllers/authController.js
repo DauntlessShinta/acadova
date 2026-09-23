@@ -16,7 +16,7 @@ exports.register = async (req, res) => {
   try {
     // Note: "role" is intentionally not read from req.body. Every new
     // account is a "student" by default (see User model) so a client can
-    // never self-promote to admin during registration.
+    // never self-promote to moderator or admin during registration.
     const { name, email, password, skillsToTeach, skillsToLearn } = req.body;
 
     if (!name || typeof name !== 'string') {

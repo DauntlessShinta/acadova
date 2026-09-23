@@ -1,23 +1,17 @@
-import React, { useState, useEffect } from 'react';
-import { useSearchParams, useNavigate } from 'react-router-dom';
+import React, { useCallback, useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import userService from '../services/userService';
 import sessionService from '../services/sessionService';
-import StarRating from '../components/common/StarRating';
 import Modal from '../components/common/Modal';
 import Alert from '../components/common/Alert';
 import LoadingSpinner from '../components/common/LoadingSpinner';
 import EmptyState from '../components/common/EmptyState';
+import PeerCard from '../components/student/PeerCard';
 import {
   Search,
-  BookOpen,
-  Coins,
   GraduationCap,
-  Calendar,
-  Clock,
-  ArrowRight,
   Filter,
-  CheckCircle2,
 } from 'lucide-react';
 
 const POPULAR_SUBJECTS = [
@@ -35,8 +29,6 @@ const POPULAR_SUBJECTS = [
 export const FindTutorsPage = () => {
   const { user, credits, refreshUser } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
-  const navigate = useNavigate();
-
   const currentSubjectQuery = searchParams.get('subject') || '';
 
   const [tutors, setTutors] = useState([]);
@@ -55,26 +47,31 @@ export const FindTutorsPage = () => {
   const [modalError, setModalError] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
 
-  const fetchTutors = async (subject = '') => {
+  const fetchTutors = useCallback(async (subject = '') => {
     try {
       setLoading(true);
       setError('');
       const res = await userService.searchTutors(subject);
-      // Filter out logged in user from list
-      const list = (res?.data || []).filter((t) => t._id !== user?._id && t._id !== user?.id);
+      // Backend enforcement is authoritative; this is a defensive UI boundary.
+      const currentUserId = String(user?._id || user?.id || '');
+      const list = (res?.data || []).filter((peer) => (
+        peer.role === 'student' && String(peer._id) !== currentUserId
+      ));
       setTutors(list);
     } catch (err) {
-      setError(err.message || 'Failed to fetch tutors');
+      setError(err.message || 'Failed to fetch peers');
     } finally {
       setLoading(false);
     }
-  };
+  }, [user]);
 
   useEffect(() => {
-    fetchTutors(currentSubjectQuery);
-    setSelectedSubjectFilter(currentSubjectQuery || 'All');
-    setSearchQuery(currentSubjectQuery);
-  }, [currentSubjectQuery]);
+    Promise.resolve().then(() => {
+      fetchTutors(currentSubjectQuery);
+      setSelectedSubjectFilter(currentSubjectQuery || 'All');
+      setSearchQuery(currentSubjectQuery);
+    });
+  }, [currentSubjectQuery, fetchTutors]);
 
   const handleSearchSubmit = (e) => {
     e.preventDefault();
@@ -127,7 +124,7 @@ export const FindTutorsPage = () => {
       });
 
       setIsModalOpen(false);
-      setSuccessMessage(`Session request sent to ${selectedTutor.name}! You can track it in My Sessions.`);
+      setSuccessMessage(`Session request sent to ${selectedTutor.name}. You can track it in Sessions.`);
       refreshUser();
     } catch (err) {
       setModalError(err.message || 'Failed to request session.');
@@ -144,10 +141,10 @@ export const FindTutorsPage = () => {
           Peer Matching Hub
         </span>
         <h1 style={{ fontSize: '2rem', color: 'var(--navy-900)', margin: '4px 0 8px' }}>
-          Find Peer Tutors
+          Find Peers
         </h1>
         <p style={{ color: 'var(--ink-600)', maxWidth: '640px' }}>
-          Browse verified student tutors across multiple academic disciplines. Book a 1-on-1 session using your earned credits.
+          Discover students who can help with the subjects you want to learn, then request a peer session using credits.
         </p>
       </div>
 
@@ -169,7 +166,7 @@ export const FindTutorsPage = () => {
             />
           </div>
           <button type="submit" className="btn btn-primary">
-            <Search size={16} /> Search Tutors
+            <Search size={16} /> Search Peers
           </button>
         </form>
 
@@ -203,89 +200,24 @@ export const FindTutorsPage = () => {
 
       {/* Tutor List */}
       {loading ? (
-        <LoadingSpinner text="Searching for available peer tutors..." size={36} />
+        <LoadingSpinner text="Searching for available peers..." size={36} />
+      ) : error && tutors.length === 0 ? (
+        <EmptyState
+          icon={GraduationCap}
+          title="Peer discovery unavailable"
+          description="Refresh the page or try your search again."
+        />
       ) : tutors.length === 0 ? (
         <EmptyState
           icon={GraduationCap}
-          title="No tutors found matching your query"
-          description="Try searching with a broader topic or clear your filter to browse all active peer tutors."
-          actionText="View All Tutors"
+          title="No peers found matching your query"
+          description="Try a broader subject or clear the filter to browse students with teaching skills."
+          actionText="View All Peers"
           onAction={() => handleFilterClick('All')}
         />
       ) : (
         <div className="grid-3">
-          {tutors.map((tutor) => (
-            <div
-              key={tutor._id}
-              className="card card-interactive"
-              style={{ display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}
-            >
-              <div>
-                {/* Tutor Header */}
-                <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: '12px' }}>
-                  <div>
-                    <h3 style={{ fontSize: '1.2rem', color: 'var(--navy-900)', margin: '0 0 4px' }}>
-                      {tutor.name}
-                    </h3>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                      <StarRating rating={tutor.rating || 5.0} size={15} />
-                    </div>
-                  </div>
-                  <div style={{
-                    width: 40,
-                    height: 40,
-                    borderRadius: '50%',
-                    background: 'var(--brass-100)',
-                    color: 'var(--brass-700)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    fontWeight: 700,
-                    fontFamily: 'var(--font-display)',
-                    fontSize: '1.1rem',
-                  }}>
-                    {tutor.name?.charAt(0) || 'T'}
-                  </div>
-                </div>
-
-                {/* Skills Chips */}
-                <div style={{ marginBottom: '20px' }}>
-                  <span style={{ fontSize: '0.78rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--ink-500)', fontFamily: 'var(--font-mono)', display: 'block', marginBottom: 6 }}>
-                    Specialties Offered
-                  </span>
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
-                    {(tutor.skillsToTeach || []).map((skill, idx) => (
-                      <span key={idx} className="badge badge-brass" style={{ textTransform: 'none', fontSize: '0.78rem' }}>
-                        {skill}
-                      </span>
-                    ))}
-                    {(tutor.skillsToTeach || []).length === 0 && (
-                      <span style={{ fontSize: '0.85rem', color: 'var(--ink-400)' }}>General Academic Support</span>
-                    )}
-                  </div>
-                </div>
-              </div>
-
-              {/* Action Buttons */}
-              <div style={{ display: 'flex', gap: '8px', paddingTop: '16px', borderTop: '1px solid var(--border-subtle)' }}>
-                <button
-                  type="button"
-                  className="btn btn-primary btn-sm"
-                  style={{ flex: 1 }}
-                  onClick={() => openRequestModal(tutor)}
-                >
-                  <BookOpen size={14} /> Request Session
-                </button>
-                <button
-                  type="button"
-                  className="btn btn-secondary btn-sm"
-                  onClick={() => navigate(`/tutors/${tutor._id}`)}
-                >
-                  Profile
-                </button>
-              </div>
-            </div>
-          ))}
+          {tutors.map((peer) => <PeerCard key={peer._id} peer={peer} onRequest={openRequestModal} />)}
         </div>
       )}
 
@@ -293,7 +225,7 @@ export const FindTutorsPage = () => {
       <Modal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
-        title={`Request Session with ${selectedTutor?.name || 'Tutor'}`}
+        title={`Request Session with ${selectedTutor?.name || 'Peer'}`}
       >
         <form onSubmit={handleCreateSession}>
           <Alert type="danger" message={modalError} onClose={() => setModalError('')} />
@@ -383,4 +315,3 @@ export const FindTutorsPage = () => {
 };
 
 export default FindTutorsPage;
-

@@ -146,7 +146,7 @@ export const RegisterPage = () => {
 
             <div className="form-group">
               <label className="form-label">
-                Skills You Can Teach (Tutor Role)
+                Skills You Can Teach
               </label>
               <TagInput
                 tags={skillsToTeach}
@@ -165,7 +165,7 @@ export const RegisterPage = () => {
                 onChange={setSkillsToLearn}
                 placeholder="Add skill (e.g. Python, Calculus)..."
               />
-              <span className="form-hint">Used to recommend compatible peer tutors.</span>
+              <span className="form-hint">Used to recommend you to compatible student peers.</span>
             </div>
 
             <button
@@ -204,4 +204,3 @@ export const RegisterPage = () => {
 };
 
 export default RegisterPage;
-

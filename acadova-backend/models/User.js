@@ -8,7 +8,7 @@ const UserSchema = new mongoose.Schema({
   skillsToTeach: [{ type: String }],
   skillsToLearn: [{ type: String }],
   rating: { type: Number, default: 5.0 },
-  role: { type: String, enum: ['student', 'admin'], default: 'student' }
+  role: { type: String, enum: ['student', 'moderator', 'admin'], default: 'student' }
 }, { timestamps: true });
 
 UserSchema.index({ skillsToTeach: 1, rating: -1 });

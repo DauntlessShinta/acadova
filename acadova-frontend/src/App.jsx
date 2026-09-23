@@ -20,6 +20,7 @@ import ProfilePage from './pages/ProfilePage';
 
 // Admin Page
 import AdminDashboardPage from './pages/AdminDashboardPage';
+import ModeratorDashboardPage from './pages/ModeratorDashboardPage';
 
 export const App = () => {
   return (
@@ -33,8 +34,8 @@ export const App = () => {
         <Route path="/register" element={<RegisterPage />} />
       </Route>
 
-      {/* Authenticated Student / Learner / Tutor Routes */}
-      <Route element={<AppLayout />}>
+      {/* Student peer-learning routes */}
+      <Route element={<AppLayout allowedRoles={['student']} />}>
         <Route path="/dashboard" element={<DashboardPage />} />
         <Route path="/tutors" element={<FindTutorsPage />} />
         <Route path="/tutors/:id" element={<TutorProfilePage />} />
@@ -43,8 +44,13 @@ export const App = () => {
         <Route path="/profile" element={<ProfilePage />} />
       </Route>
 
+      {/* Protected Moderator Routes */}
+      <Route element={<AppLayout allowedRoles={['moderator', 'admin']} />}>
+        <Route path="/moderator" element={<ModeratorDashboardPage />} />
+      </Route>
+
       {/* Protected Admin Routes */}
-      <Route element={<AppLayout adminOnly />}>
+      <Route element={<AppLayout allowedRoles={['admin']} />}>
         <Route path="/admin" element={<AdminDashboardPage />} />
       </Route>
 

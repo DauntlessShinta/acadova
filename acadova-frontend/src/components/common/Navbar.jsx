@@ -1,29 +1,31 @@
 import React, { useEffect, useState } from 'react';
-import { Link, NavLink, useNavigate } from 'react-router-dom';
-import { Layers, LogOut, Menu, ShieldAlert, User, X } from 'lucide-react';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { Layers, LogOut, Menu, ShieldCheck, User, X } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
+import { getRoleHomeRoute, getRoleNavigation, normalizeRole } from '../../config/roleNavigation';
 
 const publicLinks = [
   { to: '/#how-it-works', label: 'How It Works' },
   { to: '/#credit-system', label: 'Credit Model' },
   { to: '/#features', label: 'Features' },
   { to: '/#skill-network', label: 'Explore Skills' },
-  { to: '/#dashboard-preview', label: 'Dashboard Preview' },
   { to: '/about', label: 'About' },
 ];
 
-const appLinks = [
-  { to: '/dashboard', label: 'Dashboard' },
-  { to: '/tutors', label: 'Find Tutors' },
-  { to: '/sessions', label: 'My Sessions' },
-  { to: '/credits', label: 'Credits' },
-  { to: '/profile', label: 'Profile' },
-];
+const roleLabels = {
+  moderator: 'Moderator',
+  admin: 'Administration',
+};
 
 export const Navbar = () => {
-  const { user, isAuthenticated, isAdmin, credits, logout } = useAuth();
+  const { user, isAuthenticated, credits, logout } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const role = normalizeRole(user?.role);
+  const isStudent = role === 'student';
+  const homeRoute = isAuthenticated ? getRoleHomeRoute(role) : '/';
+  const links = isAuthenticated ? getRoleNavigation(role) : publicLinks;
 
   useEffect(() => {
     const closeOnEscape = (event) => {
@@ -34,52 +36,70 @@ export const Navbar = () => {
     return () => window.removeEventListener('keydown', closeOnEscape);
   }, []);
 
+  useEffect(() => {
+    if (location.hash) {
+      window.requestAnimationFrame(() => {
+        document.getElementById(location.hash.slice(1))?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      });
+    }
+  }, [location.pathname, location.hash]);
+
   const handleLogout = () => {
     logout();
     navigate('/login');
   };
 
-  const closeMenu = () => setMobileMenuOpen(false);
-
-  const links = isAuthenticated ? appLinks : publicLinks;
+  const isLinkActive = (to) => {
+    const [pathname, hash = ''] = to.split('#');
+    const expectedHash = hash ? `#${hash}` : '';
+    return location.pathname === pathname && location.hash === expectedHash;
+  };
 
   return (
-    <header className="site-navbar">
+    <header className={`site-navbar ${isAuthenticated && !isStudent ? 'site-navbar-staff' : ''}`}>
       <div className="container site-navbar-inner">
-        <Link to={isAuthenticated ? '/dashboard' : '/'} className="site-brand" aria-label="Acadova home" onClick={closeMenu}>
+        <Link to={homeRoute} className="site-brand" aria-label={`Acadova ${roleLabels[role] || 'home'}`} onClick={() => setMobileMenuOpen(false)}>
           <span className="site-brand-mark"><Layers size={20} /></span>
-          <span>Acadova</span>
+          <span className="site-brand-copy">
+            <span>Acadova</span>
+            {isAuthenticated && roleLabels[role] && <small>{roleLabels[role]}</small>}
+          </span>
         </Link>
 
-        <nav className="site-nav-desktop" aria-label="Primary navigation">
+        <nav className="site-nav-desktop" aria-label={isAuthenticated ? `${role} navigation` : 'Primary navigation'}>
           {links.map((link) => (
-            isAuthenticated ? (
-              <NavLink key={link.to} to={link.to} onClick={closeMenu} className={({ isActive }) => `site-nav-link ${isActive ? 'is-active' : ''}`}>
-                {link.label}
-              </NavLink>
-            ) : (
-              <Link key={link.to} to={link.to} onClick={closeMenu} className="site-nav-link">{link.label}</Link>
-            )
+            <Link
+              key={link.to}
+              to={link.to}
+              onClick={() => setMobileMenuOpen(false)}
+              className={`site-nav-link ${isAuthenticated && isLinkActive(link.to) ? 'is-active' : ''}`}
+            >
+              {link.label}
+            </Link>
           ))}
-          {isAuthenticated && isAdmin && (
-            <NavLink to="/admin" onClick={closeMenu} className={({ isActive }) => `site-nav-link site-nav-admin ${isActive ? 'is-active' : ''}`}>
-              <ShieldAlert size={14} /> Admin
-            </NavLink>
-          )}
         </nav>
 
         <div className="site-nav-actions">
           {!isAuthenticated ? (
             <>
-              <Link to="/login" onClick={closeMenu} className="btn btn-secondary btn-sm">Log In</Link>
-              <Link to="/register" onClick={closeMenu} className="btn btn-primary btn-sm">Get Started</Link>
+              <Link to="/login" className="btn btn-secondary btn-sm">Log In</Link>
+              <Link to="/register" className="btn btn-primary btn-sm">Get Started</Link>
             </>
           ) : (
             <>
-              <Link to="/credits" onClick={closeMenu} className="credit-pill"><span className="dot" />{credits} Credits</Link>
-              <Link to="/profile" onClick={closeMenu} className="site-user-link" title={user?.email}>
-                <User size={16} /><span>{user?.name || 'User'}</span>
-              </Link>
+              {isStudent ? (
+                <>
+                  <Link to="/credits" className="credit-pill"><span className="dot" />{credits} Credits</Link>
+                  <Link to="/profile" className="site-user-link" title={user?.email}>
+                    <User size={16} /><span>{user?.name || 'User'}</span>
+                  </Link>
+                </>
+              ) : (
+                <div className="site-staff-identity" title={user?.email}>
+                  <ShieldCheck size={16} />
+                  <span><strong>{user?.name || 'Staff'}</strong><small>{roleLabels[role]}</small></span>
+                </div>
+              )}
               <button type="button" className="site-logout-button" onClick={handleLogout} aria-label="Log out">
                 <LogOut size={16} />
               </button>
@@ -104,22 +124,32 @@ export const Navbar = () => {
           <div className="container">
             {isAuthenticated && (
               <div className="site-mobile-user">
-                <div><strong>{user?.name || 'User'}</strong><span>{user?.email}</span></div>
-                <span className="credit-pill"><span className="dot" />{credits} Credits</span>
+                <div>
+                  <strong>{user?.name || 'User'}</strong>
+                  <span>{user?.email}</span>
+                  {!isStudent && <span className="site-mobile-role">{roleLabels[role]}</span>}
+                </div>
+                {isStudent && <span className="credit-pill"><span className="dot" />{credits} Credits</span>}
               </div>
             )}
 
             <div className="site-mobile-links">
               {links.map((link) => (
-                <Link key={link.to} to={link.to} onClick={closeMenu}>{link.label}</Link>
+                <Link
+                  key={link.to}
+                  to={link.to}
+                  onClick={() => setMobileMenuOpen(false)}
+                  className={isAuthenticated && isLinkActive(link.to) ? 'is-active' : ''}
+                >
+                  {link.label}
+                </Link>
               ))}
-              {isAuthenticated && isAdmin && <Link to="/admin" onClick={closeMenu} className="site-nav-admin">Admin Analytics</Link>}
             </div>
 
             {!isAuthenticated ? (
               <div className="site-mobile-actions">
-                <Link to="/login" onClick={closeMenu} className="btn btn-secondary">Log In</Link>
-                <Link to="/register" onClick={closeMenu} className="btn btn-primary">Get Started</Link>
+                <Link to="/login" className="btn btn-secondary" onClick={() => setMobileMenuOpen(false)}>Log In</Link>
+                <Link to="/register" className="btn btn-primary" onClick={() => setMobileMenuOpen(false)}>Get Started</Link>
               </div>
             ) : (
               <button type="button" className="btn btn-danger site-mobile-logout" onClick={handleLogout}>

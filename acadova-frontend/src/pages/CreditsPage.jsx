@@ -170,7 +170,7 @@ export const CreditsPage = () => {
             icon={Coins}
             title="No credit transactions yet"
             description="Complete study sessions as a learner or tutor to see ledger entries."
-            actionText="Find Tutors to Begin"
+            actionText="Find Peers to Begin"
             onAction={() => window.location.href = '/tutors'}
           />
         ) : (
@@ -226,4 +226,3 @@ export const CreditsPage = () => {
 };
 
 export default CreditsPage;
-

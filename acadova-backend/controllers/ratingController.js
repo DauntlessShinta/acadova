@@ -1,7 +1,7 @@
 const Session = require('../models/Session');
 const Rating = require('../models/Rating');
-const User = require('../models/User');
 const { isValidObjectId, isValidRating } = require('../middleware/validation');
+const { recalculateAverageRating } = require('../utils/ratingReputation');
 
 // A participant rates the other party after a session is completed.
 exports.submitRating = async (req, res) => {
@@ -54,13 +54,3 @@ exports.submitRating = async (req, res) => {
     res.status(500).json({ success: false, message: 'Server error while submitting rating' });
   }
 };
-
-// Recomputes a user's average rating from all ratings they have received.
-async function recalculateAverageRating(userId) {
-  const stats = await Rating.aggregate([
-    { $match: { toUser: userId } },
-    { $group: { _id: '$toUser', average: { $avg: '$rating' } } },
-  ]);
-  const average = stats.length ? stats[0].average : 5.0;
-  await User.findByIdAndUpdate(userId, { rating: average });
-}

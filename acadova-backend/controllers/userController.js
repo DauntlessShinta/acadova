@@ -52,12 +52,16 @@ exports.updateMe = async (req, res) => {
 exports.searchTutors = async (req, res) => {
   try {
     const { subject } = req.query;
-    const filter = subject
-      ? { skillsToTeach: { $regex: subject, $options: 'i' } }
-      : { skillsToTeach: { $exists: true, $ne: [] } };
+    const filter = {
+      role: 'student',
+      _id: { $ne: req.user.id },
+      skillsToTeach: subject
+        ? { $regex: subject, $options: 'i' }
+        : { $exists: true, $ne: [] },
+    };
 
     const tutors = await User.find(filter)
-      .select('name skillsToTeach rating')
+      .select('name skillsToTeach rating role')
       .sort({ rating: -1 })
       .limit(50);
 
@@ -75,9 +79,10 @@ exports.getUserById = async (req, res) => {
       return res.status(400).json({ success: false, message: 'Invalid user id' });
     }
 
-    const user = await User.findById(id).select('name rating skillsToTeach skillsToLearn createdAt');
+    const user = await User.findOne({ _id: id, role: 'student' })
+      .select('name rating skillsToTeach skillsToLearn role createdAt');
     if (!user) {
-      return res.status(404).json({ success: false, message: 'User not found' });
+      return res.status(404).json({ success: false, message: 'Peer profile not found' });
     }
 
     res.json({ success: true, message: 'User profile retrieved', data: user });

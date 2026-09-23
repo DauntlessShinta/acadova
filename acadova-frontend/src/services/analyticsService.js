@@ -20,7 +20,10 @@ export const analyticsService = {
   getAdminUsers: async () => {
     return api.get('/api/admin/users');
   },
+
+  updateUserRole: async (id, role) => {
+    return api.patch(`/api/admin/users/${id}/role`, { role });
+  },
 };
 
 export default analyticsService;
-

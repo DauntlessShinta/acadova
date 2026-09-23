@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, Link, useNavigate } from 'react-router-dom';
+import { useParams, Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import userService from '../services/userService';
 import sessionService from '../services/sessionService';
@@ -8,18 +8,11 @@ import Alert from '../components/common/Alert';
 import LoadingSpinner from '../components/common/LoadingSpinner';
 import {
   ArrowLeft,
-  GraduationCap,
-  Star,
-  Coins,
-  BookOpen,
-  Calendar,
-  CheckCircle2,
-  Sparkles,
 } from 'lucide-react';
 
 export const TutorProfilePage = () => {
   const { id } = useParams();
-  const navigate = useNavigate();
+  const location = useLocation();
   const { credits, refreshUser } = useAuth();
 
   const [tutor, setTutor] = useState(null);
@@ -39,14 +32,14 @@ export const TutorProfilePage = () => {
         setLoading(true);
         setError('');
         const res = await userService.getUserById(id);
-        if (res?.data) {
+        if (res?.data?.role === 'student') {
           setTutor(res.data);
           if (res.data.skillsToTeach?.length > 0) {
             setSessionSubject(res.data.skillsToTeach[0]);
           }
         }
       } catch (err) {
-        setError(err.message || 'Failed to load tutor profile');
+        setError(err.message || 'Failed to load peer profile');
       } finally {
         setLoading(false);
       }
@@ -56,6 +49,12 @@ export const TutorProfilePage = () => {
       fetchTutor();
     }
   }, [id]);
+
+  useEffect(() => {
+    if (tutor && location.hash === '#request-session') {
+      document.getElementById('request-session')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  }, [location.hash, tutor]);
 
   const handleRequestSession = async (e) => {
     e.preventDefault();
@@ -91,16 +90,16 @@ export const TutorProfilePage = () => {
   };
 
   if (loading) {
-    return <LoadingSpinner text="Loading tutor details..." size={36} />;
+    return <LoadingSpinner text="Loading peer details..." size={36} />;
   }
 
   if (!tutor) {
     return (
       <div>
         <Link to="/tutors" className="btn btn-secondary btn-sm" style={{ marginBottom: 20 }}>
-          <ArrowLeft size={14} /> Back to Tutors
+          <ArrowLeft size={14} /> Back to Peers
         </Link>
-        <Alert type="danger" message={error || 'Tutor not found.'} />
+        <Alert type="danger" message={error || 'Peer not found.'} />
       </div>
     );
   }
@@ -108,14 +107,14 @@ export const TutorProfilePage = () => {
   return (
     <div className="container-narrow">
       <Link to="/tutors" className="btn btn-secondary btn-sm" style={{ marginBottom: 24, display: 'inline-flex', gap: 6 }}>
-        <ArrowLeft size={14} /> Back to All Tutors
+        <ArrowLeft size={14} /> Back to All Peers
       </Link>
 
       <Alert type="danger" message={error} onClose={() => setError('')} />
       <Alert type="success" message={successMsg} onClose={() => setSuccessMsg('')} />
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '28px' }}>
-        {/* Left Column: Tutor Profile Info */}
+        {/* Left Column: Peer Profile Info */}
         <div className="card">
           <div style={{ textAlign: 'center', marginBottom: '24px' }}>
             <div style={{
@@ -137,7 +136,7 @@ export const TutorProfilePage = () => {
             </div>
             <h2 style={{ fontSize: '1.6rem', color: 'var(--navy-900)', marginBottom: '6px' }}>{tutor.name}</h2>
             <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 8 }}>
-              <StarRating rating={tutor.rating || 5.0} size={18} />
+            <StarRating rating={tutor.rating ?? 0} size={18} />
             </div>
           </div>
 
@@ -171,7 +170,7 @@ export const TutorProfilePage = () => {
         </div>
 
         {/* Right Column: Request Session Form */}
-        <div className="card">
+        <div className="card" id="request-session">
           <h3 style={{ fontSize: '1.25rem', color: 'var(--navy-900)', marginBottom: '14px' }}>
             Request a Study Session
           </h3>
@@ -247,4 +246,3 @@ export const TutorProfilePage = () => {
 };
 
 export default TutorProfilePage;
-

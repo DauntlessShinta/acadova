@@ -1,8 +1,28 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { BookOpen, Layers } from 'lucide-react';
+import { useAuth } from '../../context/AuthContext';
+import { getRoleHomeRoute } from '../../config/roleNavigation';
 
 export const Footer = () => {
+  const { isAuthenticated, user } = useAuth();
+  const isStaff = isAuthenticated && (user?.role === 'admin' || user?.role === 'moderator');
+
+  if (isStaff) {
+    const areaLabel = user.role === 'admin' ? 'Administration' : 'Moderator';
+    return (
+      <footer className="staff-footer">
+        <div className="container staff-footer-inner">
+          <Link to={getRoleHomeRoute(user.role)} className="site-brand" aria-label={`Acadova ${areaLabel}`}>
+            <span className="site-brand-mark"><Layers size={18} /></span>
+            <span>Acadova <small>{areaLabel}</small></span>
+          </Link>
+          <span>Authorized staff workspace</span>
+        </div>
+      </footer>
+    );
+  }
+
   return (
     <footer className="site-footer">
       <div className="container">

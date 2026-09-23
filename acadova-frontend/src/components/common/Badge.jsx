@@ -24,6 +24,9 @@ export const Badge = ({ status, children, variant }) => {
     case 'admin':
       badgeClass = 'badge-brass';
       break;
+    case 'moderator':
+      badgeClass = 'badge-info';
+      break;
     case 'student':
     case 'learner':
     case 'tutor':
@@ -44,4 +47,3 @@ export const Badge = ({ status, children, variant }) => {
 };
 
 export default Badge;
-

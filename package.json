@@ -1,0 +1,23 @@
+{
+  "name": "acadova-mern",
+  "version": "1.0.0",
+  "description": "Acadova (EduExchange) — Peer-to-Peer Academic Skill and Knowledge Sharing Platform (MERN Stack)",
+  "scripts": {
+    "dev:backend": "npm run dev --prefix acadova-backend",
+    "dev:frontend": "npm run dev --prefix acadova-frontend",
+    "start:backend": "npm start --prefix acadova-backend",
+    "build:frontend": "npm run build --prefix acadova-frontend",
+    "install:all": "npm install --prefix acadova-backend && npm install --prefix acadova-frontend"
+  },
+  "keywords": [
+    "mern",
+    "acadova",
+    "eduexchange",
+    "peer-tutoring",
+    "credit-system",
+    "mapreduce"
+  ],
+  "author": "Acadova Team",
+  "license": "ISC"
+}
+

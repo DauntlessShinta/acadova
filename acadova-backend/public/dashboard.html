@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dashboard — Acadova</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@400;500;600&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body class="app-shell">
+  <div id="app-nav"></div>
+
+  <main class="app-main">
+    <div class="wrap">
+      <div class="flex-between" style="margin-bottom: 24px;">
+        <div>
+          <h2 class="mt-0" id="greeting">Welcome back</h2>
+          <p class="muted mt-0">Here's where your ledger stands today.</p>
+        </div>
+        <a href="/tutors.html" class="btn-primary">Find a tutor</a>
+      </div>
+
+      <div id="alert-area"></div>
+
+      <div class="grid-2">
+        <div class="panel">
+          <div class="panel-head"><h3>Your standing</h3></div>
+          <div class="stat-grid" id="stat-grid">
+            <div class="loading-row"><span class="spinner"></span> Loading profile...</div>
+          </div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-head"><h3>Your subjects</h3></div>
+          <div id="skills-summary">
+            <div class="loading-row"><span class="spinner"></span> Loading skills...</div>
+          </div>
+          <a href="/profile.html" class="small">Manage skills →</a>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-head">
+          <h3>Recent sessions</h3>
+          <a href="/sessions.html" class="small">View all →</a>
+        </div>
+        <div id="recent-sessions">
+          <div class="loading-row"><span class="spinner"></span> Loading sessions...</div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <script src="/js/util.js"></script>
+  <script src="/js/auth.js"></script>
+  <script src="/js/api.js"></script>
+  <script src="/js/nav.js"></script>
+  <script src="/js/dashboard.js"></script>
+</body>
+</html>

@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin Dashboard — Acadova</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@400;500;600&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body class="app-shell">
+  <div id="app-nav"></div>
+
+  <main class="app-main">
+    <div class="wrap">
+      <h2 class="mt-0">Platform overview</h2>
+      <p class="muted">Live from the ledger — session volume, subject demand, ratings, and credit flow.</p>
+
+      <div id="alert-area"></div>
+
+      <div class="panel">
+        <div class="panel-head"><h3>At a glance</h3></div>
+        <div class="stat-grid" id="overview-stats">
+          <div class="loading-row"><span class="spinner"></span> Loading overview...</div>
+        </div>
+      </div>
+
+      <div class="grid-2">
+        <div class="panel">
+          <div class="panel-head">
+            <h3>Subject demand</h3>
+            <span class="small muted mono">MAP → GROUP → REDUCE</span>
+          </div>
+          <div id="subject-demand">
+            <div class="loading-row"><span class="spinner"></span> Computing...</div>
+          </div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-head"><h3>Session status</h3></div>
+          <div id="session-stats">
+            <div class="loading-row"><span class="spinner"></span> Loading...</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="grid-2">
+        <div class="panel">
+          <div class="panel-head"><h3>Rating distribution</h3></div>
+          <div id="rating-stats">
+            <div class="loading-row"><span class="spinner"></span> Loading...</div>
+          </div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-head"><h3>Credit transactions</h3></div>
+          <div id="credit-stats">
+            <div class="loading-row"><span class="spinner"></span> Loading...</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-head"><h3>Users</h3></div>
+        <div id="users-table">
+          <div class="loading-row"><span class="spinner"></span> Loading users...</div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <script src="/js/util.js"></script>
+  <script src="/js/auth.js"></script>
+  <script src="/js/api.js"></script>
+  <script src="/js/nav.js"></script>
+  <script src="/js/admin.js"></script>
+</body>
+</html>

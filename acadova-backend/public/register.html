@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Create an account — Acadova</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@400;500;600&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <nav class="navbar">
+    <a href="/" class="logo">Acadova</a>
+    <div class="nav-links">
+      <a href="/login.html">Already have an account?</a>
+    </div>
+  </nav>
+
+  <main class="app-main">
+    <div class="wrap-narrow">
+      <div class="form-card">
+        <h2 class="mt-0">Create your account</h2>
+        <p class="muted">Every new account starts with 2 credits and the "student" role — you can both teach and learn.</p>
+
+        <div id="alert-area"></div>
+
+        <form id="register-form">
+          <div class="field">
+            <label for="name">Full name</label>
+            <input type="text" id="name" name="name" autocomplete="name" required>
+          </div>
+          <div class="field">
+            <label for="email">Email</label>
+            <input type="email" id="email" name="email" autocomplete="email" required>
+          </div>
+          <div class="field">
+            <label for="password">Password</label>
+            <input type="password" id="password" name="password" autocomplete="new-password" minlength="6" required>
+            <div class="hint">At least 6 characters.</div>
+          </div>
+          <div class="field">
+            <label for="confirm-password">Confirm password</label>
+            <input type="password" id="confirm-password" autocomplete="new-password" minlength="6" required>
+          </div>
+
+          <div class="field">
+            <label>Subjects you can teach <span class="muted">(optional)</span></label>
+            <div class="tag-list" id="teach-tags"></div>
+            <div class="tag-input-row">
+              <input type="text" id="teach-input" placeholder="e.g. Java, Calculus">
+              <button type="button" class="btn-ghost btn-sm" id="teach-add">Add</button>
+            </div>
+          </div>
+
+          <div class="field">
+            <label>Subjects you want to learn <span class="muted">(optional)</span></label>
+            <div class="tag-list" id="learn-tags"></div>
+            <div class="tag-input-row">
+              <input type="text" id="learn-input" placeholder="e.g. Networking, Statistics">
+              <button type="button" class="btn-ghost btn-sm" id="learn-add">Add</button>
+            </div>
+          </div>
+
+          <button type="submit" class="btn-primary" id="submit-btn" style="width:100%; margin-top:8px;">Create account</button>
+        </form>
+      </div>
+    </div>
+  </main>
+
+  <script src="/js/util.js"></script>
+  <script src="/js/auth.js"></script>
+  <script src="/js/api.js"></script>
+  <script src="/js/register.js"></script>
+</body>
+</html>

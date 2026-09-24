@@ -69,7 +69,7 @@ export const RegisterPage = () => {
           <input id="register-password" type={showPassword ? 'text' : 'password'} className="form-input" autoComplete="new-password" value={password} onChange={(event) => setPassword(event.target.value)} aria-invalid={Boolean(fields.password)} aria-describedby={fields.password ? 'register-password-hint register-password-error' : 'register-password-hint'} minLength={8} required />
           <button type="button" onClick={() => setShowPassword((value) => !value)} aria-label={showPassword ? 'Hide password' : 'Show password'} aria-pressed={showPassword}>{showPassword ? <EyeOff size={19} /> : <Eye size={19} />}</button>
         </div>
-        <span className="form-hint" id="register-password-hint">Password must contain the items below. Maximum 64 characters and 72 UTF-8 bytes.</span>
+        <span className="form-hint" id="register-password-hint">Password must contain the items below. </span>
         <ul className="auth-password-requirements" aria-label="Password requirements">{requirements.map(([label, met]) => <li key={label} className={met ? 'is-met' : ''}><span aria-hidden="true">{met ? <Check size={14} /> : '○'}</span>{label}</li>)}</ul>
         {fields.password && <span className="form-error" id="register-password-error">{fields.password}</span>}
       </div>

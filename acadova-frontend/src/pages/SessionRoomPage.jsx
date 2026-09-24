@@ -240,48 +240,73 @@ const SessionRoom = ({ id }) => {
   }
 
   const scheduledLabel = formatSessionDateTime(session.scheduledAt);
+  const meetingMethodLabel = session.meetingMethod === 'online'
+    ? 'Online'
+    : session.meetingMethod === 'in-person' ? 'In person' : 'Not recorded';
+  const creditLabel = `${session.creditAmount} credit${session.creditAmount === 1 ? '' : 's'}`;
   const acceptedReached = ['accepted', 'completed'].includes(session.status);
   const completedReached = session.status === 'completed';
   const isClosed = ['cancelled', 'rejected'].includes(session.status);
+  const hasSecondaryActions = ['pending', 'accepted'].includes(session.status)
+    || (isTeaching && session.status === 'completed' && !session.confirmedAt);
 
   return (
     <div className="session-room-page">
       <Link to="/sessions" className="session-room-back"><ArrowLeft size={15} /> Back to Sessions</Link>
 
       <header className="session-room-header">
-        <div>
-          <span className="student-eyebrow">Session room</span>
+        <span className="student-eyebrow">Session room</span>
+        <div className="session-room-title-row">
           <h1>{session.subject}</h1>
-          <div className="session-room-identity">
-            <span className={`session-role-badge ${isTeaching ? 'is-teaching' : 'is-learning'}`}>
-              {perspective.label}
-            </span>
-            <span>with <strong>{counterpart?.name || 'Peer student'}</strong></span>
-          </div>
+          <span className="session-room-status" aria-label={`Session status: ${displayStatus.label}`}>
+            <Badge status={displayStatus.key}>{displayStatus.label}</Badge>
+          </span>
         </div>
-        <Badge status={displayStatus.key}>{displayStatus.label}</Badge>
+        <div className="session-room-identity">
+          <span className={`session-role-badge ${isTeaching ? 'is-teaching' : 'is-learning'}`}>
+            {perspective.label}
+          </span>
+          <span>with <strong>{counterpart?.name || 'Peer student'}</strong></span>
+        </div>
+        <ul className="session-room-summary" aria-label="Session summary">
+          <li><Calendar size={16} aria-hidden="true" /><time dateTime={session.scheduledAt}>{scheduledLabel || 'Not scheduled'}</time></li>
+          <li><MapPin size={16} aria-hidden="true" /><span>{meetingMethodLabel}</span></li>
+          <li><Coins size={16} aria-hidden="true" /><span>{creditLabel}</span></li>
+        </ul>
       </header>
 
       <Alert type="danger" message={error} onClose={() => setError('')} />
       <Alert type="danger" message={refreshError} />
       <Alert type="success" message={success} onClose={() => setSuccess('')} />
-      <p className="form-hint">Session details and messages refresh every 5 seconds while this page is visible, and when you return to it.</p>
 
-      <section className="session-next-step" aria-labelledby="next-step-heading">
-        <div><CheckCircle2 size={22} aria-hidden="true" /></div>
-        <div><span>Next step</span><h2 id="next-step-heading">{nextStep}</h2></div>
+      <section className={`session-next-step ${session.confirmedAt ? 'is-complete' : isClosed ? 'is-closed' : ''}`} aria-labelledby="next-step-heading">
+        <CheckCircle2 size={19} aria-hidden="true" />
+        <div>
+          <span>Next step</span>
+          <h2 id="next-step-heading">{nextStep}</h2>
+          {session.status === 'pending' && !isTeaching && <p>No action is required from you right now.</p>}
+          {session.confirmedAt && <p>{creditLabel} transferred.</p>}
+        </div>
+        {isTeaching && session.status === 'pending' && <button className="btn btn-primary btn-sm" type="button" disabled={actionLoading} onClick={() => runStatusAction('accepted')}>Accept request</button>}
+        {isTeaching && session.status === 'accepted' && <button className="btn btn-primary btn-sm" type="button" disabled={actionLoading} onClick={() => runStatusAction('completed')}>Complete session</button>}
+        {!isTeaching && session.status === 'completed' && !session.confirmedAt && <button className="btn btn-primary btn-sm" type="button" disabled={actionLoading} onClick={handleConfirm}>Confirm completion and transfer {creditLabel}</button>}
       </section>
 
       <div className="session-room-layout">
         <main className="session-room-main">
-          <section className="card session-room-section" aria-labelledby="details-heading">
+          <section className="card session-room-section session-details-panel" aria-labelledby="details-heading">
             <h2 id="details-heading">Session details</h2>
             <dl className="session-details-grid">
-              <div><dt><Calendar size={16} /> Date and time</dt><dd>{scheduledLabel || 'Not scheduled'}</dd></div>
-              <div><dt><MapPin size={16} /> Method</dt><dd>{session.meetingMethod === 'online' ? 'Online' : session.meetingMethod === 'in-person' ? 'In person' : 'Not recorded'}</dd></div>
               <div><dt><UserRound size={16} /> Other participant</dt><dd>{counterpart?.name || 'Peer student'}</dd></div>
-              <div><dt><Coins size={16} /> Credits</dt><dd>{session.creditAmount} credit{session.creditAmount === 1 ? '' : 's'} transferred after confirmation</dd></div>
+              <div><dt><Calendar size={16} /> Date and time</dt><dd>{scheduledLabel || 'Not scheduled'}</dd></div>
+              <div><dt><MapPin size={16} /> Method</dt><dd>{meetingMethodLabel}</dd></div>
+              <div><dt><Coins size={16} /> Credits</dt><dd>{creditLabel} transferred after confirmation</dd></div>
             </dl>
+
+            <div className="session-request-message">
+              <h3>Request message</h3>
+              <blockquote>{session.requestMessage || 'No request message was recorded for this older session.'}</blockquote>
+            </div>
 
             {session.meetingMethod === 'online' && session.meetingLink && (
               <div className="session-meeting-result">
@@ -320,18 +345,17 @@ const SessionRoom = ({ id }) => {
             )}
           </section>
 
-          <section className="card session-room-section" aria-labelledby="request-heading">
-            <h2 id="request-heading">Request message</h2>
-            <blockquote>{session.requestMessage || 'No request message was recorded for this older session.'}</blockquote>
-          </section>
-
-          <section className="card session-room-section" aria-labelledby="messages-heading">
+          <section className={`card session-room-section session-messages-panel ${messagesAvailable ? '' : 'is-unavailable'}`} aria-labelledby="messages-heading">
             <div className="session-section-heading">
-              <div><MessageSquare size={18} /><h2 id="messages-heading">Session messages</h2></div>
-              <button type="button" className="btn btn-ghost btn-sm" onClick={() => refreshRoom()} disabled={refreshing || actionLoading}>
-                <RefreshCw size={14} /> {refreshing ? 'Refreshing...' : 'Refresh session'}
+              <div>
+                <MessageSquare size={18} aria-hidden="true" />
+                <div><h2 id="messages-heading">Messages</h2>{messagesAvailable && <p>Coordinate the details of your session.</p>}</div>
+              </div>
+              <button type="button" className="btn btn-ghost btn-sm" aria-label="Refresh session" onClick={() => refreshRoom()} disabled={refreshing || actionLoading}>
+                <RefreshCw size={14} /> {refreshing ? 'Refreshing...' : 'Refresh'}
               </button>
             </div>
+            <p className="session-refresh-note">Updates automatically every 5 seconds while this page is visible.</p>
             {!messagesAvailable ? (
               <p className="session-muted-copy">Messages become available after the Tutor accepts this session.</p>
             ) : refreshing && messages.length === 0 ? (
@@ -369,7 +393,7 @@ const SessionRoom = ({ id }) => {
 
           {ratingSubmitted && <Alert type="success" message="Your review for this session has been submitted." />}
           {session.confirmedAt && session.creditsSettledAt && !ratingSubmitted && (
-            <section className="card session-room-section" aria-labelledby="review-heading">
+            <section className="card session-room-section session-review-panel" aria-labelledby="review-heading">
               <h2 id="review-heading">Review your peer</h2>
               <form onSubmit={handleRating}>
                 <div className="form-group rating-form-stars"><label className="form-label">Star rating</label><StarRating rating={ratingStars} readOnly={false} size={28} onChange={setRatingStars} /><span>{ratingStars} out of 5</span></div>
@@ -381,22 +405,20 @@ const SessionRoom = ({ id }) => {
         </main>
 
         <aside className="session-room-sidebar">
-          <section className="card session-room-section" aria-labelledby="progress-heading">
+          <section className="card session-room-section session-progress-panel" aria-labelledby="progress-heading">
             <h2 id="progress-heading">Session progress</h2>
             <ol className="session-progress">
-              <li className="is-done"><span><Check size={14} /></span><div><strong>Requested</strong><small>Session details proposed</small></div></li>
-              <li className={acceptedReached ? 'is-done' : isClosed ? 'is-stopped' : 'is-current'}><span>{acceptedReached ? <Check size={14} /> : '2'}</span><div><strong>Accepted</strong><small>{acceptedReached ? 'Tutor accepted' : 'Waiting for Tutor'}</small></div></li>
-              <li className={completedReached ? 'is-done' : acceptedReached ? 'is-current' : ''}><span>{completedReached ? <Check size={14} /> : '3'}</span><div><strong>Session completed</strong><small>Tutor marks it finished</small></div></li>
-              <li className={session.confirmedAt ? 'is-done' : completedReached ? 'is-current' : ''}><span>{session.confirmedAt ? <Check size={14} /> : '4'}</span><div><strong>Confirmed</strong><small>Learner releases credits</small></div></li>
+              <li className={session.status === 'pending' ? 'is-current' : 'is-done'} aria-current={session.status === 'pending' ? 'step' : undefined}><span>{session.status === 'pending' ? '1' : <Check size={14} />}</span><div><strong>Requested</strong><small>Session details proposed</small></div></li>
+              <li className={session.status === 'accepted' ? 'is-current' : acceptedReached ? 'is-done' : isClosed ? 'is-stopped' : ''} aria-current={session.status === 'accepted' ? 'step' : undefined}><span>{acceptedReached && session.status !== 'accepted' ? <Check size={14} /> : '2'}</span><div><strong>Accepted</strong><small>{acceptedReached ? 'Tutor accepted' : 'Waiting for Tutor'}</small></div></li>
+              <li className={completedReached ? 'is-done' : ''}><span>{completedReached ? <Check size={14} /> : '3'}</span><div><strong>Session completed</strong><small>Tutor marks it finished</small></div></li>
+              <li className={session.confirmedAt ? 'is-done' : completedReached ? 'is-current' : ''} aria-current={!session.confirmedAt && completedReached ? 'step' : undefined}><span>{session.confirmedAt ? <Check size={14} /> : '4'}</span><div><strong>Confirmed</strong><small>Learner releases credits</small></div></li>
             </ol>
           </section>
 
-          {!isClosed && !session.confirmedAt && (
+          {hasSecondaryActions && !isClosed && (
             <section className="card session-room-section session-actions-panel" aria-labelledby="actions-heading">
-              <h2 id="actions-heading">Available actions</h2>
-              {isTeaching && session.status === 'pending' && <><button className="btn btn-primary" type="button" disabled={actionLoading} onClick={() => runStatusAction('accepted')}>Accept request</button><button className="btn btn-danger" type="button" disabled={actionLoading} onClick={() => runStatusAction('rejected')}>Decline request</button></>}
-              {isTeaching && session.status === 'accepted' && <button className="btn btn-navy" type="button" disabled={actionLoading} onClick={() => runStatusAction('completed')}>Complete session</button>}
-              {!isTeaching && session.status === 'completed' && <button className="btn btn-primary" type="button" disabled={actionLoading} onClick={handleConfirm}>Confirm completion and transfer {session.creditAmount} credit{session.creditAmount === 1 ? '' : 's'}</button>}
+              <h2 id="actions-heading">Actions</h2>
+              {isTeaching && session.status === 'pending' && <button className="btn btn-ghost session-destructive-action" type="button" disabled={actionLoading} onClick={() => runStatusAction('rejected')}>Decline request</button>}
               {isTeaching && session.status === 'completed' && <p>Waiting for learner confirmation. No credits have transferred yet.</p>}
               {(session.status === 'pending' || session.status === 'accepted') && <button className="btn btn-ghost session-cancel-action" type="button" disabled={actionLoading} onClick={() => runStatusAction('cancelled')}>Cancel session</button>}
             </section>

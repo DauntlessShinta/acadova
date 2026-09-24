@@ -11,6 +11,8 @@ import AboutPage from './pages/AboutPage';
 import FeaturesPage from './pages/FeaturesPage';
 import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
+import VerificationPendingPage from './pages/VerificationPendingPage';
+import VerifyEmailPage from './pages/VerifyEmailPage';
 
 // Authenticated Pages
 import DashboardPage from './pages/DashboardPage';
@@ -43,6 +45,8 @@ export const App = () => {
       <Route element={<AuthLayout />}>
         <Route path="/login" element={<LoginPage />} />
         <Route path="/register" element={<RegisterPage />} />
+        <Route path="/verify-email/pending" element={<VerificationPendingPage />} />
+        <Route path="/verify-email" element={<VerifyEmailPage />} />
       </Route>
 
       {/* Student peer-learning routes */}

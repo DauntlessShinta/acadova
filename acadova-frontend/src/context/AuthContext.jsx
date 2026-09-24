@@ -89,25 +89,8 @@ export const AuthProvider = ({ children }) => {
   };
 
   const register = async (formData) => {
-    const res = await authService.register(formData);
-    if (res && res.success && res.data) {
-      const { token: newToken, user: userData } = res.data;
-      localStorage.setItem('acadova_token', newToken);
-      localStorage.setItem('acadova_user', JSON.stringify(userData));
-      setToken(newToken);
-      setUser(userData);
-      try {
-        const fullProfile = await userService.getMe();
-        if (fullProfile?.data) {
-          setUser(fullProfile.data);
-          localStorage.setItem('acadova_user', JSON.stringify(fullProfile.data));
-        }
-      } catch {
-        // use basic userData
-      }
-      return res;
-    }
-    throw new Error(res?.message || 'Registration failed');
+    // Registration creates an unverified account; only login can establish a session.
+    return authService.register(formData);
   };
 
   const value = {

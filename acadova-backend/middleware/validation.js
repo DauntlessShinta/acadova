@@ -1,6 +1,7 @@
 const mongoose = require('mongoose');
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const VERIFICATION_TOKEN_REGEX = /^[a-f0-9]{64}$/;
 const OBJECT_ID_REGEX = /^[a-f\d]{24}$/i;
 const ISO_DATE_TIME_REGEX = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})(?::(\d{2})(?:\.\d{1,3})?)?(Z|[+-]\d{2}:\d{2})$/;
 
@@ -58,8 +59,36 @@ const emailAddress = (value) => {
   return clean;
 };
 
-const password = (value) => {
-  if (!isValidPassword(value)) throw new InvalidInput('Password must be 6 to 128 characters.');
+const fullName = (value) => {
+  if (typeof value !== 'string' || /[\p{Cc}\p{Cf}]/u.test(value)) {
+    throw new InvalidInput('Enter a valid full name.');
+  }
+  const clean = value.trim().replace(/ +/g, ' ');
+  if (clean.length < 2 || clean.length > 100 || !/^[\p{L}\p{M}\p{N} .\p{Pd}'\u2019]+$/u.test(clean)) {
+    throw new InvalidInput('Enter a valid full name (2 to 100 characters).');
+  }
+  return clean;
+};
+
+const registrationPassword = (value) => {
+  if (!isValidPassword(value)) {
+    throw new InvalidInput('Password must be 8 to 64 characters, at most 72 UTF-8 bytes, with uppercase, lowercase, number, and special character.');
+  }
+  return value;
+};
+
+const loginPassword = (value) => {
+  // Existing accounts may have passwords created under the older policy.
+  if (typeof value !== 'string' || value.length < 1 || value.length > 128) {
+    throw new InvalidInput('A password is required.');
+  }
+  return value;
+};
+
+const verificationToken = (value) => {
+  if (typeof value !== 'string' || !VERIFICATION_TOKEN_REGEX.test(value)) {
+    throw new InvalidInput('This verification link is invalid.');
+  }
   return value;
 };
 
@@ -154,12 +183,16 @@ const validationErrorHandler = (err, req, res, next) => {
 };
 
 function isValidEmail(email) {
-  return typeof email === 'string' && email.length <= 254 && EMAIL_REGEX.test(email);
+  return typeof email === 'string' && email.length <= 254 && EMAIL_REGEX.test(email)
+    && !/[\p{Cc}\p{Cf}]/u.test(email);
 }
 
 function isValidPassword(password) {
-  // Kept intentionally simple for a college project: length is the main bar.
-  return typeof password === 'string' && password.length >= 6 && password.length <= 128 && password.trim().length > 0;
+  return typeof password === 'string' && password.length >= 8 && password.length <= 64
+    && Buffer.byteLength(password, 'utf8') <= 72
+    && /[A-Z]/.test(password) && /[a-z]/.test(password) && /[0-9]/.test(password)
+    && /[^A-Za-z0-9\s]/.test(password)
+    && !/[\p{Cc}\p{Cf}]/u.test(password);
 }
 
 function isValidRating(value) {
@@ -176,10 +209,11 @@ function isValidObjectId(id) {
 
 const schemas = {
   register: {
-    name: requiredText('Name', 80, 2), email: emailAddress, password,
-    skillsToTeach: optional(skills('Teaching skills')), skillsToLearn: optional(skills('Learning skills')),
+    name: fullName, email: emailAddress, password: registrationPassword,
   },
-  login: { email: emailAddress, password },
+  login: { email: emailAddress, password: loginPassword },
+  verifyEmail: { token: verificationToken },
+  resendVerification: { email: emailAddress },
   profile: {
     name: optional(requiredText('Name', 80, 2)),
     skillsToTeach: optional(skills('Teaching skills')),

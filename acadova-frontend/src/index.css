@@ -2590,6 +2590,33 @@ textarea:focus-visible {
   font-weight: 400;
 }
 
+.auth-password-requirements {
+  display: grid;
+  gap: 4px;
+  margin: 4px 0 0;
+  padding: 0;
+  list-style: none;
+  color: var(--ink-500);
+  font-size: 0.8rem;
+}
+
+.auth-password-requirements li {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.auth-password-requirements li > span {
+  display: inline-flex;
+  width: 15px;
+  justify-content: center;
+}
+
+.auth-password-requirements .is-met {
+  color: var(--acadova-primary);
+  font-weight: 600;
+}
+
 /* Phase 2.4: dedicated staff workspaces */
 .staff-workspace {
   display: grid;

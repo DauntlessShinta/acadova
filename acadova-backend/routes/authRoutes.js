@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { register, login } = require('../controllers/authController');
+const { register, login, verifyEmail, resendVerification } = require('../controllers/authController');
 const { createRateLimiter } = require('../middleware/rateLimiter');
 const { validateBody, validateQuery, schemas } = require('../middleware/validation');
 
@@ -15,5 +15,9 @@ const authLimiter = createRateLimiter({
 router.use(validateQuery());
 router.post('/register', authLimiter, validateBody(schemas.register), register);
 router.post('/login', authLimiter, validateBody(schemas.login), login);
+router.post('/verify-email', authLimiter, validateBody(schemas.verifyEmail), verifyEmail);
+const resendLimiter = createRateLimiter({ windowMs: 15 * 60 * 1000, max: 5,
+  message: 'Too many requests, please try again later' });
+router.post('/resend-verification', resendLimiter, validateBody(schemas.resendVerification), resendVerification);
 
 module.exports = router;

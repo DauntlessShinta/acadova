@@ -34,6 +34,11 @@ export const LoginPage = () => {
       const response = await login(email.trim(), password);
       navigate(getRoleHomeRoute(response?.data?.user?.role), { replace: true });
     } catch (err) {
+      if (err.data?.code === 'EMAIL_VERIFICATION_REQUIRED') {
+        sessionStorage.setItem('acadova_pending_email', email.trim().toLowerCase());
+        navigate('/verify-email/pending', { replace: true, state: { email: email.trim().toLowerCase() } });
+        return;
+      }
       setError(loginError(err));
     } finally { setSubmitting(false); }
   };

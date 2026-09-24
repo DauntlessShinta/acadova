@@ -1,15 +1,10 @@
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { ArrowRight, Eye, EyeOff } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import Alert from '../components/common/Alert';
 import { getRoleHomeRoute } from '../config/roleNavigation';
-
-const loginError = (error) => {
-  if (error.status === 401) return 'Email or password is incorrect.';
-  if (error.status >= 500) return 'Acadova is temporarily unavailable. Please try again.';
-  return error.data?.message || 'Unable to sign in. Please try again.';
-};
+import { isVerificationRequired, loginErrorMessage, normalizeEmail } from '../utils/authForm';
 
 export const LoginPage = () => {
   const { login } = useAuth();
@@ -20,9 +15,11 @@ export const LoginPage = () => {
   const [error, setError] = useState('');
   const [fields, setFields] = useState({});
   const [submitting, setSubmitting] = useState(false);
+  const submittingRef = useRef(false);
 
   const handleSubmit = async (event) => {
     event.preventDefault();
+    if (submittingRef.current) return;
     const next = {};
     if (!email.trim()) next.email = 'Enter your email address.';
     if (!password) next.password = 'Enter your password.';
@@ -30,17 +27,19 @@ export const LoginPage = () => {
     setError('');
     if (Object.keys(next).length) return;
     try {
+      submittingRef.current = true;
       setSubmitting(true);
-      const response = await login(email.trim(), password);
+      const response = await login(normalizeEmail(email), password);
       navigate(getRoleHomeRoute(response?.data?.user?.role), { replace: true });
     } catch (err) {
-      if (err.data?.code === 'EMAIL_VERIFICATION_REQUIRED') {
-        sessionStorage.setItem('acadova_pending_email', email.trim().toLowerCase());
-        navigate('/verify-email/pending', { replace: true, state: { email: email.trim().toLowerCase() } });
+      if (isVerificationRequired(err)) {
+        const pendingEmail = normalizeEmail(email);
+        sessionStorage.setItem('acadova_pending_email', pendingEmail);
+        navigate('/verify-email/pending', { replace: true, state: { email: pendingEmail } });
         return;
       }
-      setError(loginError(err));
-    } finally { setSubmitting(false); }
+      setError(loginErrorMessage(err));
+    } finally { submittingRef.current = false; setSubmitting(false); }
   };
 
   return <>

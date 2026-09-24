@@ -2617,6 +2617,21 @@ textarea:focus-visible {
   font-weight: 600;
 }
 
+.auth-inline-button {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--acadova-action);
+  font: inherit;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.auth-inline-button:focus-visible {
+  outline: 2px solid var(--acadova-action);
+  outline-offset: 3px;
+}
+
 /* Phase 2.4: dedicated staff workspaces */
 .staff-workspace {
   display: grid;

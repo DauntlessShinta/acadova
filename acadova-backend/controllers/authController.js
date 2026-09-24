@@ -71,7 +71,7 @@ exports.verifyEmail = async (req, res) => {
     return res.status(expired ? 410 : 400).json({
       success: false,
       code: expired ? 'VERIFICATION_EXPIRED' : 'VERIFICATION_INVALID',
-      message: expired ? 'This verification link has expired.' : 'This verification link is invalid.',
+      message: expired ? 'This verification link has expired.' : 'This verification link is invalid or has already been used.',
     });
   } catch {
     logSecurityEvent('auth.verification_failed', req, { status: 500 });

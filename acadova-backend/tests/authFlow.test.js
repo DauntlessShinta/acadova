@@ -3,6 +3,7 @@ const assert = require('node:assert/strict');
 const { randomBytes } = require('node:crypto');
 const express = require('express');
 const jwt = require('jsonwebtoken');
+const bcrypt = require('bcryptjs');
 const User = require('../models/User');
 const emailService = require('../services/emailService');
 const { hashVerificationToken } = require('../utils/verificationTokens');
@@ -93,7 +94,7 @@ test('email verification account flow without MongoDB or Gmail', async (t) => {
       assert.equal(user.emailVerificationTokenHash, hashVerificationToken(sent[0].token));
       assert.notEqual(user.emailVerificationTokenHash, sent[0].token);
       assert.ok(user.emailVerificationExpires > new Date());
-      assert.equal((await call('/api/protected'.replace('/api', ''), undefined,
+      assert.equal((await call('/protected', undefined,
         { authorization: `Bearer ${jwt.sign({ id: user._id, role: 'admin' }, process.env.JWT_SECRET)}` })).status, 403);
     });
     await t.test('duplicate email and role injection are rejected', async () => {
@@ -131,6 +132,22 @@ test('email verification account flow without MongoDB or Gmail', async (t) => {
       assert.equal(result.status, 200);
       assert.equal(result.data.data.user.role, 'student');
       assert.equal(jwt.verify(result.data.data.token, process.env.JWT_SECRET).role, 'student');
+    });
+    await t.test('legacy moderator without verification field keeps old password and RBAC access', async () => {
+      const legacyPassword = 'legacy-password';
+      const legacy = {
+        _id: '507f1f77bcf86cd799439018', name: 'Demo moderator',
+        email: 'legacy@example.test', role: 'moderator', credits: 2,
+        password: await bcrypt.hash(legacyPassword, 4),
+      };
+      accounts.set(legacy.email, legacy);
+      const result = await call('/auth/login', { email: ' LEGACY@EXAMPLE.TEST ', password: legacyPassword });
+      assert.equal(result.status, 200);
+      assert.equal(result.data.data.user.role, 'moderator');
+      assert.equal(jwt.verify(result.data.data.token, process.env.JWT_SECRET).role, 'moderator');
+      const studentOnly = await call('/protected', undefined,
+        { authorization: `Bearer ${result.data.data.token}` });
+      assert.equal(studentOnly.status, 403);
     });
     await t.test('resend replaces old token and gives an enumeration-safe response', async () => {
       const secondEmail = 'second@example.test';

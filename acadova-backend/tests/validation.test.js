@@ -21,9 +21,35 @@ const validSession = {
   creditAmount: 1,
 };
 const validRegistration = {
-  name: 'User A', email: 'user@example.test', password: 'example-password',
-  skillsToTeach: ['Java'], skillsToLearn: ['React'],
+  name: 'User A', email: 'user@example.test', password: 'Example1!',
 };
+
+const invalidPasswords = [
+  ['short', 'Aa1!aaa'],
+  ['missing uppercase', 'password1!'],
+  ['missing lowercase', 'PASSWORD1!'],
+  ['missing number', 'Password!'],
+  ['missing special', 'Password1'],
+  ['over 64 characters', `Password1!${'a'.repeat(56)}`],
+  ['over 72 UTF-8 bytes', `Password1!${'é'.repeat(32)}`],
+];
+
+for (const [label, value] of invalidPasswords) {
+  test(`registration rejects password ${label}`, () => {
+    const { res, downstreamCalls } = inspect(validateBody(schemas.register), 'body', {
+      ...validRegistration, password: value,
+    });
+    assert.equal(res.statusCode, 400);
+    assert.equal(downstreamCalls, 0);
+  });
+}
+
+test('registration accepts valid composition and login accepts legacy composition', () => {
+  assert.equal(inspect(validateBody(schemas.register), 'body', validRegistration).downstreamCalls, 1);
+  assert.equal(inspect(validateBody(schemas.login), 'body', {
+    email: ' USER@EXAMPLE.TEST ', password: 'legacy-password',
+  }).downstreamCalls, 1);
+});
 
 function inspect(middleware, source, value) {
   const req = { body: {}, params: {}, query: {} };
@@ -44,17 +70,18 @@ function inspect(middleware, source, value) {
 const invalidCases = [
   ['invalid registration email', 'body', validateBody(schemas.register), { ...validRegistration, email: 'not-an-email' }],
   ['blank registration name', 'body', validateBody(schemas.register), { ...validRegistration, name: '   ' }],
-  ['overlong registration name', 'body', validateBody(schemas.register), { ...validRegistration, name: 'x'.repeat(81) }],
+  ['overlong registration name', 'body', validateBody(schemas.register), { ...validRegistration, name: 'x'.repeat(101) }],
+  ['control character in registration name', 'body', validateBody(schemas.register), { ...validRegistration, name: 'User\nA' }],
+  ['malformed registration name', 'body', validateBody(schemas.register), { ...validRegistration, name: '<script>' }],
   ['unexpected registration role', 'body', validateBody(schemas.register), { ...validRegistration, role: 'admin' }],
-  ['invalid skills array', 'body', validateBody(schemas.register), { ...validRegistration, skillsToTeach: 'Java' }],
-  ['invalid array element type', 'body', validateBody(schemas.register), { ...validRegistration, skillsToLearn: [42] }],
+  ['unexpected registration skill field', 'body', validateBody(schemas.register), { ...validRegistration, skillsToTeach: ['Java'] }],
   ['blank skill', 'body', validateBody(schemas.profile, { requireOne: true }), { skillsToTeach: ['  '] }],
   ['overlong skill', 'body', validateBody(schemas.profile, { requireOne: true }), { skillsToTeach: ['x'.repeat(51)] }],
   ['empty profile patch', 'body', validateBody(schemas.profile, { requireOne: true }), {}],
   ['malformed login body', 'body', validateBody(schemas.login), ['user@example.test', 'password']],
   ['missing login password', 'body', validateBody(schemas.login), { email: 'user@example.test' }],
   ['unexpected login field type', 'body', validateBody(schemas.login), { email: { $ne: null }, password: 'example-password' }],
-  ['unexpected login body field', 'body', validateBody(schemas.login), { email: 'user@example.test', password: 'example-password', role: 'admin' }],
+  ['unexpected login body field', 'body', validateBody(schemas.login), { email: 'user@example.test', password: 'Example1!', role: 'admin' }],
   ['invalid user ID', 'params', validateParams(schemas.userId), { id: 'not-an-id' }],
   ['invalid session ID', 'params', validateParams(schemas.sessionId), { id: { $ne: null } }],
   ['invalid review ID', 'params', validateParams(schemas.reviewId), { id: 'abc' }],
@@ -94,12 +121,12 @@ for (const [label, source, middleware, value] of invalidCases) {
 
 test('valid values are normalized and reach downstream work', () => {
   const registration = inspect(validateBody(schemas.register), 'body', {
-    ...validRegistration, name: '  User A  ', email: ' USER@EXAMPLE.TEST ', skillsToTeach: [' Java '],
+    ...validRegistration, name: '  User   A  ', email: ' USER@EXAMPLE.TEST ',
   });
   assert.equal(registration.downstreamCalls, 1);
   assert.equal(registration.req.body.name, 'User A');
   assert.equal(registration.req.body.email, 'user@example.test');
-  assert.deepEqual(registration.req.body.skillsToTeach, ['Java']);
+  assert.equal(registration.req.body.password, validRegistration.password);
   const session = inspect(validateBody(schemas.session), 'body', validSession);
   assert.equal(session.downstreamCalls, 1);
   assert.equal(session.req.body.scheduledAt, validSession.scheduledAt);

@@ -4,6 +4,9 @@ import PublicLayout from './layouts/PublicLayout';
 import AppLayout from './layouts/AppLayout';
 import StaffLayout from './layouts/StaffLayout';
 import AuthLayout from './layouts/AuthLayout';
+import { useAuth } from './context/AuthContext';
+import { getRoleHomeRoute } from './config/roleNavigation';
+import LoadingSpinner from './components/common/LoadingSpinner';
 
 // Public Pages
 import LandingPage from './pages/LandingPage';
@@ -11,6 +14,8 @@ import AboutPage from './pages/AboutPage';
 import FeaturesPage from './pages/FeaturesPage';
 import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
+import VerificationPendingPage from './pages/VerificationPendingPage';
+import VerifyEmailPage from './pages/VerifyEmailPage';
 
 // Authenticated Pages
 import DashboardPage from './pages/DashboardPage';
@@ -30,6 +35,12 @@ import AdminModerationPage from './pages/admin/AdminModerationPage';
 import ModeratorOverviewPage from './pages/moderator/ModeratorOverviewPage';
 import ModeratorReviewsPage from './pages/moderator/ModeratorReviewsPage';
 
+const GuestOnly = ({ children }) => {
+  const { isAuthenticated, loading, user } = useAuth();
+  if (loading) return <LoadingSpinner text="Checking account access..." size={34} />;
+  return isAuthenticated ? <Navigate to={getRoleHomeRoute(user?.role)} replace /> : children;
+};
+
 export const App = () => {
   return (
     <Routes>
@@ -41,8 +52,10 @@ export const App = () => {
       </Route>
 
       <Route element={<AuthLayout />}>
-        <Route path="/login" element={<LoginPage />} />
-        <Route path="/register" element={<RegisterPage />} />
+        <Route path="/login" element={<GuestOnly><LoginPage /></GuestOnly>} />
+        <Route path="/register" element={<GuestOnly><RegisterPage /></GuestOnly>} />
+        <Route path="/verify-email/pending" element={<VerificationPendingPage />} />
+        <Route path="/verify-email" element={<VerifyEmailPage />} />
       </Route>
 
       {/* Student peer-learning routes */}

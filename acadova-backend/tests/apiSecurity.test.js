@@ -50,10 +50,10 @@ test('API protection and role boundaries work without a database connection', as
       } : null;
     } }),
   });
-  User.findOne = async ({ email }) => email === 'learner@example.test' ? {
+  User.findOne = ({ email }) => ({ lean: async () => email === 'learner@example.test' ? {
     _id: learnerId, name: 'Learner', email, role: 'student', credits: 2,
     password: bcrypt.hashSync(password, 4),
-  } : null;
+  } : null });
   User.find = (filter) => filter
     ? { select: () => ({ sort: () => ({ limit: async () => [] }) }) }
     : { select: () => ({ sort: async () => [] }) };

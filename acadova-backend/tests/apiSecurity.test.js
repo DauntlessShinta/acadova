@@ -7,7 +7,6 @@ const bcrypt = require('bcryptjs');
 const User = require('../models/User');
 const Session = require('../models/Session');
 const Rating = require('../models/Rating');
-const { securityHeaders, corsMiddleware } = require('../middleware/httpSecurity');
 const { validationErrorHandler } = require('../middleware/validation');
 const { apiNotFound, unexpectedError } = require('../middleware/apiErrors');
 
@@ -20,6 +19,10 @@ const sessionId = '507f1f77bcf86cd799439016';
 
 test('API protection and role boundaries work without a database connection', async (t) => {
   const previousSecret = process.env.JWT_SECRET;
+  const previousFrontendUrl = process.env.FRONTEND_URL;
+  const productionOrigin = 'https://acadova-ze91.onrender.com';
+  process.env.FRONTEND_URL = `${productionOrigin}/`;
+  const { securityHeaders, corsMiddleware } = require('../middleware/httpSecurity');
   const originalFindById = User.findById;
   const originalFindOne = User.findOne;
   const originalFind = User.find;
@@ -181,8 +184,11 @@ test('API protection and role boundaries work without a database connection', as
     await t.test('login response excludes password and JWT has only minimal claims', async () => {
       const result = await call('/auth/login', {
         method: 'POST', body: { email: 'learner@example.test', password },
+        headers: { origin: productionOrigin },
       });
       assert.equal(result.response.status, 200);
+      assert.equal(result.response.headers.get('access-control-allow-origin'), productionOrigin);
+      assert.equal(result.response.headers.get('access-control-allow-credentials'), null);
       assert.equal(result.data.data.user.password, undefined);
       assert.doesNotMatch(JSON.stringify(result.data.data.user), /do-not-log-this-password/);
       assert.deepEqual(Object.keys(jwt.decode(result.data.data.token)).sort(), ['exp', 'iat', 'id', 'role']);
@@ -212,6 +218,50 @@ test('API protection and role boundaries work without a database connection', as
       assert.equal(denied.response.status, 403);
       assert.equal(denied.response.headers.get('access-control-allow-origin'), null);
       assert.equal(denied.data.message, 'Origin not allowed');
+    });
+    await t.test('originless API tools can authenticate without CORS response headers', async () => {
+      const result = await call('/users/tutors', { token: tokenFor(learnerId) });
+      assert.equal(result.response.status, 200);
+      assert.equal(result.response.headers.get('access-control-allow-origin'), null);
+    });
+    await t.test('production preflight allows required methods and bearer authorization before authentication', async () => {
+      const before = accountLookups;
+      const methods = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'];
+      for (const method of methods) {
+        const response = await fetch(`${base}/auth/login`, {
+          method: 'OPTIONS',
+          headers: {
+            origin: productionOrigin,
+            'access-control-request-method': method,
+            'access-control-request-headers': 'content-type,authorization',
+          },
+        });
+        assert.equal(response.status, 204);
+        assert.equal(await response.text(), '');
+        assert.equal(response.headers.get('access-control-allow-origin'), productionOrigin);
+        assert.deepEqual(response.headers.get('access-control-allow-methods').split(','), methods);
+        assert.deepEqual(response.headers.get('access-control-allow-headers').toLowerCase().split(','),
+          ['content-type', 'authorization']);
+        assert.equal(response.headers.get('access-control-allow-credentials'), null);
+        assert.match(response.headers.get('vary'), /\bOrigin\b/i);
+        assert.equal(response.headers.get('x-content-type-options'), 'nosniff');
+      }
+      assert.equal(accountLookups, before);
+    });
+    await t.test('production CORS preserves JWT protection on actual requests', async () => {
+      const result = await call('/sessions', { headers: { origin: productionOrigin } });
+      assert.equal(result.response.status, 401);
+      assert.equal(result.response.headers.get('access-control-allow-origin'), productionOrigin);
+    });
+    await t.test('preflight rejects unauthorized and lookalike frontend origins', async () => {
+      for (const origin of ['https://not-acadova.example', `${productionOrigin}.evil.example`, 'null']) {
+        const result = await call('/auth/login', {
+          method: 'OPTIONS', headers: { origin, 'access-control-request-method': 'POST' },
+        });
+        assert.equal(result.response.status, 403);
+        assert.equal(result.response.headers.get('access-control-allow-origin'), null);
+        assert.deepEqual(result.data, { success: false, message: 'Origin not allowed' });
+      }
     });
     await t.test('message writes are limited per account without blocking room reads', async () => {
       const token = tokenFor(learnerId);
@@ -243,6 +293,8 @@ test('API protection and role boundaries work without a database connection', as
       assert.doesNotMatch(logs.join('\n'), /do-not-log-this-password|Bearer |mongodb:\/\/private-host/);
     });
   } finally {
+    if (previousFrontendUrl === undefined) delete process.env.FRONTEND_URL;
+    else process.env.FRONTEND_URL = previousFrontendUrl;
     if (previousSecret === undefined) delete process.env.JWT_SECRET;
     else process.env.JWT_SECRET = previousSecret;
     User.findById = originalFindById;

@@ -34,7 +34,7 @@ app.use(express.static(path.join(__dirname, 'public')));
 
 // Database Connection
 mongoose.connect(process.env.MONGO_URI, {
-  dbname: "acadova",
+  dbName: "acadova",
   serverSelectionTimeoutMS: 5000,
   family: 4
 })

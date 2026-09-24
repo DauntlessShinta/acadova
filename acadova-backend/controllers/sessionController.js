@@ -19,6 +19,9 @@ const SESSION_POPULATE = [
   { path: 'tutor', select: 'name' },
 ];
 
+const sameUser = (left, right) => String(left).toLowerCase() === String(right).toLowerCase();
+const changedSessionMessage = 'This session has already changed. Refresh and try again.';
+
 const participantFlags = (session, userId) => ({
   isLearner: session.learner.toString() === userId,
   isTutor: session.tutor.toString() === userId,
@@ -80,7 +83,7 @@ exports.createSession = async (req, res) => {
     if (!isPositiveCreditAmount(amount)) {
       return res.status(400).json({ success: false, message: 'Credit amount must be a positive number.' });
     }
-    if (tutorId === req.user.id) {
+    if (sameUser(tutorId, req.user.id)) {
       return res.status(400).json({ success: false, message: 'You cannot request a session with yourself.' });
     }
 
@@ -157,10 +160,17 @@ exports.updateSessionStatus = async (req, res) => {
       return res.status(400).json({ success: false, message: 'Add a meeting location before completing the in-person session.' });
     }
 
-    session.status = status;
-    if (status === 'completed') session.completedAt = new Date();
-    await session.save();
-    await session.populate(SESSION_POPULATE);
+    const changes = { status };
+    if (status === 'completed') changes.completedAt = new Date();
+    const updatedSession = await Session.findOneAndUpdate(
+      { _id: session._id, status: session.status },
+      { $set: changes },
+      { new: true, runValidators: true }
+    );
+    if (!updatedSession) {
+      return res.status(409).json({ success: false, message: changedSessionMessage });
+    }
+    await updatedSession.populate(SESSION_POPULATE);
 
     const message = status === 'completed'
       ? 'Session marked complete. Waiting for learner confirmation.'
@@ -169,7 +179,7 @@ exports.updateSessionStatus = async (req, res) => {
         : status === 'rejected'
           ? 'Session declined.'
           : 'Session cancelled.';
-    res.json({ success: true, message, data: session });
+    res.json({ success: true, message, data: updatedSession });
   } catch (error) {
     res.status(500).json({ success: false, message: 'Session status could not be updated.' });
   }
@@ -185,30 +195,36 @@ exports.updateCoordination = async (req, res) => {
       return res.status(400).json({ success: false, message: 'Meeting details can be updated after the session is accepted.' });
     }
 
+    let changes;
     if (session.meetingMethod === 'online') {
       const meetingLink = typeof req.body.meetingLink === 'string' ? req.body.meetingLink.trim() : '';
       if (!meetingLink || !isHttpsUrl(meetingLink)) {
         return res.status(400).json({ success: false, message: 'Enter a valid HTTPS meeting link.' });
       }
       if (meetingLink.length > 500) return res.status(400).json({ success: false, message: 'Meeting link must be 500 characters or fewer.' });
-      session.meetingLink = meetingLink;
-      session.location = undefined;
+      changes = { $set: { meetingLink }, $unset: { location: 1 } };
     } else if (session.meetingMethod === 'in-person') {
       const location = typeof req.body.location === 'string' ? req.body.location.trim() : '';
       if (!location) return res.status(400).json({ success: false, message: 'Enter the in-person meeting location.' });
       if (location.length > 300) return res.status(400).json({ success: false, message: 'Location must be 300 characters or fewer.' });
-      session.location = location;
-      session.meetingLink = undefined;
+      changes = { $set: { location }, $unset: { meetingLink: 1 } };
     } else {
       return res.status(400).json({ success: false, message: 'This session does not have a valid meeting method.' });
     }
 
-    await session.save();
-    await session.populate(SESSION_POPULATE);
+    const updatedSession = await Session.findOneAndUpdate(
+      { _id: session._id, status: 'accepted', meetingMethod: session.meetingMethod },
+      changes,
+      { new: true, runValidators: true }
+    );
+    if (!updatedSession) {
+      return res.status(409).json({ success: false, message: changedSessionMessage });
+    }
+    await updatedSession.populate(SESSION_POPULATE);
     res.json({
       success: true,
       message: session.meetingMethod === 'online' ? 'Meeting link saved.' : 'Meeting location saved.',
-      data: session,
+      data: updatedSession,
     });
   } catch (error) {
     res.status(500).json({ success: false, message: 'Meeting details could not be saved.' });
@@ -259,6 +275,9 @@ exports.confirmSession = async (req, res) => {
       const { isLearner, isTutor } = participantFlags(session, req.user.id);
       if (!isLearner && !isTutor) throw Object.assign(new Error('You are not part of this session.'), { status: 403 });
       if (!isLearner) throw Object.assign(new Error('Only the Learner can confirm this session.'), { status: 403 });
+      if (sameUser(session.learner, session.tutor)) {
+        throw Object.assign(new Error('A session with the same learner and tutor cannot be confirmed.'), { status: 400 });
+      }
       if (session.status !== 'completed') {
         throw Object.assign(new Error('The Tutor must mark the session complete first.'), { status: 400 });
       }
@@ -266,18 +285,32 @@ exports.confirmSession = async (req, res) => {
         throw Object.assign(new Error('This session has already been confirmed.'), { status: 409 });
       }
 
+      const markConfirmed = async (confirmedAt, creditsSettledAt) => {
+        const result = await Session.updateOne(
+          { _id: session._id, status: 'completed', confirmedAt: null, creditsSettledAt: null },
+          { $set: { confirmedAt, creditsSettledAt } },
+          { session: dbSession }
+        );
+        if (result.matchedCount !== 1) {
+          throw Object.assign(new Error(changedSessionMessage), { status: 409 });
+        }
+        session.confirmedAt = confirmedAt;
+        session.creditsSettledAt = creditsSettledAt;
+      };
+
       // Old development sessions may already have a payment transaction from
       // the previous completion flow. Confirm without moving credits again.
       const existingTransaction = await CreditTransaction.findOne({ session: session._id }).session(dbSession);
       if (existingTransaction) {
         const confirmedAt = new Date();
-        session.confirmedAt = confirmedAt;
-        session.creditsSettledAt = existingTransaction.createdAt || confirmedAt;
-        await session.save({ session: dbSession });
+        await markConfirmed(confirmedAt, existingTransaction.createdAt || confirmedAt);
         settledSession = session;
         alreadySettled = true;
         return;
       }
+
+      const now = new Date();
+      await markConfirmed(now, now);
 
       const learner = await User.findById(session.learner).session(dbSession);
       if (!learner || learner.credits < session.creditAmount) {
@@ -293,16 +326,12 @@ exports.confirmSession = async (req, res) => {
       learner.credits -= session.creditAmount;
       await learner.save({ session: dbSession });
 
-      const now = new Date();
       await CreditTransaction.create([{
         fromUser: session.learner,
         toUser: session.tutor,
         amount: session.creditAmount,
         session: session._id,
       }], { session: dbSession });
-      session.confirmedAt = now;
-      session.creditsSettledAt = now;
-      await session.save({ session: dbSession });
       settledSession = session;
     });
 

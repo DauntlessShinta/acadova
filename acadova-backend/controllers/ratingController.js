@@ -19,6 +19,9 @@ exports.submitRating = async (req, res) => {
     if (!session) {
       return res.status(404).json({ success: false, message: 'Session not found' });
     }
+    if (String(session.learner).toLowerCase() === String(session.tutor).toLowerCase()) {
+      return res.status(400).json({ success: false, message: 'You cannot review yourself.' });
+    }
     if (session.status !== 'completed' || !session.confirmedAt || !session.creditsSettledAt) {
       return res.status(400).json({ success: false, message: 'You can rate this session after the Learner confirms completion.' });
     }
@@ -30,6 +33,9 @@ exports.submitRating = async (req, res) => {
     }
 
     const toUser = isLearner ? session.tutor : session.learner;
+    if (String(toUser).toLowerCase() === String(req.user.id).toLowerCase()) {
+      return res.status(400).json({ success: false, message: 'You cannot review yourself.' });
+    }
 
     const existing = await Rating.findOne({ session: sessionId, fromUser: req.user.id });
     if (existing) {

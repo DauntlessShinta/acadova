@@ -12,7 +12,7 @@ function mapSessions(sessions) {
 // GROUP STAGE
 // Group identical keys together, e.g. "Java" -> [1, 1, 1].
 function groupMappedResults(mappedPairs) {
-  const groups = {};
+  const groups = Object.create(null);
   for (const [key, value] of mappedPairs) {
     if (!groups[key]) groups[key] = [];
     groups[key].push(value);
@@ -23,7 +23,7 @@ function groupMappedResults(mappedPairs) {
 // REDUCE STAGE
 // Sum the values for each key, e.g. "Java" -> 3.
 function reduceGroupedResults(groupedResults) {
-  const totals = {};
+  const totals = Object.create(null);
   for (const key of Object.keys(groupedResults)) {
     totals[key] = groupedResults[key].reduce((sum, value) => sum + value, 0);
   }

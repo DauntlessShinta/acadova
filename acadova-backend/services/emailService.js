@@ -1,7 +1,19 @@
 const nodemailer = require('nodemailer');
 
 function verificationUrlFor(token) {
-  const frontend = new URL(process.env.FRONTEND_URL);
+  const configuredUrl = typeof process.env.FRONTEND_URL === 'string'
+    ? process.env.FRONTEND_URL.trim()
+    : '';
+  if (!configuredUrl) {
+    throw new Error('FRONTEND_URL is required for verification email');
+  }
+
+  let frontend;
+  try {
+    frontend = new URL(configuredUrl);
+  } catch {
+    throw new Error('Invalid frontend URL for verification email');
+  }
   if (frontend.protocol !== 'https:' && !(frontend.protocol === 'http:' && ['localhost', '127.0.0.1'].includes(frontend.hostname))) {
     throw new Error('Invalid frontend URL for verification email');
   }
@@ -52,4 +64,4 @@ async function sendVerificationEmail({ recipient, name, token }) {
   }
 }
 
-module.exports = { sendVerificationEmail };
+module.exports = { sendVerificationEmail, verificationUrlFor };

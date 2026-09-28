@@ -20,8 +20,10 @@ const sessionId = '507f1f77bcf86cd799439016';
 test('API protection and role boundaries work without a database connection', async (t) => {
   const previousSecret = process.env.JWT_SECRET;
   const previousFrontendUrl = process.env.FRONTEND_URL;
+  const previousFrontendOrigin = process.env.FRONTEND_ORIGIN;
   const productionOrigin = 'https://acadova-ze91.onrender.com';
-  process.env.FRONTEND_URL = `${productionOrigin}/`;
+  process.env.FRONTEND_URL = 'https://verification-links.example.test/';
+  process.env.FRONTEND_ORIGIN = productionOrigin;
   const { securityHeaders, corsMiddleware } = require('../middleware/httpSecurity');
   const originalFindById = User.findById;
   const originalFindOne = User.findOne;
@@ -295,6 +297,8 @@ test('API protection and role boundaries work without a database connection', as
   } finally {
     if (previousFrontendUrl === undefined) delete process.env.FRONTEND_URL;
     else process.env.FRONTEND_URL = previousFrontendUrl;
+    if (previousFrontendOrigin === undefined) delete process.env.FRONTEND_ORIGIN;
+    else process.env.FRONTEND_ORIGIN = previousFrontendOrigin;
     if (previousSecret === undefined) delete process.env.JWT_SECRET;
     else process.env.JWT_SECRET = previousSecret;
     User.findById = originalFindById;

@@ -13,16 +13,18 @@ const securityHeaders = helmet({
 
 // The Vite development server proxies /api. Also support direct local API
 // requests and one explicitly configured frontend origin, without a wildcard.
+// FRONTEND_URL is reserved for links generated in emails; CORS uses its own
+// FRONTEND_ORIGIN setting so a mail-link configuration cannot alter API access.
 const allowedOrigins = new Set(['http://localhost:5173', 'http://127.0.0.1:5173']);
-if (process.env.FRONTEND_URL) {
+if (process.env.FRONTEND_ORIGIN) {
   try {
-    const frontendUrl = new URL(process.env.FRONTEND_URL);
+    const frontendUrl = new URL(process.env.FRONTEND_ORIGIN);
     if (!['http:', 'https:'].includes(frontendUrl.protocol)) {
-      throw new Error('Frontend URL must use HTTP or HTTPS');
+      throw new Error('Frontend origin must use HTTP or HTTPS');
     }
     allowedOrigins.add(frontendUrl.origin);
   } catch {
-    console.error('Invalid FRONTEND_URL configuration');
+    console.error('Invalid FRONTEND_ORIGIN configuration');
   }
 }
 

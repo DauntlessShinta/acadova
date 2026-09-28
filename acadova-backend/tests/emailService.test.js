@@ -1,7 +1,7 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const nodemailer = require('nodemailer');
-const { sendVerificationEmail } = require('../services/emailService');
+const { sendVerificationEmail, verificationUrlFor } = require('../services/emailService');
 
 test('verification email uses Gmail SMTP without exposing credentials', async (t) => {
   const configKeys = [
@@ -40,6 +40,18 @@ test('verification email uses Gmail SMTP without exposing credentials', async (t
       },
     };
   });
+
+  process.env.NODE_ENV = 'development';
+  assert.equal(
+    verificationUrlFor('sample-token'),
+    'https://acadova.example.test/verify-email?token=sample-token',
+  );
+  process.env.FRONTEND_URL = 'http://localhost:5173/';
+  assert.equal(
+    verificationUrlFor('sample-token'),
+    'http://localhost:5173/verify-email?token=sample-token',
+  );
+  process.env.FRONTEND_URL = 'https://acadova.example.test/register?old=1';
 
   await sendVerificationEmail({ recipient: 'student@example.test', name: 'A <Student>', token: 'sample-token' });
   assert.equal(transports.length, 1);
@@ -80,6 +92,28 @@ test('verification email uses Gmail SMTP without exposing credentials', async (t
   assert.match(messages.at(-1).html, /token%2B%2F/);
 
   const sentCount = messages.length;
+  delete process.env.FRONTEND_URL;
+  assert.throws(
+    () => verificationUrlFor('sample-token'),
+    /FRONTEND_URL is required/,
+  );
+  await assert.rejects(
+    sendVerificationEmail({ recipient: 'student@example.test', name: 'A Student', token: 'sample-token' }),
+    /FRONTEND_URL is required/,
+  );
+  assert.equal(messages.length, sentCount);
+
+  process.env.FRONTEND_URL = 'not a URL';
+  assert.throws(
+    () => verificationUrlFor('sample-token'),
+    /Invalid frontend URL/,
+  );
+  await assert.rejects(
+    sendVerificationEmail({ recipient: 'student@example.test', name: 'A Student', token: 'sample-token' }),
+    /Invalid frontend URL/,
+  );
+  assert.equal(messages.length, sentCount);
+
   process.env.FRONTEND_URL = 'http://localhost:5173';
   await assert.rejects(
     sendVerificationEmail({ recipient: 'student@example.test', name: 'A Student', token: 'sample-token' }),

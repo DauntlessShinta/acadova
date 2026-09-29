@@ -7,22 +7,12 @@ import Alert from '../components/common/Alert';
 import EmptyState from '../components/common/EmptyState';
 import LoadingSpinner from '../components/common/LoadingSpinner';
 import SessionCard from '../components/student/SessionCard';
-import { getSessionPerspective, getSessionStatus } from '../utils/sessionPresentation';
+import { getSessionPerspective, getSessionStatus, SESSION_STATUS_FILTERS } from '../utils/sessionPresentation';
 
 const roleFilters = [
   { value: 'all', label: 'All' },
   { value: 'learning', label: 'Learning' },
   { value: 'teaching', label: 'Teaching' },
-];
-
-const statusFilters = [
-  { value: 'all', label: 'All' },
-  { value: 'pending', label: 'Requested' },
-  { value: 'accepted', label: 'Accepted' },
-  { value: 'waiting', label: 'Awaiting confirmation' },
-  { value: 'completed', label: 'Completed' },
-  { value: 'cancelled', label: 'Cancelled' },
-  { value: 'rejected', label: 'Declined' },
 ];
 
 export const SessionsPage = () => {
@@ -61,7 +51,7 @@ export const SessionsPage = () => {
     const roleMatches = roleFilter === 'all'
       || (roleFilter === 'teaching' && perspective.isTeaching)
       || (roleFilter === 'learning' && !perspective.isTeaching);
-    const statusMatches = statusFilter === 'all' || getSessionStatus(session).key === statusFilter;
+    const statusMatches = statusFilter === 'all' || getSessionStatus(session).filterKey === statusFilter;
     return roleMatches && statusMatches;
   }), [roleFilter, sessions, statusFilter, user]);
 
@@ -111,7 +101,7 @@ export const SessionsPage = () => {
         </div>
         <div className="session-filter-group" aria-label="Filter by session status">
           <span><Filter size={14} /> Status</span>
-          {statusFilters.map((item) => <button key={item.value} type="button" className={`session-filter-chip ${statusFilter === item.value ? 'is-active' : ''}`} aria-pressed={statusFilter === item.value} onClick={() => setStatusFilter(item.value)}>{item.label}</button>)}
+          {SESSION_STATUS_FILTERS.map((item) => <button key={item.value} type="button" className={`session-filter-chip ${statusFilter === item.value ? 'is-active' : ''}`} aria-pressed={statusFilter === item.value} onClick={() => setStatusFilter(item.value)}>{item.label}</button>)}
         </div>
       </div>
 

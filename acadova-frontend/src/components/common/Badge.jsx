@@ -7,17 +7,23 @@ export const Badge = ({ status, children, variant }) => {
 
   switch (type) {
     case 'accepted':
+    case 'scheduled':
     case 'completed':
+    case 'resolved':
     case 'active':
     case 'earned':
       badgeClass = 'badge-success';
       break;
     case 'pending':
     case 'waiting':
+    case 'awaiting_validation':
+    case 'disputed':
       badgeClass = 'badge-pending';
       break;
     case 'rejected':
+    case 'declined':
     case 'cancelled':
+    case 'no_show':
     case 'spent':
       badgeClass = 'badge-danger';
       break;
@@ -33,6 +39,7 @@ export const Badge = ({ status, children, variant }) => {
       badgeClass = 'badge-navy';
       break;
     case 'info':
+    case 'in_progress':
       badgeClass = 'badge-info';
       break;
     default:

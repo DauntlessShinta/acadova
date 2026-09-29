@@ -10,7 +10,7 @@ import LoadingSpinner from '../components/common/LoadingSpinner';
 import StatCard from '../components/common/StatCard';
 import PeerCard from '../components/student/PeerCard';
 import SessionCard from '../components/student/SessionCard';
-import { getSessionPerspective } from '../utils/sessionPresentation';
+import { getSessionPerspective, getSessionStatus } from '../utils/sessionPresentation';
 
 export const DashboardPage = () => {
   const { user, credits, refreshUser } = useAuth();
@@ -61,7 +61,7 @@ export const DashboardPage = () => {
   }, [loadDashboardData]);
 
   const upcomingSessions = useMemo(() => sessions
-    .filter((session) => session.status === 'accepted' || (session.status === 'completed' && !session.confirmedAt))
+    .filter((session) => ['scheduled', 'in_progress', 'awaiting_validation'].includes(getSessionStatus(session).filterKey))
     .sort((left, right) => {
       const leftDate = left.scheduledAt ? new Date(left.scheduledAt).getTime() : Number.MAX_SAFE_INTEGER;
       const rightDate = right.scheduledAt ? new Date(right.scheduledAt).getTime() : Number.MAX_SAFE_INTEGER;
@@ -114,7 +114,7 @@ export const DashboardPage = () => {
         <h2 id="student-summary-heading" className="sr-only">Student summary</h2>
         <div className="stat-grid student-summary-grid">
           <StatCard title="Credit Balance" value={credits} subtitle="Available learning credits" icon={Coins} color="var(--acadova-action)" />
-          <StatCard title="Active Sessions" value={availability.sessions ? upcomingSessions.length : '—'} subtitle={availability.sessions ? 'Accepted or awaiting confirmation' : 'Data unavailable'} icon={BookOpen} color="var(--acadova-success)" />
+          <StatCard title="Active Sessions" value={availability.sessions ? upcomingSessions.length : '—'} subtitle={availability.sessions ? 'Scheduled, in progress, or awaiting a next step' : 'Data unavailable'} icon={BookOpen} color="var(--acadova-success)" />
           <StatCard title="Pending Requests" value={availability.sessions ? pendingSessions.length : '—'} subtitle={availability.sessions ? `${pendingTeachingRequests.length} awaiting your response` : 'Data unavailable'} icon={Inbox} color="var(--acadova-warning)" />
           <StatCard title="Recommended Peers" value={availability.peers ? recommendedPeers.length : '—'} subtitle={availability.peers ? 'Available student peers' : 'Data unavailable'} icon={Users} color="var(--acadova-primary)" />
         </div>
@@ -135,7 +135,7 @@ export const DashboardPage = () => {
             <EmptyState
               icon={BookOpen}
               title="No upcoming sessions"
-              description="Accepted sessions and sessions awaiting confirmation will appear here."
+              description="Scheduled sessions and sessions awaiting a next step will appear here."
               actionText="Find a Peer"
               onAction={() => { window.location.href = '/tutors'; }}
             />

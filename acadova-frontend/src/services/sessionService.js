@@ -1,6 +1,8 @@
 import api from './api';
 import { toSessionInstant } from '../utils/sessionPresentation';
 
+const legacyStatusActions = new Set(['accepted', 'rejected', 'completed', 'cancelled']);
+
 export const sessionService = {
   createSession: async ({ tutorId, subject, scheduledAt, meetingMethod, requestMessage, creditAmount = 1 }) => {
     return api.post('/api/sessions', {
@@ -20,6 +22,7 @@ export const sessionService = {
   getSession: async (sessionId) => api.get(`/api/sessions/${sessionId}`),
 
   updateSessionStatus: async (sessionId, status) => {
+    if (!legacyStatusActions.has(status)) throw new Error('This session action is not available yet.');
     return api.patch(`/api/sessions/${sessionId}/status`, { status });
   },
 

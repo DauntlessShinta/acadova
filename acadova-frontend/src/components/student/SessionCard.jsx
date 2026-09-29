@@ -50,7 +50,7 @@ export const SessionCard = ({
 
       <div className="student-session-actions">
         <Link className="btn btn-secondary btn-sm" to={`/sessions/${session._id}`}>View Session</Link>
-        {onStatusChange && isTeaching && session.status === 'pending' && (
+        {onStatusChange && isTeaching && session.status === 'pending' && session.canonicalStatus == null && (
             <>
               <button type="button" className="btn btn-primary btn-sm" disabled={actionLoading} onClick={() => onStatusChange(session._id, 'accepted')}>
                 <Check size={14} /> Accept

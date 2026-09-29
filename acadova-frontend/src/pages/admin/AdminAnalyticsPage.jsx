@@ -5,6 +5,7 @@ import Alert from '../../components/common/Alert';
 import EmptyState from '../../components/common/EmptyState';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
 import StarRating from '../../components/common/StarRating';
+import { getSessionStatusLabel } from '../../utils/sessionPresentation';
 
 const sources = [
   ['subjects', analyticsService.getSubjectAnalytics],
@@ -29,10 +30,16 @@ export const AdminAnalyticsPage = () => {
 
   useEffect(() => { Promise.resolve().then(load); }, []);
   const maxDemand = Math.max(1, ...(data.subjects || []).map((item) => item.requestCount || 0));
+  const byStatus = data.sessions?.byStatus || {};
+  const legacyRows = ['pending', 'accepted', 'completed', 'rejected', 'cancelled'];
+  const canonicalRows = ['scheduled', 'in_progress', 'awaiting_validation', 'declined', 'no_show', 'disputed', 'resolved'];
   const statusRows = [
-    ['Requested', 'pending'], ['Accepted', 'accepted'],
-    ['Tutor marked complete', 'completed'], ['Declined', 'rejected'], ['Cancelled', 'cancelled'],
-  ];
+    ...legacyRows,
+    ...canonicalRows.filter((status) => Object.hasOwn(byStatus, status)),
+  ].map((status) => [
+    getSessionStatusLabel(status),
+    status,
+  ]);
 
   return (
     <div className="staff-page">
@@ -46,7 +53,7 @@ export const AdminAnalyticsPage = () => {
             <div className="card metric-panel"><span><BarChart3 size={17} /> Total sessions</span><strong className="mono">{data.sessions ? data.sessions.total : 'Unavailable'}</strong><small>All recorded session states</small></div>
           </div>
           <div className="grid-2 admin-analytics-grid">
-            <section className="card"><h2>Session status</h2>{!data.sessions ? <p>Session analytics are unavailable.</p> : <><p className="staff-data-note">“Tutor marked complete” includes sessions awaiting learner confirmation.</p><div className="status-list">{statusRows.map(([label, key]) => <div key={key}><span>{label}</span><strong className="mono">{data.sessions.byStatus?.[key] || 0}</strong></div>)}</div></>}</section>
+            <section className="card"><h2>Session status</h2>{!data.sessions ? <p>Session analytics are unavailable.</p> : <><p className="staff-data-note">Counts reflect stored statuses. Older completed sessions may still await learner confirmation.</p><div className="status-list">{statusRows.map(([label, key]) => <div key={key}><span>{label}</span><strong className="mono">{data.sessions.byStatus?.[key] || 0}</strong></div>)}</div></>}</section>
             <section className="card"><h2>Visible review distribution</h2>{!data.ratings ? <p>Rating analytics are unavailable.</p> : data.ratings.totalRatings === 0 ? <EmptyState icon={Star} title="No visible reviews yet" description="Review distribution appears after confirmed exchanges are reviewed." /> : <><div className="rating-summary"><strong className="mono">{Number(data.ratings.averageRating).toFixed(2)}</strong><StarRating rating={data.ratings.averageRating} size={18} /></div><div className="rating-distribution">{[5, 4, 3, 2, 1].map((stars) => { const count = data.ratings.distribution?.find((item) => item._id === stars)?.count || 0; return <div key={stars}><span>{stars} star</span><span className="analytics-bar" aria-label={`${count} ${stars}-star ratings`}><span style={{ width: `${Math.round(count / data.ratings.totalRatings * 100)}%` }} /></span><span className="mono">{count}</span></div>; })}</div></>}</section>
           </div>
           <section className="card subject-demand-panel"><div className="panel-heading"><div><h2>Subject demand</h2><p>Subjects ranked by session requests.</p></div><BarChart3 size={22} /></div>{!data.subjects ? <p>Subject analytics are unavailable.</p> : data.subjects.length === 0 ? <EmptyState icon={BarChart3} title="No subject demand data yet" description="Demand appears as students request sessions." /> : <div className="subject-demand-list">{data.subjects.map((item) => <div key={item.subject}><div><strong>{item.subject}</strong><span>{item.requestCount} request{item.requestCount === 1 ? '' : 's'}</span></div><span className="analytics-bar"><span style={{ width: `${Math.round(item.requestCount / maxDemand * 100)}%` }} /></span></div>)}</div>}</section>

@@ -74,7 +74,7 @@ const SessionRoom = ({ id }) => {
         lastSettlement.current = latest.creditsSettledAt;
         void refreshUser();
       }
-      if (['accepted', 'completed'].includes(latest.status)) {
+      if (latest.canonicalStatus == null && ['accepted', 'completed'].includes(latest.status)) {
         const messageResponse = await sessionService.getMessages(id);
         if (!gate.current.isCurrent(ticket)) return;
         setMessages(messageResponse.data || []);
@@ -112,7 +112,9 @@ const SessionRoom = ({ id }) => {
     };
   }, [refreshRoom]);
 
-  const messagesAvailable = ['accepted', 'completed'].includes(session?.status);
+  // The current API supports actions only for its legacy response contract.
+  const usesLegacyActions = session?.canonicalStatus == null;
+  const messagesAvailable = usesLegacyActions && ['accepted', 'completed'].includes(session?.status);
 
   const beginAction = () => {
     if (actionInProgress.current) return false;
@@ -246,9 +248,12 @@ const SessionRoom = ({ id }) => {
   const creditLabel = `${session.creditAmount} credit${session.creditAmount === 1 ? '' : 's'}`;
   const acceptedReached = ['accepted', 'completed'].includes(session.status);
   const completedReached = session.status === 'completed';
-  const isClosed = ['cancelled', 'rejected'].includes(session.status);
-  const hasSecondaryActions = ['pending', 'accepted'].includes(session.status)
-    || (isTeaching && session.status === 'completed' && !session.confirmedAt);
+  const isClosed = ['cancelled', 'declined', 'no_show', 'resolved'].includes(displayStatus.filterKey);
+  const hasSecondaryActions = usesLegacyActions && (
+    ['pending', 'accepted'].includes(session.status)
+    || (isTeaching && session.status === 'completed' && !session.confirmedAt)
+  );
+  const showLegacyProgress = usesLegacyActions && ['pending', 'accepted', 'rejected', 'completed', 'cancelled'].includes(session.status);
 
   return (
     <div className="session-room-page">
@@ -279,17 +284,17 @@ const SessionRoom = ({ id }) => {
       <Alert type="danger" message={refreshError} />
       <Alert type="success" message={success} onClose={() => setSuccess('')} />
 
-      <section className={`session-next-step ${session.confirmedAt ? 'is-complete' : isClosed ? 'is-closed' : ''}`} aria-labelledby="next-step-heading">
+      <section className={`session-next-step ${displayStatus.key === 'completed' ? 'is-complete' : isClosed ? 'is-closed' : ''}`} aria-labelledby="next-step-heading">
         <CheckCircle2 size={19} aria-hidden="true" />
         <div>
           <span>Next step</span>
           <h2 id="next-step-heading">{nextStep}</h2>
           {session.status === 'pending' && !isTeaching && <p>No action is required from you right now.</p>}
-          {session.confirmedAt && <p>{creditLabel} transferred.</p>}
+          {usesLegacyActions && session.status === 'completed' && session.confirmedAt && session.creditsSettledAt && <p>{creditLabel} transferred.</p>}
         </div>
-        {isTeaching && session.status === 'pending' && <button className="btn btn-primary btn-sm" type="button" disabled={actionLoading} onClick={() => runStatusAction('accepted')}>Accept request</button>}
-        {isTeaching && session.status === 'accepted' && <button className="btn btn-primary btn-sm" type="button" disabled={actionLoading} onClick={() => runStatusAction('completed')}>Complete session</button>}
-        {!isTeaching && session.status === 'completed' && !session.confirmedAt && <button className="btn btn-primary btn-sm" type="button" disabled={actionLoading} onClick={handleConfirm}>Confirm completion and transfer {creditLabel}</button>}
+        {usesLegacyActions && isTeaching && session.status === 'pending' && <button className="btn btn-primary btn-sm" type="button" disabled={actionLoading} onClick={() => runStatusAction('accepted')}>Accept request</button>}
+        {usesLegacyActions && isTeaching && session.status === 'accepted' && <button className="btn btn-primary btn-sm" type="button" disabled={actionLoading} onClick={() => runStatusAction('completed')}>Complete session</button>}
+        {usesLegacyActions && !isTeaching && session.status === 'completed' && !session.confirmedAt && <button className="btn btn-primary btn-sm" type="button" disabled={actionLoading} onClick={handleConfirm}>Confirm completion and transfer {creditLabel}</button>}
       </section>
 
       <div className="session-room-layout">
@@ -300,7 +305,7 @@ const SessionRoom = ({ id }) => {
               <div><dt><UserRound size={16} /> Other participant</dt><dd>{counterpart?.name || 'Peer student'}</dd></div>
               <div><dt><Calendar size={16} /> Date and time</dt><dd>{scheduledLabel || 'Not scheduled'}</dd></div>
               <div><dt><MapPin size={16} /> Method</dt><dd>{meetingMethodLabel}</dd></div>
-              <div><dt><Coins size={16} /> Credits</dt><dd>{creditLabel} transferred after confirmation</dd></div>
+              <div><dt><Coins size={16} /> Credits</dt><dd>{usesLegacyActions ? `${creditLabel} transferred after confirmation` : creditLabel}</dd></div>
             </dl>
 
             <div className="session-request-message">
@@ -321,7 +326,7 @@ const SessionRoom = ({ id }) => {
             {!['online', 'in-person'].includes(session.meetingMethod) && (
               <p className="session-muted-copy">This older session has no recorded meeting method. Use a new request for the current coordination workflow; this record is unchanged.</p>
             )}
-            {isTeaching && session.status === 'accepted' && ['online', 'in-person'].includes(session.meetingMethod) && (
+            {usesLegacyActions && isTeaching && session.status === 'accepted' && ['online', 'in-person'].includes(session.meetingMethod) && (
               <form className="coordination-form" onSubmit={handleCoordinationSave}>
                 <label className="form-label" htmlFor="meeting-detail">
                   {session.meetingMethod === 'online' ? 'HTTPS meeting link' : 'Meeting location'}
@@ -357,7 +362,7 @@ const SessionRoom = ({ id }) => {
             </div>
             <p className="session-refresh-note">Updates automatically every 5 seconds while this page is visible.</p>
             {!messagesAvailable ? (
-              <p className="session-muted-copy">Messages become available after the Tutor accepts this session.</p>
+              <p className="session-muted-copy">{usesLegacyActions ? 'Messages become available after the Tutor accepts this session.' : 'Messaging is unavailable for this session state in the current app.'}</p>
             ) : refreshing && messages.length === 0 ? (
               <LoadingSpinner text="Loading session messages..." size={28} />
             ) : (
@@ -392,7 +397,7 @@ const SessionRoom = ({ id }) => {
           </section>
 
           {ratingSubmitted && <Alert type="success" message="Your review for this session has been submitted." />}
-          {session.confirmedAt && session.creditsSettledAt && !ratingSubmitted && (
+          {usesLegacyActions && session.status === 'completed' && session.confirmedAt && session.creditsSettledAt && !ratingSubmitted && (
             <section className="card session-room-section session-review-panel" aria-labelledby="review-heading">
               <h2 id="review-heading">Review your peer</h2>
               <form onSubmit={handleRating}>
@@ -407,12 +412,12 @@ const SessionRoom = ({ id }) => {
         <aside className="session-room-sidebar">
           <section className="card session-room-section session-progress-panel" aria-labelledby="progress-heading">
             <h2 id="progress-heading">Session progress</h2>
-            <ol className="session-progress">
+            {showLegacyProgress ? <ol className="session-progress">
               <li className={session.status === 'pending' ? 'is-current' : 'is-done'} aria-current={session.status === 'pending' ? 'step' : undefined}><span>{session.status === 'pending' ? '1' : <Check size={14} />}</span><div><strong>Requested</strong><small>Session details proposed</small></div></li>
               <li className={session.status === 'accepted' ? 'is-current' : acceptedReached ? 'is-done' : isClosed ? 'is-stopped' : ''} aria-current={session.status === 'accepted' ? 'step' : undefined}><span>{acceptedReached && session.status !== 'accepted' ? <Check size={14} /> : '2'}</span><div><strong>Accepted</strong><small>{acceptedReached ? 'Tutor accepted' : 'Waiting for Tutor'}</small></div></li>
               <li className={completedReached ? 'is-done' : ''}><span>{completedReached ? <Check size={14} /> : '3'}</span><div><strong>Session completed</strong><small>Tutor marks it finished</small></div></li>
               <li className={session.confirmedAt ? 'is-done' : completedReached ? 'is-current' : ''} aria-current={!session.confirmedAt && completedReached ? 'step' : undefined}><span>{session.confirmedAt ? <Check size={14} /> : '4'}</span><div><strong>Confirmed</strong><small>Learner releases credits</small></div></li>
-            </ol>
+            </ol> : <p className="session-muted-copy">Current stage: {displayStatus.label}. This state is available for viewing while the session lifecycle is rolled out.</p>}
           </section>
 
           {hasSecondaryActions && !isClosed && (

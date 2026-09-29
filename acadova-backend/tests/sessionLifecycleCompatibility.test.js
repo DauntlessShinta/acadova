@@ -39,6 +39,17 @@ test('legacy non-completed statuses have canonical meanings without enabling new
   }
 });
 
+test('newly stored scheduled and declined statuses classify without changing legacy interpretations', () => {
+  for (const status of ['scheduled', 'declined']) {
+    assert.deepEqual(classifyLegacySession(session({ status, completedAt: undefined })), {
+      legacyStatus: status,
+      canonicalStatus: status,
+      settlementState: 'not_applicable',
+      requiresReconciliation: false,
+    });
+  }
+});
+
 test('a matching ledger row proves historical settlement even without confirmation timestamps', () => {
   for (const fields of [
     {},

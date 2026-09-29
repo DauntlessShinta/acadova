@@ -11,7 +11,7 @@ const SessionSchema = new mongoose.Schema({
   requestMessage: { type: String, trim: true, maxlength: 500 },
   status: {
     type: String,
-    enum: ['pending', 'accepted', 'rejected', 'completed', 'cancelled'],
+    enum: ['pending', 'accepted', 'scheduled', 'rejected', 'declined', 'completed', 'cancelled'],
     default: 'pending',
   },
   creditAmount: { type: Number, required: true, min: [1, 'Credit amount must be positive'] },

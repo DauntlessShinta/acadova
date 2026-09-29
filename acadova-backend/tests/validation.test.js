@@ -135,6 +135,24 @@ test('valid values are normalized and reach downstream work', () => {
   assert.equal(escapeRegExp(subject.req.validatedQuery.subject), 'C\\+\\+');
 });
 
+test('session status validation accepts canonical request decisions and legacy actions only', () => {
+  for (const status of ['scheduled', 'declined', 'accepted', 'rejected', 'completed', 'cancelled']) {
+    const result = inspect(validateBody(schemas.sessionStatus), 'body', { status });
+    assert.equal(result.downstreamCalls, 1, status);
+    assert.equal(result.req.body.status, status);
+  }
+  for (const status of ['pending', 'in_progress', 'awaiting_validation', 'no_show', 'disputed', 'resolved']) {
+    const result = inspect(validateBody(schemas.sessionStatus), 'body', { status });
+    assert.equal(result.res.statusCode, 400, status);
+    assert.equal(result.downstreamCalls, 0);
+  }
+});
+
+test('Session model retains legacy values and adds only P2.4 canonical values', () => {
+  const allowed = Session.schema.path('status').enumValues;
+  assert.deepEqual(allowed, ['pending', 'accepted', 'scheduled', 'rejected', 'declined', 'completed', 'cancelled']);
+});
+
 test('peer discovery treats allowed punctuation as literal text in the database filter', async () => {
   const originalFind = User.find;
   let filter;

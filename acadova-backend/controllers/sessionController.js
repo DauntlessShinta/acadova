@@ -7,9 +7,13 @@ const Rating = require('../models/Rating');
 const { isValidObjectId, isPositiveCreditAmount } = require('../middleware/validation');
 
 const ALLOWED_TRANSITIONS = {
-  pending: ['accepted', 'rejected', 'cancelled'],
+  // Legacy inputs stay stored as-is so deployed React clients retain their
+  // accepted -> completed action; canonical inputs store canonical values.
+  pending: ['accepted', 'scheduled', 'rejected', 'declined', 'cancelled'],
   accepted: ['completed', 'cancelled'],
+  scheduled: [],
   rejected: [],
+  declined: [],
   completed: [],
   cancelled: [],
 };
@@ -147,7 +151,7 @@ exports.updateSessionStatus = async (req, res) => {
     if (!ALLOWED_TRANSITIONS[session.status]?.includes(status)) {
       return res.status(400).json({ success: false, message: `This session cannot move from ${session.status} to ${status}.` });
     }
-    if ((status === 'accepted' || status === 'rejected') && !isTutor) {
+    if (['accepted', 'scheduled', 'rejected', 'declined'].includes(status) && !isTutor) {
       return res.status(403).json({ success: false, message: 'Only the Tutor can accept or decline this session.' });
     }
     if (status === 'completed' && !isTutor) {
@@ -172,13 +176,14 @@ exports.updateSessionStatus = async (req, res) => {
     }
     await updatedSession.populate(SESSION_POPULATE);
 
-    const message = status === 'completed'
-      ? 'Session marked complete. Waiting for learner confirmation.'
-      : status === 'accepted'
-        ? 'Session accepted.'
-        : status === 'rejected'
-          ? 'Session declined.'
-          : 'Session cancelled.';
+    const message = {
+      completed: 'Session marked complete. Waiting for learner confirmation.',
+      accepted: 'Session accepted.',
+      scheduled: 'Session scheduled.',
+      rejected: 'Session declined.',
+      declined: 'Session declined.',
+      cancelled: 'Session cancelled.',
+    }[status];
     res.json({ success: true, message, data: updatedSession });
   } catch (error) {
     res.status(500).json({ success: false, message: 'Session status could not be updated.' });
@@ -191,7 +196,7 @@ exports.updateCoordination = async (req, res) => {
     if (!result) return;
     const { session, isTutor } = result;
     if (!isTutor) return res.status(403).json({ success: false, message: 'Only the Tutor can update meeting details.' });
-    if (session.status !== 'accepted') {
+    if (!['accepted', 'scheduled'].includes(session.status)) {
       return res.status(400).json({ success: false, message: 'Meeting details can be updated after the session is accepted.' });
     }
 
@@ -213,7 +218,7 @@ exports.updateCoordination = async (req, res) => {
     }
 
     const updatedSession = await Session.findOneAndUpdate(
-      { _id: session._id, status: 'accepted', meetingMethod: session.meetingMethod },
+      { _id: session._id, status: session.status, meetingMethod: session.meetingMethod },
       changes,
       { new: true, runValidators: true }
     );
@@ -248,7 +253,7 @@ exports.createMessage = async (req, res) => {
   try {
     const result = await findParticipantSession(req, res);
     if (!result) return;
-    if (!['accepted', 'completed'].includes(result.session.status)) {
+    if (!['accepted', 'scheduled', 'completed'].includes(result.session.status)) {
       return res.status(400).json({ success: false, message: 'Messages are available after the session is accepted.' });
     }
     const body = typeof req.body.body === 'string' ? req.body.body.trim() : '';

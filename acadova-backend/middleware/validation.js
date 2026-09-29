@@ -226,7 +226,7 @@ const schemas = {
     requestMessage: requiredText('Request message', 500),
     creditAmount: optional(creditAmount),
   },
-  sessionStatus: { status: oneOf('session status', ['accepted', 'rejected', 'completed', 'cancelled']) },
+  sessionStatus: { status: oneOf('session status', ['accepted', 'scheduled', 'rejected', 'declined', 'completed', 'cancelled']) },
   coordination: { meetingLink: optional(httpsLink), location: optional(requiredText('Location', 300)) },
   message: { body: requiredText('Message', 1000) },
   rating: { sessionId: objectId('session id'), rating, comment: optional(requiredText('Review comment', 500, 0)) },

@@ -133,6 +133,83 @@ test('acceptance changes status without creating a credit transaction', async ()
   assert.equal(creditWrites, 0);
 });
 
+for (const status of ['scheduled', 'declined']) {
+  test(`tutor can move pending to canonical ${status} without settlement or scheduling changes`, async () => {
+    const scheduledAt = new Date('2026-09-25T06:30:00.000Z');
+    const session = sessionDoc({ status: 'pending', scheduledAt });
+    Session.findById = async () => session;
+    mockAtomicSession(session);
+    CreditTransaction.create = async () => assert.fail('A request decision must not transfer credits');
+    const res = response();
+    await controller.updateSessionStatus({
+      params: { id: session._id }, user: { id: session.tutor }, body: { status },
+    }, res);
+    assert.equal(res.statusCode, 200);
+    assert.equal(res.body.data.status, status);
+    assert.equal(session.scheduledAt, scheduledAt);
+    assert.equal(session.completedAt, undefined);
+    assert.equal(res.body.data.canonicalStatus, undefined);
+  });
+
+  test(`learner cannot move pending to ${status}`, async () => {
+    const session = sessionDoc({ status: 'pending' });
+    Session.findById = async () => session;
+    Session.findOneAndUpdate = async () => assert.fail('Unauthorized transition must not write');
+    const res = response();
+    await controller.updateSessionStatus({
+      params: { id: session._id }, user: { id: session.learner }, body: { status },
+    }, res);
+    assert.equal(res.statusCode, 403);
+    assert.equal(session.status, 'pending');
+  });
+
+  test(`stale pending to ${status} decision receives a conflict`, async () => {
+    const stored = sessionDoc({ status: 'pending' });
+    Session.findById = async () => sessionDoc({ ...stored });
+    Session.findOneAndUpdate = async (filter) => {
+      assert.equal(filter.status, 'pending');
+      stored.status = 'cancelled';
+      return null;
+    };
+    const res = response();
+    await controller.updateSessionStatus({
+      params: { id: stored._id }, user: { id: stored.tutor }, body: { status },
+    }, res);
+    assert.equal(res.statusCode, 409);
+    assert.match(res.body.message, /Refresh and try again/);
+    assert.equal(stored.status, 'cancelled');
+  });
+}
+
+test('canonical and legacy request decisions require a session participant', async () => {
+  const session = sessionDoc({ status: 'pending' });
+  Session.findById = async () => session;
+  Session.findOneAndUpdate = async () => assert.fail('Unrelated users must not write');
+  for (const status of ['scheduled', 'declined', 'accepted', 'rejected', 'cancelled']) {
+    const res = response();
+    await controller.updateSessionStatus({
+      params: { id: session._id }, user: { id: '507f1f77bcf86cd799439099' }, body: { status },
+    }, res);
+    assert.equal(res.statusCode, 403);
+  }
+});
+
+test('canonical request decisions do not reopen terminal P2.4 states', async () => {
+  for (const initial of ['scheduled', 'declined', 'cancelled', 'rejected']) {
+    const session = sessionDoc({ status: initial });
+    Session.findById = async () => session;
+    Session.findOneAndUpdate = async () => assert.fail('Unsupported transition must not write');
+    for (const status of ['scheduled', 'declined', 'accepted', 'rejected', 'cancelled', 'completed']) {
+      const res = response();
+      await controller.updateSessionStatus({
+        params: { id: session._id }, user: { id: session.tutor }, body: { status },
+      }, res);
+      assert.equal(res.statusCode, 400, `${initial} -> ${status}`);
+      assert.equal(session.status, initial);
+    }
+  }
+});
+
 test('tutor can mark an accepted coordinated session complete without moving credits', async () => {
   const session = sessionDoc();
   let creditWrites = 0;
@@ -198,6 +275,19 @@ test('reading a legacy room does not save or backfill historical fields', async 
   assert.equal(JSON.stringify(session), before);
 });
 
+test('legacy accepted and rejected rooms remain readable without response migration', async () => {
+  for (const status of ['accepted', 'rejected']) {
+    const session = sessionDoc({ status });
+    Session.findById = async () => session;
+    Rating.exists = async () => null;
+    const res = response();
+    await controller.getSessionById({ params: { id: session._id }, user: { id: session.learner } }, res);
+    assert.equal(res.statusCode, 200);
+    assert.equal(res.body.data.status, status);
+    assert.equal(res.body.data.canonicalStatus, undefined);
+  }
+});
+
 test('review lookup failure is not reported as an unsubmitted review', async () => {
   const session = sessionDoc();
   Session.findById = async () => session;
@@ -209,7 +299,8 @@ test('review lookup failure is not reported as an unsubmitted review', async () 
 });
 
 for (const meetingMethod of ['online', 'in-person']) {
-  test(`fresh ${meetingMethod} request preserves its UTC instant and supports coordination and messages`, async () => {
+  for (const decision of ['accepted', 'scheduled']) {
+  test(`fresh ${meetingMethod} request with ${decision} preserves its UTC instant and supports coordination and messages`, async () => {
     const fixture = sessionDoc();
     let session;
     User.findById = () => ({ select: async () => ({ _id: fixture.tutor, role: 'student' }) });
@@ -226,8 +317,9 @@ for (const meetingMethod of ['online', 'in-person']) {
     Session.findById = async () => session;
     mockAtomicSession(session);
     const accepted = response();
-    await controller.updateSessionStatus({ params: { id: session._id }, user: { id: fixture.tutor }, body: { status: 'accepted' } }, accepted);
+    await controller.updateSessionStatus({ params: { id: session._id }, user: { id: fixture.tutor }, body: { status: decision } }, accepted);
     assert.equal(accepted.statusCode, 200);
+    assert.equal(session.status, decision);
     const details = meetingMethod === 'online' ? { meetingLink: 'https://meet.example.com/demo' } : { location: 'Library room 2' };
     const coordinated = response();
     await controller.updateCoordination({ params: { id: session._id }, user: { id: fixture.tutor }, body: details }, coordinated);
@@ -245,6 +337,7 @@ for (const meetingMethod of ['online', 'in-person']) {
     await controller.getMessages({ params: { id: session._id }, user: { id: fixture.learner } }, received);
     assert.equal(received.body.data.length, 2);
   });
+  }
 }
 
 test('unrelated student cannot read session messages', async () => {
@@ -471,6 +564,24 @@ test('meeting details cannot be saved after a competing cancellation', async () 
   Session.findById = async () => sessionDoc({ ...stored });
   Session.findOneAndUpdate = async (filter) => {
     assert.equal(filter.status, 'accepted');
+    stored.status = 'cancelled';
+    return null;
+  };
+  const res = response();
+  await controller.updateCoordination({
+    params: { id: stored._id }, user: { id: stored.tutor },
+    body: { meetingLink: 'https://meet.example.com/new' },
+  }, res);
+  assert.equal(res.statusCode, 409);
+  assert.equal(stored.meetingLink, 'https://meet.example.com/java');
+});
+
+test('scheduled coordination rejects a stale status change', async () => {
+  const stored = sessionDoc({ status: 'scheduled' });
+  Session.findById = async () => sessionDoc({ ...stored });
+  Session.findOneAndUpdate = async (filter) => {
+    assert.equal(filter.status, 'scheduled');
+    assert.equal(filter.meetingMethod, 'online');
     stored.status = 'cancelled';
     return null;
   };

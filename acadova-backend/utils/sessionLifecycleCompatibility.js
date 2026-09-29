@@ -1,4 +1,5 @@
-// Interpretation only: these statuses are not enabled for writes or API responses yet.
+// Canonical lifecycle vocabulary; scheduled and declined are the only newly
+// writable canonical statuses in P2.4.
 const CANONICAL_STATUSES = Object.freeze([
   'pending', 'scheduled', 'in_progress', 'awaiting_validation', 'completed',
   'declined', 'cancelled', 'no_show', 'disputed', 'resolved',
@@ -7,7 +8,9 @@ const CANONICAL_STATUSES = Object.freeze([
 const LEGACY_STATUS_MAP = Object.freeze({
   pending: 'pending',
   accepted: 'scheduled',
+  scheduled: 'scheduled',
   rejected: 'declined',
+  declined: 'declined',
   cancelled: 'cancelled',
 });
 

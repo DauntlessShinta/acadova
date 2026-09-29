@@ -104,6 +104,10 @@ export const getSessionNextStep = (session, isTeaching, counterpartName = 'your 
       ? `Review ${counterpartName}'s request and accept or decline it.`
       : `Waiting for ${counterpartName} to respond to your request.`;
   }
+  if (['accepted', 'scheduled'].includes(session?.status)
+    && (session.learnerCheckedInAt || session.tutorCheckedInAt)) {
+    return 'A participant has checked in. Waiting for the other participant to check in.';
+  }
   if (session?.status === 'accepted') {
     if (isTeaching && session.meetingMethod === 'online' && !session.meetingLink) return 'Add the meeting link so your learner can join.';
     if (isTeaching && session.meetingMethod === 'in-person' && !session.location) return 'Add the meeting location so your learner knows where to go.';

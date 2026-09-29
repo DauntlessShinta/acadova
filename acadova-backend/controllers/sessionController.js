@@ -33,6 +33,9 @@ const rescheduleFields = {
   rescheduleProposedAt: 1,
   rescheduleProposalId: 1,
 };
+// Check-in opens 15 minutes before the agreed start and closes 4 hours after it.
+const CHECK_IN_EARLY_MS = 15 * 60 * 1000;
+const CHECK_IN_LATE_MS = 4 * 60 * 60 * 1000;
 
 const participantFlags = (session, userId) => ({
   isLearner: session.learner.toString() === userId,
@@ -312,7 +315,11 @@ const decideReschedule = async (req, res, accept) => {
       return res.status(400).json({ success: false, message: 'This proposed time has passed. Ask for a new proposal.' });
     }
     const update = { $unset: rescheduleFields };
-    if (accept) update.$set = { scheduledAt: session.proposedScheduledAt };
+    if (accept) {
+      update.$set = { scheduledAt: session.proposedScheduledAt };
+      // Attendance for the old agreed time cannot carry over to a new time.
+      update.$unset = { ...rescheduleFields, learnerCheckedInAt: 1, tutorCheckedInAt: 1 };
+    }
     const updatedSession = await Session.findOneAndUpdate(
       {
         _id: session._id,
@@ -340,6 +347,66 @@ const decideReschedule = async (req, res, accept) => {
 exports.acceptReschedule = (req, res) => decideReschedule(req, res, true);
 exports.declineReschedule = (req, res) => decideReschedule(req, res, false);
 
+exports.checkIn = async (req, res) => {
+  try {
+    const result = await findParticipantSession(req, res);
+    if (!result) return;
+    const { session, isLearner } = result;
+    if (!reschedulableStatuses.includes(session.status)) {
+      return res.status(400).json({ success: false, message: 'Check-in is available only for a scheduled session.' });
+    }
+    if (session.rescheduleProposalId || session.proposedScheduledAt) {
+      return res.status(409).json({ success: false, message: 'Resolve the reschedule proposal before checking in.' });
+    }
+    const scheduledAt = session.scheduledAt ? new Date(session.scheduledAt) : null;
+    if (!scheduledAt || Number.isNaN(scheduledAt.getTime())) {
+      return res.status(400).json({ success: false, message: 'This session has no valid scheduled time.' });
+    }
+    const now = new Date();
+    if (now.getTime() < scheduledAt.getTime() - CHECK_IN_EARLY_MS
+      || now.getTime() > scheduledAt.getTime() + CHECK_IN_LATE_MS) {
+      return res.status(400).json({ success: false, message: 'Check-in is available from 15 minutes before until 4 hours after the scheduled time.' });
+    }
+    const ownField = isLearner ? 'learnerCheckedInAt' : 'tutorCheckedInAt';
+    const peerField = isLearner ? 'tutorCheckedInAt' : 'learnerCheckedInAt';
+    if (session[ownField]) {
+      return res.status(409).json({ success: false, message: 'You have already checked in.' });
+    }
+
+    // MongoDB serializes these updates on one Session document. The second
+    // participant sees the first timestamp and starts the Session atomically.
+    const peerHasCheckedIn = { $ne: [{ $ifNull: [`$${peerField}`, null] }, null] };
+    const updatedSession = await Session.findOneAndUpdate(
+      {
+        _id: session._id,
+        status: session.status,
+        scheduledAt,
+        rescheduleProposalId: null,
+        proposedScheduledAt: null,
+        [ownField]: null,
+        startedAt: null,
+      },
+      [{ $set: {
+        [ownField]: now,
+        status: { $cond: [peerHasCheckedIn, 'in_progress', '$status'] },
+        startedAt: { $cond: [peerHasCheckedIn, now, '$startedAt'] },
+      } }],
+      { new: true }
+    );
+    if (!updatedSession) return res.status(409).json({ success: false, message: changedSessionMessage });
+    await updatedSession.populate(SESSION_POPULATE);
+    return res.json({
+      success: true,
+      message: updatedSession.status === 'in_progress'
+        ? 'Both participants checked in. Session in progress.'
+        : 'Checked in. Waiting for your peer.',
+      data: updatedSession,
+    });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: 'Session check-in could not be saved.' });
+  }
+};
+
 exports.getMessages = async (req, res) => {
   try {
     const result = await findParticipantSession(req, res);
@@ -357,7 +424,7 @@ exports.createMessage = async (req, res) => {
   try {
     const result = await findParticipantSession(req, res);
     if (!result) return;
-    if (!['accepted', 'scheduled', 'completed'].includes(result.session.status)) {
+    if (!['accepted', 'scheduled', 'in_progress', 'completed'].includes(result.session.status)) {
       return res.status(400).json({ success: false, message: 'Messages are available after the session is accepted.' });
     }
     const body = typeof req.body.body === 'string' ? req.body.body.trim() : '';

@@ -115,7 +115,8 @@ test('proposer cannot accept or decline their own proposal', async () => {
 
 for (const status of ['accepted', 'scheduled']) {
   test(`other participant accepts ${status} proposal and clears proposal fields`, async () => {
-    const stored = sessionDoc({ status });
+    const checkedInAt = new Date();
+    const stored = sessionDoc({ status, learnerCheckedInAt: checkedInAt });
     mockStore(stored);
     const agreed = stored.scheduledAt;
     await propose(stored, stored.learner);
@@ -125,19 +126,23 @@ for (const status of ['accepted', 'scheduled']) {
     assert.equal(stored.status, status);
     assert.notEqual(stored.scheduledAt, agreed);
     assert.equal(stored.scheduledAt, proposed);
+    assert.equal(stored.learnerCheckedInAt, undefined);
+    assert.equal(stored.tutorCheckedInAt, undefined);
     for (const key of ['proposedScheduledAt', 'rescheduleProposedBy', 'rescheduleProposedAt', 'rescheduleProposalId']) {
       assert.equal(stored[key], undefined, key);
     }
   });
 
   test(`other participant declines ${status} proposal without changing agreed time`, async () => {
-    const stored = sessionDoc({ status });
+    const checkedInAt = new Date();
+    const stored = sessionDoc({ status, learnerCheckedInAt: checkedInAt });
     mockStore(stored);
     const agreed = stored.scheduledAt;
     await propose(stored, stored.tutor);
     const res = await decide(controller.declineReschedule, stored, stored.learner);
     assert.equal(res.statusCode, 200);
     assert.equal(stored.scheduledAt, agreed);
+    assert.equal(stored.learnerCheckedInAt, checkedInAt);
     assert.equal(stored.proposedScheduledAt, undefined);
     assert.equal(stored.rescheduleProposalId, undefined);
   });

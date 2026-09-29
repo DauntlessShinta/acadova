@@ -50,6 +50,18 @@ test('newly stored scheduled and declined statuses classify without changing leg
   }
 });
 
+test('in_progress is recognized without inferring settlement', () => {
+  assert.deepEqual(classifyLegacySession(session({
+    status: 'in_progress', completedAt: undefined,
+    learnerCheckedInAt: new Date(), tutorCheckedInAt: new Date(), startedAt: new Date(),
+  })), {
+    legacyStatus: 'in_progress',
+    canonicalStatus: 'in_progress',
+    settlementState: 'not_applicable',
+    requiresReconciliation: false,
+  });
+});
+
 test('a matching ledger row proves historical settlement even without confirmation timestamps', () => {
   for (const fields of [
     {},

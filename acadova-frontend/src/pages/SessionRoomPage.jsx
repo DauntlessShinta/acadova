@@ -43,6 +43,7 @@ const SessionRoom = ({ id }) => {
   const [refreshing, setRefreshing] = useState(false);
   const [refreshError, setRefreshError] = useState('');
   const [actionLoading, setActionLoading] = useState(false);
+  const [clockNow, setClockNow] = useState(null);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [messageBody, setMessageBody] = useState('');
@@ -66,6 +67,7 @@ const SessionRoom = ({ id }) => {
       const response = await sessionService.getSession(id);
       if (!gate.current.isCurrent(ticket)) return;
       const latest = response.data;
+      setClockNow(Date.now());
       setSession(latest);
       setRatingSubmitted(Boolean(latest.myReview));
       if (!meetingDirty.current) {
@@ -75,7 +77,7 @@ const SessionRoom = ({ id }) => {
         lastSettlement.current = latest.creditsSettledAt;
         void refreshUser();
       }
-      if (latest.canonicalStatus == null && ['accepted', 'completed'].includes(latest.status)) {
+      if (latest.canonicalStatus == null && ['accepted', 'scheduled', 'in_progress', 'completed'].includes(latest.status)) {
         const messageResponse = await sessionService.getMessages(id);
         if (!gate.current.isCurrent(ticket)) return;
         setMessages(messageResponse.data || []);
@@ -115,7 +117,7 @@ const SessionRoom = ({ id }) => {
 
   // The current API supports actions only for its legacy response contract.
   const usesLegacyActions = session?.canonicalStatus == null;
-  const messagesAvailable = usesLegacyActions && ['accepted', 'completed'].includes(session?.status);
+  const messagesAvailable = usesLegacyActions && ['accepted', 'scheduled', 'in_progress', 'completed'].includes(session?.status);
 
   const beginAction = () => {
     if (actionInProgress.current) return false;
@@ -209,6 +211,19 @@ const SessionRoom = ({ id }) => {
     }
   };
 
+  const handleCheckIn = async () => {
+    if (!beginAction()) return;
+    try {
+      const response = await sessionService.checkIn(id);
+      setSession(response.data);
+      setSuccess(response.message);
+    } catch (err) {
+      setError(err.message || 'Check-in could not be saved.');
+    } finally {
+      finishAction();
+    }
+  };
+
   const handleConfirm = async () => {
     const credits = `${session.creditAmount} credit${session.creditAmount === 1 ? '' : 's'}`;
     if (!window.confirm(`Confirm that this session was completed and transfer ${credits} to ${session.tutor?.name || 'the Tutor'}?`)) return;
@@ -273,6 +288,16 @@ const SessionRoom = ({ id }) => {
   }
 
   const scheduledLabel = formatSessionDateTime(session.scheduledAt);
+  const checkInStateVisible = ['accepted', 'scheduled', 'in_progress'].includes(session.status);
+  const agreedTime = session.scheduledAt ? new Date(session.scheduledAt).getTime() : NaN;
+  const checkInOpen = Number.isFinite(agreedTime) && clockNow != null
+    && clockNow >= agreedTime - 15 * 60 * 1000
+    && clockNow <= agreedTime + 4 * 60 * 60 * 1000;
+  const myCheckIn = isTeaching ? session.tutorCheckedInAt : session.learnerCheckedInAt;
+  const peerCheckIn = isTeaching ? session.learnerCheckedInAt : session.tutorCheckedInAt;
+  const checkInBlockedByProposal = Boolean(session.rescheduleProposalId || session.proposedScheduledAt);
+  const canCheckIn = ['accepted', 'scheduled'].includes(session.status)
+    && checkInOpen && !checkInBlockedByProposal && !myCheckIn;
   const canReschedule = ['accepted', 'scheduled'].includes(session.status);
   const hasRescheduleProposal = canReschedule && Boolean(session.rescheduleProposalId && session.proposedScheduledAt);
   const proposedByMe = hasRescheduleProposal && idOf(session.rescheduleProposedBy) === idOf(user);
@@ -347,6 +372,25 @@ const SessionRoom = ({ id }) => {
               <h3>Request message</h3>
               <blockquote>{session.requestMessage || 'No request message was recorded for this older session.'}</blockquote>
             </div>
+
+            {checkInStateVisible && (
+              <div className="session-check-in">
+                <h3>Session check-in</h3>
+                <p className="session-muted-copy">Check-in is available from 15 minutes before until 4 hours after the agreed time.</p>
+                <p>Learner: {session.learnerCheckedInAt ? `Checked in ${formatSessionDateTime(session.learnerCheckedInAt)}` : 'Not checked in'}</p>
+                <p>Tutor: {session.tutorCheckedInAt ? `Checked in ${formatSessionDateTime(session.tutorCheckedInAt)}` : 'Not checked in'}</p>
+                {session.status === 'in_progress' ? (
+                  <p><strong>In progress{session.startedAt ? ` since ${formatSessionDateTime(session.startedAt)}` : ''}.</strong></p>
+                ) : myCheckIn ? (
+                  <p>Waiting for {peerCheckIn ? 'the session to start' : 'your peer to check in'}.</p>
+                ) : checkInBlockedByProposal ? (
+                  <p>Resolve the reschedule proposal before checking in.</p>
+                ) : !checkInOpen ? (
+                  <p>Check-in is not available at this time.</p>
+                ) : null}
+                {canCheckIn && <button type="button" className="btn btn-primary btn-sm" disabled={actionLoading} onClick={handleCheckIn}>Check in</button>}
+              </div>
+            )}
 
             {canReschedule && (
               <div className="session-reschedule">

@@ -10,6 +10,7 @@ const {
   proposeReschedule,
   acceptReschedule,
   declineReschedule,
+  checkIn,
   getMessages,
   createMessage,
   confirmSession,
@@ -29,6 +30,7 @@ router.patch('/:id/coordination', sessionActionLimiter, validateParams(schemas.s
 router.post('/:id/reschedule', sessionActionLimiter, validateParams(schemas.sessionId), validateBody(schemas.reschedule), proposeReschedule);
 router.post('/:id/reschedule/accept', sessionActionLimiter, validateParams(schemas.sessionId), validateBody(schemas.rescheduleDecision), acceptReschedule);
 router.post('/:id/reschedule/decline', sessionActionLimiter, validateParams(schemas.sessionId), validateBody(schemas.rescheduleDecision), declineReschedule);
+router.post('/:id/check-in', sessionActionLimiter, validateParams(schemas.sessionId), validateBody({}), checkIn);
 router.post('/:id/confirm', sessionActionLimiter, validateParams(schemas.sessionId), validateBody({}), confirmSession);
 router.get('/:id/messages', validateParams(schemas.sessionId), getMessages);
 router.post('/:id/messages', messageLimiter, validateParams(schemas.sessionId), validateBody(schemas.message), createMessage);

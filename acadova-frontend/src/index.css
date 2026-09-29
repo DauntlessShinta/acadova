@@ -2068,6 +2068,21 @@ textarea:focus-visible {
   font-size: 0.88rem;
 }
 
+.session-check-in {
+  margin-top: 20px;
+  padding-top: 17px;
+  border-top: 1px solid var(--border-subtle);
+}
+
+.session-check-in h3 {
+  color: var(--acadova-primary);
+  font-size: 0.88rem;
+}
+
+.session-check-in p {
+  margin: 8px 0;
+}
+
 .session-reschedule {
   margin-top: 20px;
   padding-top: 17px;

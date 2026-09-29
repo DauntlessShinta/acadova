@@ -42,6 +42,8 @@ export const sessionService = {
     api.post(`/api/sessions/${sessionId}/reschedule/decline`, { proposalId })
   ),
 
+  checkIn: async (sessionId) => api.post(`/api/sessions/${sessionId}/check-in`, {}),
+
   confirmSession: async (sessionId) => api.post(`/api/sessions/${sessionId}/confirm`, {}),
 
   getMessages: async (sessionId) => api.get(`/api/sessions/${sessionId}/messages`),

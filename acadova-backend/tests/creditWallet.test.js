@@ -6,6 +6,8 @@ const CreditTransaction = require('../models/CreditTransaction');
 const User = require('../models/User');
 const Session = require('../models/Session');
 const Assessment = require('../models/Assessment');
+const LearningResource = require('../models/LearningResource');
+const LearningModule = require('../models/LearningModule');
 
 const learner = '507f1f77bcf86cd799439011';
 const tutor = '507f1f77bcf86cd799439012';
@@ -24,6 +26,7 @@ test('Student wallet history is private, event-aware, bounded, and read-only', a
     userFind: User.find,
     userFindById: User.findById, sessionFind: Session.find,
     assessmentFind: Assessment.find,
+    resourceFind: LearningResource.find, moduleFind: LearningModule.find,
   };
   process.env.JWT_SECRET = 'credit-wallet-test-secret';
   let rows = [];
@@ -67,6 +70,12 @@ test('Student wallet history is private, event-aware, bounded, and read-only', a
   Session.find = () => ({ select: () => ({ lean: async () => sessions }) });
   Assessment.find = () => ({ select: () => ({ lean: async () => [{
     _id: sessionId, title: 'JavaScript basics',
+  }] }) });
+  LearningResource.find = () => ({ select: () => ({ lean: async () => [{
+    _id: sessionId, title: 'JavaScript guide',
+  }] }) });
+  LearningModule.find = () => ({ select: () => ({ lean: async () => [{
+    _id: outsider, title: 'JavaScript module',
   }] }) });
   User.findById = (id) => ({ select: () => ({ lean: async () => ({
     _id: id, name: 'Wallet owner', email: 'safe@example.test', role: 'student',
@@ -166,6 +175,25 @@ test('Student wallet history is private, event-aware, bounded, and read-only', a
     assert.deepEqual(result.body.summary, { recordedEarned: 20, recordedSpent: 0 });
 
     rows = [
+      { _id: 'resource-unlock', type: 'learning_unlock', fromUser: learner,
+        resource: sessionId, amount: 10, createdAt: date('27') },
+      { _id: 'module-unlock', type: 'learning_unlock', fromUser: learner,
+        module: outsider, amount: 30, createdAt: date('28') },
+      { _id: 'reward-with-spending', type: 'assessment_reward', toUser: learner,
+        assessment: sessionId, amount: 20, createdAt: date('29') },
+    ];
+    result = await call('/mine', learner);
+    assert.equal(result.status, 200);
+    assert.equal(result.body.balance, 80);
+    assert.deepEqual(result.body.summary, { recordedEarned: 20, recordedSpent: 40 });
+    assert.equal(result.body.data.find((item) => item.id === 'resource-unlock').signedAmount, -10);
+    assert.equal(result.body.data.find((item) => item.id === 'resource-unlock').description, 'JavaScript guide');
+    assert.equal(result.body.data.find((item) => item.id === 'resource-unlock').label, 'Learning resource');
+    assert.equal(result.body.data.find((item) => item.id === 'module-unlock').signedAmount, -30);
+    assert.equal(result.body.data.find((item) => item.id === 'module-unlock').description, 'JavaScript module');
+    assert.equal(result.body.data.find((item) => item.id === 'module-unlock').label, 'Learning module');
+
+    rows = [
       { _id: 'mixed-grant', type: 'initial_grant', toUser: learner,
         amount: 100, createdAt: date('21') },
       payment('mixed-old', 2, '22'),
@@ -189,6 +217,8 @@ test('Student wallet history is private, event-aware, bounded, and read-only', a
     User.findById = original.userFindById;
     Session.find = original.sessionFind;
     Assessment.find = original.assessmentFind;
+    LearningResource.find = original.resourceFind;
+    LearningModule.find = original.moduleFind;
     if (previousSecret === undefined) delete process.env.JWT_SECRET;
     else process.env.JWT_SECRET = previousSecret;
   }

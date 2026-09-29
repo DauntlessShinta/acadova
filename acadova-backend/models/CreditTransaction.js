@@ -13,6 +13,10 @@ const CreditTransactionSchema = new mongoose.Schema({
     required() { return this.type === 'assessment_reward'; } },
   result: { type: mongoose.Schema.Types.ObjectId, ref: 'AssessmentAttempt',
     required() { return this.type === 'assessment_reward'; } },
+  resource: { type: mongoose.Schema.Types.ObjectId, ref: 'LearningResource' },
+  module: { type: mongoose.Schema.Types.ObjectId, ref: 'LearningModule' },
+  unlock: { type: mongoose.Schema.Types.ObjectId, ref: 'LearningUnlock',
+    required() { return this.type === 'learning_unlock'; } },
   type: { type: String, enum: ['session_payment', 'initial_grant', 'assessment_reward', 'learning_unlock', 'admin_adjustment'], default: 'session_payment' },
 }, { timestamps: true, autoIndex: process.env.NODE_ENV !== 'production' });
 
@@ -22,6 +26,11 @@ CreditTransactionSchema.pre('validate', function validateActiveCreditEvent() {
   }
   if (this.type === 'assessment_reward' && (this.fromUser != null || this.session != null)) {
     this.invalidate('type', 'An assessment reward cannot have a sender or Session');
+  }
+  if (this.type === 'learning_unlock'
+    && (!this.fromUser || this.toUser || this.session || this.assessment || this.result
+      || Boolean(this.resource) === Boolean(this.module))) {
+    this.invalidate('type', 'A learning unlock needs one content target, a sender, and no recipient');
   }
 });
 
@@ -35,6 +44,14 @@ CreditTransactionSchema.index({ toUser: 1 }, { name: 'uniq_initial_grant_recipie
 CreditTransactionSchema.index({ toUser: 1, assessment: 1, type: 1 }, {
   name: 'uniq_assessment_reward_recipient_assessment', unique: true,
   partialFilterExpression: { type: 'assessment_reward', toUser: { $exists: true }, assessment: { $exists: true } },
+});
+CreditTransactionSchema.index({ fromUser: 1, resource: 1, type: 1 }, {
+  name: 'uniq_learning_unlock_ledger_resource', unique: true,
+  partialFilterExpression: { type: 'learning_unlock', resource: { $exists: true } },
+});
+CreditTransactionSchema.index({ fromUser: 1, module: 1, type: 1 }, {
+  name: 'uniq_learning_unlock_ledger_module', unique: true,
+  partialFilterExpression: { type: 'learning_unlock', module: { $exists: true } },
 });
 
 // The application exposes no transaction edit/delete routes. Future credit

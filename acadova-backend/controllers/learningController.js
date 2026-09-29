@@ -2,26 +2,35 @@ const LearningTopic = require('../models/LearningTopic');
 const LearningResource = require('../models/LearningResource');
 const LearningModule = require('../models/LearningModule');
 const Assessment = require('../models/Assessment');
+const LearningUnlock = require('../models/LearningUnlock');
 const { logSecurityEvent } = require('../utils/securityLogger');
 
 const id = (value) => String(value);
 const topicView = (row) => ({ id: id(row._id), name: row.name, slug: row.slug,
   description: row.description, status: row.status });
-const resourceView = (row, staff = false) => ({
+const resourceView = (row, staff = false, entitled = false) => ({
   id: id(row._id), topic: id(row.topic), title: row.title, description: row.description,
-  resourceType: row.resourceType, creditCost: row.creditCost, locked: row.creditCost > 0,
+  resourceType: row.resourceType, creditCost: row.creditCost, locked: row.creditCost > 0 && !entitled,
+  ...(entitled ? { unlocked: true } : {}),
   ...(staff ? { reviewStatus: row.reviewStatus, submittedBy: id(row.submittedBy),
     reviewedBy: row.reviewedBy ? id(row.reviewedBy) : null, reviewNote: row.reviewNote || null } : {}),
-  ...(staff || row.creditCost === 0 ? {
+  ...(staff || row.creditCost === 0 || entitled ? {
     ...(row.resourceType === 'text' ? { textContent: row.textContent } : { externalUrl: row.externalUrl }),
   } : {}),
 });
-const moduleView = (row, staff = false) => ({
+const resourcePreview = (row, entitled = false) => {
+  const view = resourceView(row, false, entitled);
+  delete view.textContent;
+  delete view.externalUrl;
+  return view;
+};
+const moduleView = (row, staff = false, entitled = false) => ({
   id: id(row._id), topic: id(row.topic), title: row.title, description: row.description,
-  creditCost: row.creditCost, locked: row.creditCost > 0,
+  creditCost: row.creditCost, locked: row.creditCost > 0 && !entitled,
+  ...(entitled ? { unlocked: true } : {}),
   ...(staff ? { status: row.status, resources: row.resources.map(id),
     assessment: row.assessment ? id(row.assessment) : null }
-    : row.creditCost === 0 ? { resources: row.resources.map(id),
+    : row.creditCost === 0 || entitled ? { resources: row.resources.map(id),
       assessment: row.assessment ? id(row.assessment) : null } : {}),
 });
 const unavailable = (res) => res.status(404).json({ success: false, message: 'Learning content not available.' });
@@ -47,8 +56,15 @@ exports.getTopic = async (req, res) => {
         { learningTopic: { $exists: false }, topic: topic.name }] })
         .select('_id title topic questions').limit(100).lean(),
     ]);
-    return res.json({ success: true, data: { ...topicView(topic), resources: resources.map((row) => resourceView(row)),
-      modules: modules.map((row) => moduleView(row)),
+    const owned = await LearningUnlock.find({ student: req.user.id,
+      $or: [{ resource: { $in: resources.map((row) => row._id) } },
+        { module: { $in: modules.map((row) => row._id) } }] })
+      .select('resource module').lean();
+    const ownedResources = new Set(owned.map((row) => row.resource && id(row.resource)).filter(Boolean));
+    const ownedModules = new Set(owned.map((row) => row.module && id(row.module)).filter(Boolean));
+    return res.json({ success: true, data: { ...topicView(topic),
+      resources: resources.map((row) => resourcePreview(row, ownedResources.has(id(row._id)))),
+      modules: modules.map((row) => moduleView(row, false, ownedModules.has(id(row._id)))),
       assessments: assessments.map((row) => ({ id: id(row._id), title: row.title,
         questionCount: row.questions.length })) } });
   } catch { return failure(res); }
@@ -58,7 +74,8 @@ exports.getResource = async (req, res) => {
   try {
     const resource = await LearningResource.findOne({ _id: req.params.id, reviewStatus: 'published' }).lean();
     if (!resource || !await LearningTopic.exists({ _id: resource.topic, status: 'published' })) return unavailable(res);
-    return res.json({ success: true, data: resourceView(resource) });
+    const owned = resource.creditCost > 0 && await LearningUnlock.exists({ student: req.user.id, resource: resource._id });
+    return res.json({ success: true, data: resourceView(resource, false, Boolean(owned)) });
   } catch { return failure(res); }
 };
 
@@ -66,14 +83,16 @@ exports.getModule = async (req, res) => {
   try {
     const module = await LearningModule.findOne({ _id: req.params.id, status: 'published' }).lean();
     if (!module || !await LearningTopic.exists({ _id: module.topic, status: 'published' })) return unavailable(res);
-    // A free module may contain paid resources, but their bodies/links are never returned here.
-    const resources = module.creditCost === 0
+    // Keep an existing module entitlement effective even if staff later lowers its price to zero.
+    const owned = await LearningUnlock.exists({ student: req.user.id, module: module._id });
+    // An unlocked paid module grants in-module viewing, not standalone Resource entitlements.
+    const resources = module.creditCost === 0 || owned
       ? await LearningResource.find({ _id: { $in: module.resources }, topic: module.topic,
         reviewStatus: 'published' }).lean() : [];
     const byId = new Map(resources.map((row) => [id(row._id), row]));
-    return res.json({ success: true, data: { ...moduleView(module),
-      ...(module.creditCost === 0 ? { resources: module.resources.map((resourceId) => byId.get(id(resourceId)))
-        .filter(Boolean).map((row) => resourceView(row)) } : {}) } });
+    return res.json({ success: true, data: { ...moduleView(module, false, Boolean(owned)),
+      ...(module.creditCost === 0 || owned ? { resources: module.resources.map((resourceId) => byId.get(id(resourceId)))
+        .filter(Boolean).map((row) => resourceView(row, false, Boolean(owned))) } : {}) } });
   } catch { return failure(res); }
 };
 

@@ -9,6 +9,7 @@ const LearningResource = require('../models/LearningResource');
 const LearningModule = require('../models/LearningModule');
 const Assessment = require('../models/Assessment');
 const CreditTransaction = require('../models/CreditTransaction');
+const LearningUnlock = require('../models/LearningUnlock');
 
 const student = '507f1f77bcf86cd799439011';
 const moderator = '507f1f77bcf86cd799439012';
@@ -53,6 +54,7 @@ test('learning routes enforce governance, safe previews, and no spending', async
     moduleCreate: LearningModule.create, moduleUpdate: LearningModule.findOneAndUpdate,
     assessmentFind: Assessment.find, assessmentExists: Assessment.exists,
     transactionCreate: CreditTransaction.create, secret: process.env.JWT_SECRET, env: process.env.NODE_ENV,
+    unlockFind: LearningUnlock.find, unlockExists: LearningUnlock.exists,
   };
   process.env.JWT_SECRET = 'learning-test-secret';
   process.env.NODE_ENV = 'test';
@@ -95,6 +97,8 @@ test('learning routes enforce governance, safe previews, and no spending', async
   LearningModule.findOneAndUpdate = update(modules);
   Assessment.find = () => query([]); Assessment.exists = async () => true;
   CreditTransaction.create = async () => { ledgerWrites += 1; throw new Error('Unexpected ledger write'); };
+  LearningUnlock.find = () => ({ select: () => ({ lean: async () => [] }) });
+  LearningUnlock.exists = async () => false;
 
   const app = express(); app.use(express.json());
   app.use('/api/learning', require('../routes/learningRoutes'));
@@ -197,6 +201,7 @@ test('learning routes enforce governance, safe previews, and no spending', async
     LearningModule.findOne = originals.moduleOne; LearningModule.create = originals.moduleCreate;
     LearningModule.findOneAndUpdate = originals.moduleUpdate; Assessment.find = originals.assessmentFind;
     Assessment.exists = originals.assessmentExists; CreditTransaction.create = originals.transactionCreate;
+    LearningUnlock.find = originals.unlockFind; LearningUnlock.exists = originals.unlockExists;
     process.env.JWT_SECRET = originals.secret; process.env.NODE_ENV = originals.env;
   }
 });

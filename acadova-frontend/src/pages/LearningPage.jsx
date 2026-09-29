@@ -3,10 +3,12 @@ import { Link } from 'react-router-dom';
 import learningService from '../services/learningService';
 import Alert from '../components/common/Alert';
 import LoadingSpinner from '../components/common/LoadingSpinner';
+import { useAuth } from '../context/AuthContext';
 
 const emptySubmission = { topic: '', title: '', description: '', resourceType: 'text', textContent: '', externalUrl: '' };
 
 export const LearningPage = () => {
+  const { refreshUser } = useAuth();
   const [topics, setTopics] = useState([]);
   const [topic, setTopic] = useState(null);
   const [content, setContent] = useState(null);
@@ -43,6 +45,24 @@ export const LearningPage = () => {
     catch (err) { setError(err.message); }
     finally { setWorking(false); }
   };
+  const unlock = async () => {
+    if (!content?.locked || !window.confirm(`Unlock ${content.title} for ${content.creditCost} credits?`)) return;
+    setWorking(true); setError('');
+    try {
+      const module = !content.resourceType;
+      await (module ? learningService.unlockModule(content.id) : learningService.unlockResource(content.id));
+      await refreshUser();
+      const [detail, updatedTopic] = await Promise.all([
+        module ? learningService.module(content.id) : learningService.resource(content.id),
+        learningService.topic(topic.id),
+      ]);
+      setContent(detail.data); setTopic(updatedTopic.data);
+    } catch (err) { setError(err.message); }
+    finally { setWorking(false); }
+  };
+  const resourceBody = (item) => item.resourceType === 'text'
+    ? <p style={{ whiteSpace: 'pre-wrap' }}>{item.textContent}</p>
+    : <a href={item.externalUrl} target="_blank" rel="noopener noreferrer">Open HTTPS resource</a>;
 
   return <div>
     <h1>Learning</h1><p>Browse approved topics, study free resources, and take assessments.</p>
@@ -56,17 +76,22 @@ export const LearningPage = () => {
         <h2>{topic.name}</h2><p>{topic.description}</p>
         {content && <article className="card"><button type="button" className="btn btn-secondary btn-sm" onClick={() => setContent(null)}>Back to topic</button>
           <h3>{content.title}</h3><p>{content.description}</p>
-          {content.locked ? <p>{content.creditCost} credits — unlock support is coming in the next credit phase.</p>
-            : content.resourceType === 'text' ? <p style={{ whiteSpace: 'pre-wrap' }}>{content.textContent}</p>
-              : content.resourceType === 'url' ? <a href={content.externalUrl} target="_blank" rel="noopener noreferrer">Open HTTPS resource</a>
-                : <>{(content.resources || []).map((item) => <p key={item.id}><button type="button" className="btn btn-secondary btn-sm" onClick={() => load(() => learningService.resource(item.id))}>{item.title}</button>{item.locked && ` · ${item.creditCost} credits, locked`}</p>)}
+          {content.locked ? <><p>{content.creditCost} credits</p>
+            <button type="button" className="btn btn-primary btn-sm" disabled={working} onClick={unlock}>Unlock</button></>
+            : content.resourceType ? <>{content.unlocked && <p>Unlocked</p>}{resourceBody(content)}</>
+              : <>{content.unlocked && <p>Unlocked module</p>}
+                  {(content.resources || []).map((item, index) => <div className="card" key={item.id}>
+                    <h4>{index + 1}. {item.title}</h4><p>{item.description}</p>
+                    {item.locked ? <button type="button" className="btn btn-secondary btn-sm" onClick={() => load(() => learningService.resource(item.id))}>{item.creditCost} credits · Unlock resource</button>
+                      : resourceBody(item)}
+                  </div>)}
                   {content.assessment && <Link to={`/assessments?open=${content.assessment}`}>Take linked assessment</Link>}</>}
         </article>}
         {!content && <><h3>Resources</h3><div className="assessment-list">{topic.resources.map((item) => <article className="card" key={item.id}>
-          <h4>{item.title}</h4><p>{item.description}</p><p>{item.locked ? `${item.creditCost} credits — unlock coming later` : 'Free'}</p>
+          <h4>{item.title}</h4><p>{item.description}</p><p>{item.unlocked ? 'Unlocked' : item.locked ? `${item.creditCost} credits` : 'Free'}</p>
           <button type="button" className="btn btn-secondary btn-sm" disabled={working} onClick={() => load(() => learningService.resource(item.id))}>View resource</button>
         </article>)}</div><h3>Modules</h3><div className="assessment-list">{topic.modules.map((item) => <article className="card" key={item.id}>
-          <h4>{item.title}</h4><p>{item.description}</p><p>{item.locked ? `${item.creditCost} credits — unlock coming later` : 'Free'}</p>
+          <h4>{item.title}</h4><p>{item.description}</p><p>{item.unlocked ? 'Unlocked' : item.locked ? `${item.creditCost} credits` : 'Free'}</p>
           <button type="button" className="btn btn-secondary btn-sm" disabled={working} onClick={() => load(() => learningService.module(item.id))}>Open module</button>
         </article>)}</div><h3>Assessments</h3>{topic.assessments.length ? topic.assessments.map((item) => <p key={item.id}>
           <Link to={`/assessments?open=${item.id}`}>{item.title}</Link> · {item.questionCount} questions</p>) : <p>No linked assessments yet.</p>}</>}

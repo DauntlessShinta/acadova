@@ -64,7 +64,9 @@ test('schema declares separate unique keys for Session payment and per-Student g
 
 test('own history tolerates a sender-less opening grant', async () => {
   const original = CreditTransaction.find;
+  const originalAggregate = CreditTransaction.aggregate;
   const originalFind = User.find;
+  CreditTransaction.aggregate = async () => [{ recordedEarned: 100, recordedSpent: 0 }];
   CreditTransaction.find = (filter) => {
     assert.deepEqual(filter, { $or: [{ fromUser: String(learner) }, { toUser: String(learner) }] });
     return { select() { return this; }, sort() { return this; }, skip() { return this; },
@@ -82,5 +84,7 @@ test('own history tolerates a sender-less opening grant', async () => {
     assert.equal(response.body.data[0].label, 'Starting credits');
     assert.equal(response.body.data[0].counterparty, null);
     assert.equal(response.body.balance, 100);
-  } finally { CreditTransaction.find = original; User.find = originalFind; }
+    assert.deepEqual(response.body.summary, { recordedEarned: 100, recordedSpent: 0 });
+  } finally { CreditTransaction.find = original; CreditTransaction.aggregate = originalAggregate;
+    User.find = originalFind; }
 });

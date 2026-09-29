@@ -1,3 +1,4 @@
+const mongoose = require('mongoose');
 const CreditTransaction = require('../models/CreditTransaction');
 const User = require('../models/User');
 const Session = require('../models/Session');
@@ -30,6 +31,28 @@ exports.getMyCreditHistory = async (req, res) => {
 
     const hasMore = rows.length > limit;
     const transactions = rows.slice(0, limit);
+    const viewerObjectId = new mongoose.Types.ObjectId(viewerId);
+    // Aggregate all recorded activity, not just the current history page.
+    // Match the normalization rule: only positive whole amounts with exactly one viewer side count.
+    const [totals] = await CreditTransaction.aggregate([
+      { $match: {
+        $or: [{ fromUser: viewerObjectId }, { toUser: viewerObjectId }],
+      } },
+      { $match: { $expr: { $isNumber: '$amount' } } },
+      { $match: { amount: { $gt: 0, $lte: Number.MAX_SAFE_INTEGER },
+        $expr: { $eq: ['$amount', { $trunc: ['$amount', 0] }] } } },
+      { $group: {
+        _id: null,
+        recordedEarned: { $sum: { $cond: [
+          { $and: [{ $eq: ['$toUser', viewerObjectId] }, { $ne: ['$fromUser', viewerObjectId] }] },
+          '$amount', 0,
+        ] } },
+        recordedSpent: { $sum: { $cond: [
+          { $and: [{ $eq: ['$fromUser', viewerObjectId] }, { $ne: ['$toUser', viewerObjectId] }] },
+          '$amount', 0,
+        ] } },
+      } },
+    ]);
     const peerIds = [...new Set(transactions.flatMap((tx) => [tx.fromUser, tx.toUser]
       .map(idOf).filter((id) => validRef(id) && id !== viewerId)))];
     const sessionIds = [...new Set(transactions.map((tx) => idOf(tx.session)).filter(validRef))];
@@ -87,6 +110,7 @@ exports.getMyCreditHistory = async (req, res) => {
     });
 
     res.json({ success: true, message: 'Credit history retrieved', balance: req.user.credits,
+      summary: { recordedEarned: totals?.recordedEarned || 0, recordedSpent: totals?.recordedSpent || 0 },
       data, pagination: { page, limit, hasMore } });
   } catch (error) {
     res.status(500).json({ success: false, message: 'Server error while retrieving credit history' });

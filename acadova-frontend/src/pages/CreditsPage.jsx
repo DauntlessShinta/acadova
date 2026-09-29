@@ -4,13 +4,14 @@ import creditService from '../services/creditService';
 import StatCard from '../components/common/StatCard';
 import Alert from '../components/common/Alert';
 import LoadingSpinner from '../components/common/LoadingSpinner';
-import { Coins, RefreshCw, History } from 'lucide-react';
+import { Coins, ArrowUpRight, ArrowDownLeft, RefreshCw, History } from 'lucide-react';
 import CreditActivityList from '../components/credits/CreditActivityList';
 import './CreditsPage.css';
 
 export const CreditsPage = () => {
   const { credits, refreshUser } = useAuth();
   const [history, setHistory] = useState([]);
+  const [summary, setSummary] = useState({ recordedEarned: 0, recordedSpent: 0 });
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -22,6 +23,7 @@ export const CreditsPage = () => {
       setError('');
       const res = await creditService.getMyCreditHistory(nextPage);
       setHistory((previous) => nextPage === 1 ? (res?.data || []) : [...previous, ...(res?.data || [])]);
+      setSummary(res?.summary || { recordedEarned: 0, recordedSpent: 0 });
       setPage(nextPage);
       setHasMore(Boolean(res?.pagination?.hasMore));
       await refreshUser();
@@ -53,10 +55,14 @@ export const CreditsPage = () => {
       <div className="stat-grid credit-wallet-balance">
         <StatCard title="Available credits" value={`${credits} credits`}
           subtitle="Current spendable balance" icon={Coins} color="var(--brass-600)" />
+        <StatCard title="Recorded earned" value={`${summary.recordedEarned} credits`}
+          subtitle="Incoming ledger activity" icon={ArrowUpRight} color="var(--success-text)" />
+        <StatCard title="Recorded spent" value={`${summary.recordedSpent} credits`}
+          subtitle="Outgoing ledger activity" icon={ArrowDownLeft} color="var(--brass-700)" />
       </div>
       <p className="credit-wallet-note">
         Credits support learning on Acadova and have no cash value. Your balance comes from your account;
-        older starting balances may not have a matching activity entry.
+        recorded earned and spent cover ledger activity only. Older starting balances may not have a matching activity entry.
       </p>
 
       <section className="card" aria-labelledby="credit-history-heading">

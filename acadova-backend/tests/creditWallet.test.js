@@ -20,7 +20,8 @@ const payment = (id, amount, day, overrides = {}) => ({
 test('Student wallet history is private, event-aware, bounded, and read-only', async () => {
   const previousSecret = process.env.JWT_SECRET;
   const original = {
-    transactionFind: CreditTransaction.find, userFind: User.find,
+    transactionFind: CreditTransaction.find, transactionAggregate: CreditTransaction.aggregate,
+    userFind: User.find,
     userFindById: User.findById, sessionFind: Session.find,
     assessmentFind: Assessment.find,
   };
@@ -30,6 +31,22 @@ test('Student wallet history is private, event-aware, bounded, and read-only', a
   let sessions = [{ _id: sessionId, subject: 'JavaScript', scheduledAt: date('27'),
     learner, tutor }];
   const filters = [];
+  const aggregationFilters = [];
+
+  CreditTransaction.aggregate = async (pipeline) => {
+    aggregationFilters.push(pipeline);
+    const viewerId = String(pipeline[0].$match.$or[0].fromUser);
+    let recordedEarned = 0;
+    let recordedSpent = 0;
+    for (const row of rows) {
+      if (!Number.isSafeInteger(row.amount) || row.amount <= 0) continue;
+      const fromViewer = String(row.fromUser) === viewerId;
+      const toViewer = String(row.toUser) === viewerId;
+      if (toViewer && !fromViewer) recordedEarned += row.amount;
+      if (fromViewer && !toViewer) recordedSpent += row.amount;
+    }
+    return recordedEarned || recordedSpent ? [{ recordedEarned, recordedSpent }] : [];
+  };
 
   CreditTransaction.find = (filter) => {
     filters.push(filter);
@@ -92,6 +109,11 @@ test('Student wallet history is private, event-aware, bounded, and read-only', a
     let result = await call('/mine', learner);
     assert.equal(result.status, 200);
     assert.equal(result.body.balance, 80); // Not reconstructed from history.
+    assert.deepEqual(result.body.summary, { recordedEarned: 103, recordedSpent: 26 });
+    assert.equal(String(aggregationFilters.at(-1)[0].$match.$or[0].fromUser), learner);
+    assert.deepEqual(aggregationFilters.at(-1)[1], { $match: { $expr: { $isNumber: '$amount' } } });
+    assert.deepEqual(aggregationFilters.at(-1)[2].$match.$expr,
+      { $eq: ['$amount', { $trunc: ['$amount', 0] }] });
     assert.equal(result.body.data.length, 7);
     assert.equal(result.body.data.some((item) => item.id === 'outsider'), false);
     assert.deepEqual(filters.at(-1), { $or: [{ fromUser: learner }, { toUser: learner }] });
@@ -110,6 +132,7 @@ test('Student wallet history is private, event-aware, bounded, and read-only', a
     result = await call('/mine', tutor);
     assert.equal(result.status, 200);
     assert.equal(result.body.balance, 120);
+    assert.deepEqual(result.body.summary, { recordedEarned: 76, recordedSpent: 0 });
     assert.equal(result.body.data.find((item) => item.id === 'payment-20').signedAmount, 20);
     assert.equal(result.body.data.find((item) => item.id === 'payment-2').signedAmount, 2);
     assert.equal(result.body.data.find((item) => item.id === 'payment-1').signedAmount, 1);
@@ -121,6 +144,7 @@ test('Student wallet history is private, event-aware, bounded, and read-only', a
     result = await call('/mine?limit=2&page=2', learner);
     assert.equal(result.body.data.length, 2);
     assert.equal(result.body.pagination.page, 2);
+    assert.deepEqual(result.body.summary, { recordedEarned: 103, recordedSpent: 26 });
 
     rows = [payment('malformed', null, '29', { session: 'invalid-reference' })];
     result = await call('/mine', learner);
@@ -128,6 +152,7 @@ test('Student wallet history is private, event-aware, bounded, and read-only', a
     assert.equal(result.body.data[0].amount, null);
     assert.equal(result.body.data[0].signedAmount, null);
     assert.equal(result.body.data[0].relatedSession, null);
+    assert.deepEqual(result.body.summary, { recordedEarned: 0, recordedSpent: 0 });
 
     rows = [{ _id: 'assessment-reward', type: 'assessment_reward', toUser: learner,
       assessment: sessionId, amount: 20, createdAt: date('29') }];
@@ -138,9 +163,28 @@ test('Student wallet history is private, event-aware, bounded, and read-only', a
     assert.equal(result.body.data[0].label, 'Assessment reward');
     assert.equal(result.body.data[0].description, 'JavaScript basics');
     assert.equal(result.body.data[0].counterparty, null);
+    assert.deepEqual(result.body.summary, { recordedEarned: 20, recordedSpent: 0 });
+
+    rows = [
+      { _id: 'mixed-grant', type: 'initial_grant', toUser: learner,
+        amount: 100, createdAt: date('21') },
+      payment('mixed-old', 2, '22'),
+      payment('mixed-new', 20, '23'),
+      { _id: 'mixed-assessment', type: 'assessment_reward', toUser: learner,
+        assessment: sessionId, amount: 20, createdAt: date('24') },
+    ];
+    result = await call('/mine', learner);
+    assert.deepEqual(result.body.summary, { recordedEarned: 120, recordedSpent: 22 });
+    assert.equal(result.body.balance, 80);
+
+    rows = [];
+    result = await call('/mine', learner);
+    assert.equal(result.body.balance, 80);
+    assert.deepEqual(result.body.summary, { recordedEarned: 0, recordedSpent: 0 });
   } finally {
     await new Promise((resolve) => server.close(resolve));
     CreditTransaction.find = original.transactionFind;
+    CreditTransaction.aggregate = original.transactionAggregate;
     User.find = original.userFind;
     User.findById = original.userFindById;
     Session.find = original.sessionFind;

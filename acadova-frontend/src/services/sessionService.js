@@ -45,6 +45,8 @@ export const sessionService = {
   checkIn: async (sessionId) => api.post(`/api/sessions/${sessionId}/check-in`, {}),
 
   finishSession: async (sessionId) => api.post(`/api/sessions/${sessionId}/finish`, {}),
+  reportNoShow: async (sessionId) => api.post(`/api/sessions/${sessionId}/no-show`, {}),
+  disputeSession: async (sessionId, reason) => api.post(`/api/sessions/${sessionId}/dispute`, { reason }),
 
   confirmSession: async (sessionId) => api.post(`/api/sessions/${sessionId}/confirm`, {}),
 

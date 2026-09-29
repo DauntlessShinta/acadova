@@ -13,6 +13,9 @@ const LEGACY_STATUS_MAP = Object.freeze({
   rejected: 'declined',
   declined: 'declined',
   cancelled: 'cancelled',
+  no_show: 'no_show',
+  disputed: 'disputed',
+  resolved: 'resolved',
 });
 
 const idOf = (value) => {
@@ -47,18 +50,37 @@ function classifyLegacySession(session, transactions = []) {
     };
   }
 
+  if (legacyStatus === 'resolved') {
+    const valid = session.resolution === 'confirm_session' && session.disputedAt && session.disputeReason
+      && session.resolvedAt && session.resolvedBy && session.resolutionNote
+      && session.completedAt && session.creditsSettledAt;
+    if (valid && transactions.length === 1 && matchesPayment(session, transactions[0])) {
+      return { ...base, settlementState: 'settled', requiresReconciliation: false };
+    }
+    const invalid = session.resolution === 'cancel_session' && session.disputedAt && session.disputeReason
+      && session.resolvedAt && session.resolvedBy && session.resolutionNote
+      && !session.completedAt && !session.creditsSettledAt
+      && transactions.length === 0;
+    if (invalid) return { ...base, settlementState: 'not_applicable', requiresReconciliation: false };
+    return { ...base, settlementState: 'inconsistent', requiresReconciliation: true };
+  }
+
   if (!base.canonicalStatus || transactions.length > 0 || session.completedAt || session.confirmedAt || session.creditsSettledAt) {
     return { ...base, settlementState: 'inconsistent', requiresReconciliation: true };
   }
   return { ...base, settlementState: 'not_applicable', requiresReconciliation: false };
 }
 
-const isSessionRatingEligible = (session, transactions = []) => (
-  session.status === 'completed'
-  && (!session.awaitingValidationAt || Boolean(
-    session.learnerConfirmedAt && session.tutorConfirmedAt && session.confirmedAt && session.creditsSettledAt
-  ))
-  && classifyLegacySession(session, transactions).settlementState === 'settled'
-);
+const isSessionRatingEligible = (session, transactions = []) => {
+  if (session.status === 'resolved') {
+    return session.resolution === 'confirm_session'
+      && classifyLegacySession(session, transactions).settlementState === 'settled';
+  }
+  return session.status === 'completed'
+    && (!session.awaitingValidationAt || Boolean(
+      session.learnerConfirmedAt && session.tutorConfirmedAt && session.confirmedAt && session.creditsSettledAt
+    ))
+    && classifyLegacySession(session, transactions).settlementState === 'settled';
+};
 
 module.exports = { CANONICAL_STATUSES, classifyLegacySession, isSessionRatingEligible };

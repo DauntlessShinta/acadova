@@ -51,6 +51,7 @@ const SessionRoom = ({ id }) => {
   const [proposedTime, setProposedTime] = useState('');
   const [ratingStars, setRatingStars] = useState(5);
   const [ratingComment, setRatingComment] = useState('');
+  const [disputeReason, setDisputeReason] = useState('');
   const [ratingSubmitted, setRatingSubmitted] = useState(false);
   const gate = useRef(createRefreshGate());
   const actionInProgress = useRef(false);
@@ -238,6 +239,35 @@ const SessionRoom = ({ id }) => {
     }
   };
 
+  const handleNoShow = async () => {
+    if (!window.confirm('Record this session as a no-show? Check-in evidence determines who was absent. No credits will transfer.')) return;
+    if (!beginAction()) return;
+    try {
+      const response = await sessionService.reportNoShow(id);
+      setSession(response.data);
+      setSuccess(response.message);
+    } catch (err) {
+      setError(err.message || 'No-show could not be recorded.');
+    } finally {
+      finishAction();
+    }
+  };
+
+  const handleDispute = async (event) => {
+    event.preventDefault();
+    if (!beginAction()) return;
+    try {
+      const response = await sessionService.disputeSession(id, disputeReason.trim());
+      setSession(response.data);
+      setDisputeReason('');
+      setSuccess(response.message);
+    } catch (err) {
+      setError(err.message || 'Dispute could not be submitted.');
+    } finally {
+      finishAction();
+    }
+  };
+
   const handleConfirm = async () => {
     const credits = `${session.creditAmount} credit${session.creditAmount === 1 ? '' : 's'}`;
     const prompt = session.status === 'awaiting_validation'
@@ -315,6 +345,10 @@ const SessionRoom = ({ id }) => {
   const checkInBlockedByProposal = Boolean(session.rescheduleProposalId || session.proposedScheduledAt);
   const canCheckIn = ['accepted', 'scheduled'].includes(session.status)
     && checkInOpen && !checkInBlockedByProposal && !myCheckIn;
+  const canReportNoShow = ['accepted', 'scheduled'].includes(session.status)
+    && Number.isFinite(agreedTime) && clockNow != null
+    && clockNow > agreedTime + 4 * 60 * 60 * 1000 && !checkInBlockedByProposal
+    && !session.startedAt && !(session.learnerCheckedInAt && session.tutorCheckedInAt);
   const canReschedule = ['accepted', 'scheduled'].includes(session.status);
   const hasRescheduleProposal = canReschedule && Boolean(session.rescheduleProposalId && session.proposedScheduledAt);
   const proposedByMe = hasRescheduleProposal && idOf(session.rescheduleProposedBy) === idOf(user);
@@ -369,12 +403,13 @@ const SessionRoom = ({ id }) => {
           <span>Next step</span>
           <h2 id="next-step-heading">{nextStep}</h2>
           {session.status === 'pending' && !isTeaching && <p>No action is required from you right now.</p>}
-          {usesLegacyActions && session.status === 'completed' && session.confirmedAt && session.creditsSettledAt && <p>{creditLabel} transferred.</p>}
+          {session.creditsSettledAt && <p>{creditLabel} transferred.</p>}
         </div>
         {usesLegacyActions && isTeaching && session.status === 'pending' && <button className="btn btn-primary btn-sm" type="button" disabled={actionLoading} onClick={() => runStatusAction('accepted')}>Accept request</button>}
         {usesLegacyActions && isTeaching && session.status === 'accepted' && <button className="btn btn-primary btn-sm" type="button" disabled={actionLoading} onClick={() => runStatusAction('completed')}>Complete session</button>}
         {isTeaching && session.status === 'in_progress' && <button className="btn btn-primary btn-sm" type="button" disabled={actionLoading} onClick={handleFinishSession}>Finish live session</button>}
         {session.status === 'awaiting_validation' && !myValidation && <button className="btn btn-primary btn-sm" type="button" disabled={actionLoading} onClick={handleConfirm}>Confirm session</button>}
+        {canReportNoShow && <button className="btn btn-secondary btn-sm" type="button" disabled={actionLoading} onClick={handleNoShow}>Report no-show</button>}
         {usesLegacyActions && !isTeaching && session.status === 'completed' && !session.confirmedAt && <button className="btn btn-primary btn-sm" type="button" disabled={actionLoading} onClick={handleConfirm}>Confirm completion and transfer {creditLabel}</button>}
       </section>
 
@@ -420,6 +455,39 @@ const SessionRoom = ({ id }) => {
                 <p>Learner: {session.learnerConfirmedAt ? 'Confirmed' : 'Waiting for confirmation'}</p>
                 <p>Tutor: {session.tutorConfirmedAt ? 'Confirmed' : 'Waiting for confirmation'}</p>
                 {myValidation && <p>Thanks for confirming. Waiting for your peer.</p>}
+              </div>
+            )}
+
+            {['awaiting_validation', 'no_show'].includes(session.status) && (
+              <form className="session-validation" onSubmit={handleDispute}>
+                <h3>Disagree or report a problem</h3>
+                <p>A Moderator will review the session evidence. Opening a dispute does not transfer credits.</p>
+                <label className="form-label" htmlFor="dispute-reason">Reason</label>
+                <textarea id="dispute-reason" className="form-textarea" rows={3} minLength={10} maxLength={500} required value={disputeReason} onChange={(event) => setDisputeReason(event.target.value)} disabled={actionLoading} />
+                <button className="btn btn-secondary btn-sm" type="submit" disabled={actionLoading}>Submit dispute</button>
+              </form>
+            )}
+
+            {session.status === 'no_show' && (
+              <div className="session-validation">
+                <h3>No-show recorded</h3>
+                <p>{session.noShowAbsent === 'both' ? 'Neither participant checked in.' : session.noShowAbsent === 'learner' ? 'The Learner did not check in.' : 'The Tutor did not check in.'} No tutoring credits were transferred.</p>
+              </div>
+            )}
+            {session.status === 'disputed' && (
+              <div className="session-validation">
+                <h3>Moderator review required</h3>
+                <p>Normal confirmation is paused. No credits have transferred.</p>
+                <p><strong>Reason:</strong> {session.disputeReason}</p>
+              </div>
+            )}
+            {session.status === 'resolved' && (
+              <div className="session-validation">
+                <h3>Dispute resolved</h3>
+                <p>{session.resolution === 'confirm_session'
+                  ? 'The tutoring session was confirmed by a Moderator and credits were settled.'
+                  : 'The tutoring session was not validated. No credits were transferred.'}</p>
+                <p><strong>Decision note:</strong> {session.resolutionNote}</p>
               </div>
             )}
 
@@ -534,7 +602,7 @@ const SessionRoom = ({ id }) => {
           </section>
 
           {ratingSubmitted && <Alert type="success" message="Your review for this session has been submitted." />}
-          {session.ratingEligible && session.status === 'completed' && !ratingSubmitted && (
+          {session.ratingEligible && ['completed', 'resolved'].includes(session.status) && !ratingSubmitted && (
             <section className="card session-room-section session-review-panel" aria-labelledby="review-heading">
               <h2 id="review-heading">Review your peer</h2>
               <form onSubmit={handleRating}>

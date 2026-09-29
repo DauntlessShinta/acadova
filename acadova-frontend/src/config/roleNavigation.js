@@ -15,6 +15,7 @@ const authenticatedNavigation = {
   moderator: [
     { to: '/moderator', label: 'Overview' },
     { to: '/moderator/reviews', label: 'Reviews' },
+    { to: '/moderator/disputes', label: 'Session disputes' },
   ],
   admin: [
     { to: '/admin', label: 'Overview' },

@@ -3047,3 +3047,7 @@ textarea:focus-visible {
   .staff-review-header > .btn { width: 100%; }
   .auth-form-inner { padding: 22px 18px; }
 }
+.session-dispute-list { display: grid; gap: 1rem; margin-top: 1rem; }
+.session-dispute-card { padding: 1.25rem; }
+.session-dispute-card h2 { margin-top: 0; }
+.session-dispute-actions { display: flex; flex-wrap: wrap; gap: .75rem; margin-top: .75rem; }

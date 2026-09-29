@@ -235,6 +235,11 @@ const schemas = {
   sessionStatus: { status: oneOf('session status', ['accepted', 'scheduled', 'rejected', 'declined', 'completed', 'cancelled']) },
   reschedule: { scheduledAt },
   rescheduleDecision: { proposalId },
+  dispute: { reason: requiredText('Dispute reason', 500, 10) },
+  resolution: {
+    resolution: oneOf('resolution', ['confirm_session', 'cancel_session']),
+    resolutionNote: requiredText('Resolution note', 500, 10),
+  },
   coordination: { meetingLink: optional(httpsLink), location: optional(requiredText('Location', 300)) },
   message: { body: requiredText('Message', 1000) },
   rating: { sessionId: objectId('session id'), rating, comment: optional(requiredText('Review comment', 500, 0)) },

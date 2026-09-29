@@ -142,6 +142,9 @@ test('API protection and role boundaries work without a database connection', as
       const token = tokenFor(learnerId);
       assert.equal((await call('/admin/users', { token })).response.status, 403, JSON.stringify(logs));
       assert.equal((await call('/moderator/ratings', { token })).response.status, 403);
+      assert.equal((await call(`/moderator/sessions/${sessionId}/resolve`, {
+        token, method: 'POST', body: { resolution: 'confirm_session', resolutionNote: 'Reviewed the evidence.' },
+      })).response.status, 403);
     });
     await t.test('moderator may moderate but cannot manage users or analytics', async () => {
       const token = tokenFor(moderatorId);
@@ -153,6 +156,14 @@ test('API protection and role boundaries work without a database connection', as
         token, method: 'PATCH', body: { role: 'moderator' },
       })).response.status, 403);
       assert.equal((await call('/analytics/subjects', { token })).response.status, 403);
+    });
+    await t.test('moderator and admin reach dispute resolution validation', async () => {
+      for (const id of [moderatorId, adminId]) {
+        const result = await call(`/moderator/sessions/${sessionId}/resolve`, {
+          token: tokenFor(id), method: 'POST', body: { resolution: 'invalid', resolutionNote: 'Reviewed the evidence.' },
+        });
+        assert.equal(result.response.status, 400);
+      }
     });
     await t.test('admin can read the protected user directory', async () => {
       const result = await call('/admin/users', { token: tokenFor(adminId) });

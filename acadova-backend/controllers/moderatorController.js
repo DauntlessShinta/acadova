@@ -1,4 +1,8 @@
+const mongoose = require('mongoose');
 const Rating = require('../models/Rating');
+const Session = require('../models/Session');
+const CreditTransaction = require('../models/CreditTransaction');
+const { transferSessionCredits } = require('../services/sessionSettlement');
 const { isValidObjectId } = require('../middleware/validation');
 const { recalculateAverageRating } = require('../utils/ratingReputation');
 const { logSecurityEvent } = require('../utils/securityLogger');
@@ -56,5 +60,92 @@ exports.updateRatingVisibility = async (req, res) => {
     });
   } catch (error) {
     return res.status(500).json({ success: false, message: 'Server error while updating review visibility' });
+  }
+};
+
+exports.listDisputedSessions = async (req, res) => {
+  try {
+    const sessions = await Session.find({ status: 'disputed' })
+      .populate([{ path: 'learner', select: 'name' }, { path: 'tutor', select: 'name' }, { path: 'disputedBy', select: 'name' }])
+      .sort({ disputedAt: -1 })
+      .limit(100);
+    return res.json({ success: true, message: 'Disputed sessions retrieved.', data: sessions });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: 'Disputed sessions could not be loaded.' });
+  }
+};
+
+exports.resolveSessionDispute = async (req, res) => {
+  if (!isValidObjectId(req.params.id)) {
+    return res.status(400).json({ success: false, message: 'Invalid session id.' });
+  }
+  const { resolution, resolutionNote } = req.body;
+  if (!['confirm_session', 'cancel_session'].includes(resolution)
+    || typeof resolutionNote !== 'string' || resolutionNote.trim().length < 10
+    || resolutionNote.trim().length > 500) {
+    return res.status(400).json({ success: false, message: 'Enter a valid outcome and resolution note.' });
+  }
+  const dbSession = await mongoose.startSession();
+  let resolvedSession;
+  try {
+    await dbSession.withTransaction(async () => {
+      resolvedSession = undefined;
+      const session = await Session.findById(req.params.id).session(dbSession);
+      if (!session) throw Object.assign(new Error('Session not found.'), { status: 404 });
+      if (session.status !== 'disputed') {
+        throw Object.assign(new Error('Only a disputed session can be resolved.'), { status: 409 });
+      }
+      if (!session.disputedAt || !session.disputedBy || !session.disputeReason
+        || (!session.awaitingValidationAt && !session.noShowAt)
+        || session.resolvedAt || session.resolution || session.completedAt || session.creditsSettledAt) {
+        throw Object.assign(new Error('Dispute evidence is incomplete or already resolved.'), { status: 409 });
+      }
+      const existingPayment = await CreditTransaction.findOne({ session: session._id }).session(dbSession);
+      if (existingPayment) {
+        throw Object.assign(new Error('This session already has a credit transaction.'), { status: 409 });
+      }
+      const now = new Date();
+      const changes = {
+        status: 'resolved', resolvedAt: now, resolvedBy: req.user.id,
+        resolution, resolutionNote: resolutionNote.trim(),
+      };
+      if (resolution === 'confirm_session') {
+        changes.completedAt = now;
+        changes.creditsSettledAt = now;
+      }
+      const claim = await Session.updateOne(
+        {
+          _id: session._id,
+          status: 'disputed',
+          disputedAt: session.disputedAt,
+          resolvedAt: null,
+          resolution: null,
+          completedAt: null,
+          creditsSettledAt: null,
+        },
+        { $set: changes },
+        { session: dbSession, runValidators: true }
+      );
+      if (claim.matchedCount !== 1) {
+        throw Object.assign(new Error('This session has already changed. Refresh and try again.'), { status: 409 });
+      }
+      Object.assign(session, changes);
+      if (resolution === 'confirm_session') await transferSessionCredits(session, dbSession);
+      resolvedSession = session;
+    });
+    await resolvedSession.populate([{ path: 'learner', select: 'name' }, { path: 'tutor', select: 'name' }]);
+    return res.json({
+      success: true,
+      message: resolution === 'confirm_session'
+        ? 'Dispute resolved as a valid session. Credits transferred once.'
+        : 'Dispute resolved as an invalid session. No credits transferred.',
+      data: resolvedSession,
+    });
+  } catch (error) {
+    if (error.status) return res.status(error.status).json({ success: false, message: error.message });
+    if (error.code === 11000) return res.status(409).json({ success: false, message: 'This session already has a credit transaction.' });
+    return res.status(500).json({ success: false, message: 'Session dispute could not be resolved.' });
+  } finally {
+    await dbSession.endSession();
   }
 };

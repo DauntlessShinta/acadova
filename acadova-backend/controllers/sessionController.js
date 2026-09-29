@@ -6,6 +6,7 @@ const User = require('../models/User');
 const CreditTransaction = require('../models/CreditTransaction');
 const Rating = require('../models/Rating');
 const { isSessionRatingEligible } = require('../utils/sessionLifecycleCompatibility');
+const { transferSessionCredits } = require('../services/sessionSettlement');
 const { isValidObjectId, isPositiveCreditAmount } = require('../middleware/validation');
 
 const ALLOWED_TRANSITIONS = {
@@ -147,7 +148,7 @@ exports.getSessionById = async (req, res) => {
     // does not make its author eligible to submit another one. Never persist
     // this viewer-specific field on the shared session document.
     const myReview = Boolean(await Rating.exists({ session: result.session._id, fromUser: req.user.id }));
-    const payments = result.session.status === 'completed'
+    const payments = ['completed', 'resolved'].includes(result.session.status)
       ? await CreditTransaction.find({ session: result.session._id }) : [];
     const ratingEligible = isSessionRatingEligible(result.session, payments);
     res.json({ success: true, message: 'Session retrieved.', data: { ...result.session.toObject(), myReview, ratingEligible } });
@@ -458,6 +459,105 @@ exports.finishSession = async (req, res) => {
   }
 };
 
+exports.reportNoShow = async (req, res) => {
+  try {
+    const result = await findParticipantSession(req, res);
+    if (!result) return;
+    const { session } = result;
+    if (!reschedulableStatuses.includes(session.status)) {
+      return res.status(400).json({ success: false, message: 'No-show is available only for a scheduled session.' });
+    }
+    if (session.rescheduleProposalId || session.proposedScheduledAt || session.startedAt) {
+      return res.status(409).json({ success: false, message: 'This session cannot be marked no-show while attendance or rescheduling is active.' });
+    }
+    const scheduledAt = session.scheduledAt ? new Date(session.scheduledAt) : null;
+    if (!scheduledAt || Number.isNaN(scheduledAt.getTime())) {
+      return res.status(400).json({ success: false, message: 'This session has no valid scheduled time.' });
+    }
+    const now = new Date();
+    if (now.getTime() <= scheduledAt.getTime() + CHECK_IN_LATE_MS) {
+      return res.status(400).json({ success: false, message: 'Wait until the check-in window ends before reporting a no-show.' });
+    }
+    const learnerCheckedInAt = session.learnerCheckedInAt ?? null;
+    const tutorCheckedInAt = session.tutorCheckedInAt ?? null;
+    if (learnerCheckedInAt && tutorCheckedInAt) {
+      return res.status(409).json({ success: false, message: 'Both participants checked in; no-show cannot be recorded.' });
+    }
+    if (session.completedAt || session.confirmedAt || session.creditsSettledAt
+      || await CreditTransaction.exists({ session: session._id })) {
+      return res.status(409).json({ success: false, message: 'A settled session cannot be marked no-show.' });
+    }
+    const noShowAbsent = learnerCheckedInAt ? 'tutor' : tutorCheckedInAt ? 'learner' : 'both';
+    const updatedSession = await Session.findOneAndUpdate(
+      {
+        _id: session._id,
+        status: session.status,
+        scheduledAt,
+        learnerCheckedInAt,
+        tutorCheckedInAt,
+        startedAt: null,
+        rescheduleProposalId: null,
+        proposedScheduledAt: null,
+        noShowAt: null,
+        completedAt: null,
+        confirmedAt: null,
+        creditsSettledAt: null,
+      },
+      { $set: { status: 'no_show', noShowAt: now, noShowReportedBy: req.user.id, noShowAbsent } },
+      { returnDocument: 'after', runValidators: true }
+    );
+    if (!updatedSession) return res.status(409).json({ success: false, message: changedSessionMessage });
+    await updatedSession.populate(SESSION_POPULATE);
+    return res.json({ success: true, message: 'No-show recorded. No credits were transferred.', data: updatedSession });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: 'No-show could not be recorded.' });
+  }
+};
+
+exports.disputeSession = async (req, res) => {
+  try {
+    const result = await findParticipantSession(req, res);
+    if (!result) return;
+    const { session } = result;
+    if (!['awaiting_validation', 'no_show'].includes(session.status)) {
+      return res.status(400).json({ success: false, message: 'Only a session awaiting validation or recorded as no-show can be disputed.' });
+    }
+    const reason = typeof req.body.reason === 'string' ? req.body.reason.trim() : '';
+    if (reason.length < 10 || reason.length > 500) {
+      return res.status(400).json({ success: false, message: 'Dispute reason must be 10 to 500 characters.' });
+    }
+    if ((session.status === 'awaiting_validation'
+      && (!session.awaitingValidationAt || !session.startedAt || !session.learnerCheckedInAt || !session.tutorCheckedInAt))
+      || (session.status === 'no_show' && (!session.noShowAt || !session.noShowAbsent))) {
+      return res.status(409).json({ success: false, message: 'Session evidence is incomplete.' });
+    }
+    if (session.completedAt || session.creditsSettledAt || await CreditTransaction.exists({ session: session._id })) {
+      return res.status(409).json({ success: false, message: 'A settled session cannot use this dispute path.' });
+    }
+    const now = new Date();
+    const updatedSession = await Session.findOneAndUpdate(
+      {
+        _id: session._id,
+        status: session.status,
+        awaitingValidationAt: session.awaitingValidationAt ?? null,
+        noShowAt: session.noShowAt ?? null,
+        learnerConfirmedAt: session.learnerConfirmedAt ?? null,
+        tutorConfirmedAt: session.tutorConfirmedAt ?? null,
+        disputedAt: null,
+        completedAt: null,
+        creditsSettledAt: null,
+      },
+      { $set: { status: 'disputed', disputedAt: now, disputedBy: req.user.id, disputeReason: reason } },
+      { returnDocument: 'after', runValidators: true }
+    );
+    if (!updatedSession) return res.status(409).json({ success: false, message: changedSessionMessage });
+    await updatedSession.populate(SESSION_POPULATE);
+    return res.json({ success: true, message: 'Dispute submitted for Moderator review. No credits were transferred.', data: updatedSession });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: 'Dispute could not be submitted.' });
+  }
+};
+
 exports.getMessages = async (req, res) => {
   try {
     const result = await findParticipantSession(req, res);
@@ -488,29 +588,6 @@ exports.createMessage = async (req, res) => {
   } catch (error) {
     res.status(500).json({ success: false, message: 'Message could not be sent.' });
   }
-};
-
-const transferSessionCredits = async (session, dbSession) => {
-  const learner = await User.findById(session.learner).session(dbSession);
-  if (!learner || learner.credits < session.creditAmount) {
-    throw Object.assign(new Error('You do not have enough credits to confirm this session.'), { status: 400 });
-  }
-  const tutor = await User.findOneAndUpdate(
-    { _id: session.tutor, role: 'student' },
-    { $inc: { credits: session.creditAmount } },
-    { session: dbSession, new: true }
-  );
-  if (!tutor) throw Object.assign(new Error('Tutor account is unavailable.'), { status: 400 });
-
-  learner.credits -= session.creditAmount;
-  await learner.save({ session: dbSession });
-
-  await CreditTransaction.create([{
-    fromUser: session.learner,
-    toUser: session.tutor,
-    amount: session.creditAmount,
-    session: session._id,
-  }], { session: dbSession });
 };
 
 exports.confirmSession = async (req, res) => {

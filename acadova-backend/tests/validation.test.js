@@ -148,9 +148,26 @@ test('session status validation accepts canonical request decisions and legacy a
   }
 });
 
-test('Session model retains legacy values and adds canonical validation states', () => {
+test('Session model retains legacy values and supports canonical exception states', () => {
   const allowed = Session.schema.path('status').enumValues;
-  assert.deepEqual(allowed, ['pending', 'accepted', 'scheduled', 'in_progress', 'awaiting_validation', 'rejected', 'declined', 'completed', 'cancelled']);
+  assert.deepEqual(allowed, ['pending', 'accepted', 'scheduled', 'in_progress', 'awaiting_validation', 'rejected', 'declined', 'completed', 'cancelled', 'no_show', 'disputed', 'resolved']);
+});
+
+test('dispute and resolution payloads require bounded reasons and explicit outcomes', () => {
+  assert.equal(inspect(validateBody(schemas.dispute), 'body', { reason: 'The session did not happen.' }).downstreamCalls, 1);
+  for (const body of [{}, { reason: 'short' }, { reason: 'x'.repeat(501) }, { reason: 'Valid reason', outcome: 'cancel' }]) {
+    assert.equal(inspect(validateBody(schemas.dispute), 'body', body).res.statusCode, 400);
+  }
+  assert.equal(inspect(validateBody(schemas.resolution), 'body', {
+    resolution: 'confirm_session', resolutionNote: 'Verified interaction evidence.',
+  }).downstreamCalls, 1);
+  for (const body of [
+    {}, { resolution: 'approve', resolutionNote: 'Valid explanation.' },
+    { resolution: 'cancel_session', resolutionNote: 'short' },
+    { resolution: 'cancel_session', resolutionNote: 'x'.repeat(501) },
+  ]) {
+    assert.equal(inspect(validateBody(schemas.resolution), 'body', body).res.statusCode, 400);
+  }
 });
 
 test('reschedule payloads require a zoned datetime or the exact proposal ID', () => {

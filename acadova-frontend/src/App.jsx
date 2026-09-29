@@ -34,6 +34,7 @@ import AdminAnalyticsPage from './pages/admin/AdminAnalyticsPage';
 import AdminModerationPage from './pages/admin/AdminModerationPage';
 import ModeratorOverviewPage from './pages/moderator/ModeratorOverviewPage';
 import ModeratorReviewsPage from './pages/moderator/ModeratorReviewsPage';
+import ModeratorDisputesPage from './pages/moderator/ModeratorDisputesPage';
 
 const GuestOnly = ({ children }) => {
   const { isAuthenticated, loading, user } = useAuth();
@@ -73,6 +74,7 @@ export const App = () => {
       <Route path="/moderator" element={<StaffLayout area="moderator" />}>
         <Route index element={<ModeratorOverviewPage />} />
         <Route path="reviews" element={<ModeratorReviewsPage />} />
+        <Route path="disputes" element={<ModeratorDisputesPage />} />
       </Route>
 
       {/* Protected Admin Routes */}

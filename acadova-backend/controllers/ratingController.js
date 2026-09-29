@@ -30,7 +30,7 @@ exports.submitRating = async (req, res) => {
       return res.status(403).json({ success: false, message: 'You are not part of this session' });
     }
 
-    if (session.status !== 'completed') {
+    if (!['completed', 'resolved'].includes(session.status)) {
       return res.status(400).json({ success: false, message: 'You can rate this session after verified completion.' });
     }
     const transactions = await CreditTransaction.find({ session: session._id });

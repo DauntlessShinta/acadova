@@ -82,6 +82,11 @@ export const getSessionStatus = (session) => {
 };
 
 export const getSessionNextStep = (session, isTeaching, counterpartName = 'your peer') => {
+  if (session?.status === 'resolved' || session?.canonicalStatus === 'resolved') {
+    return session.resolution === 'confirm_session'
+      ? 'A Moderator confirmed this session and credits were settled.'
+      : 'A Moderator did not validate this session. No credits were transferred.';
+  }
   if (session?.canonicalStatus != null) {
     const nextSteps = {
       pending: isTeaching ? `Review ${counterpartName}'s request.` : `Waiting for ${counterpartName} to respond to your request.`,
@@ -133,6 +138,5 @@ export const getSessionNextStep = (session, isTeaching, counterpartName = 'your 
   if (session?.status === 'cancelled') return 'This session was cancelled.';
   if (session?.status === 'no_show') return 'This session was recorded as a no-show.';
   if (session?.status === 'disputed') return 'This session is under review.';
-  if (session?.status === 'resolved') return 'This session dispute has been resolved.';
   return 'This session state is not yet available. Refresh for the latest details.';
 };

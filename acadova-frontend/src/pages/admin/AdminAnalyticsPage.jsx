@@ -37,7 +37,9 @@ export const AdminAnalyticsPage = () => {
     ...legacyRows,
     ...canonicalRows.filter((status) => Object.hasOwn(byStatus, status)),
   ].map((status) => [
-    getSessionStatusLabel(status),
+    status === 'accepted' ? 'Scheduled (legacy accepted)'
+      : status === 'rejected' ? 'Declined (legacy rejected)'
+        : getSessionStatusLabel(status),
     status,
   ]);
 

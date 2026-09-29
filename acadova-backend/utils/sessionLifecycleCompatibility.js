@@ -83,4 +83,4 @@ const isSessionRatingEligible = (session, transactions = []) => {
     && classifyLegacySession(session, transactions).settlementState === 'settled';
 };
 
-module.exports = { CANONICAL_STATUSES, classifyLegacySession, isSessionRatingEligible };
+module.exports = { CANONICAL_STATUSES, classifyLegacySession, isSessionRatingEligible, matchesPayment };

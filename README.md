@@ -24,6 +24,8 @@ Account roles are `student`, `moderator`, and `admin`. Learner and Tutor describ
 
 The Session API retains legacy `accepted`/`rejected` values for deployed clients and also accepts canonical `scheduled`/`declined` decisions. Accepted or scheduled Sessions can exchange an explicit, peer-approved reschedule proposal. Both participants may check in from 15 minutes before until 4 hours after the agreed start; the second check-in atomically moves the Session to `in_progress`. The Tutor then finishes the canonical Session into `awaiting_validation`; both participants independently confirm, and the second confirmation completes the Session and settles credits in one database transaction. After the check-in window ends, a participant can report a no-show using backend attendance evidence; a participant can dispute an awaiting-validation or no-show Session. Moderator/Admin resolution records a valid or invalid outcome, with credits transferred only for a valid resolution. Normal Sessions need no Moderator approval. The existing legacy `accepted` -> `completed` path remains available without check-in during rollout, with its existing Learner confirmation/settlement. The legacy frontend remains served, but some of its flows do not match the current API.
 
+The P2 Session lifecycle is implemented, but legacy compatibility remains active. No legacy status migration or historical backfill has been executed. The read-only inventory procedure and future migration safeguards are in [Session migration preparation](acadova-backend/docs/session-migration-plan.md).
+
 ## Locked final scope — planned, not yet implemented
 
 The following are part of the final project scope but must not be represented as complete until implemented and verified:

@@ -1,9 +1,12 @@
 const User = require('../models/User');
+const CreditTransaction = require('../models/CreditTransaction');
+const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const emailService = require('../services/emailService');
 const { createVerificationToken, hashVerificationToken } = require('../utils/verificationTokens');
 const { logSecurityEvent } = require('../utils/securityLogger');
+const { startingCredits } = require('../config/creditRules');
 
 function signToken(user) {
   return jwt.sign({ id: user._id, role: user.role }, process.env.JWT_SECRET, { expiresIn: '7d' });
@@ -34,7 +37,9 @@ exports.register = async (req, res) => {
       name,
       email,
       password: await bcrypt.hash(password, 10),
+      credits: 0,
       emailVerified: false,
+      openingGrantEligible: true,
       emailVerificationTokenHash: verification.hash,
       emailVerificationExpires: verification.expires,
       emailVerificationSentAt: new Date(),
@@ -72,14 +77,33 @@ exports.register = async (req, res) => {
 exports.verifyEmail = async (req, res) => {
   const hash = hashVerificationToken(req.body.token);
   const now = new Date();
+  let dbSession;
   try {
-    const user = await User.findOneAndUpdate(
-      { emailVerificationTokenHash: hash, emailVerified: false, emailVerificationExpires: { $gt: now } },
-      { $set: { emailVerified: true, emailVerifiedAt: now }, $unset: {
+    dbSession = await mongoose.startSession();
+    let user;
+    await dbSession.withTransaction(async () => {
+      user = undefined;
+      const tokenFilter = { emailVerificationTokenHash: hash, emailVerified: false,
+        emailVerificationExpires: { $gt: now } };
+      const verifiedFields = { $set: { emailVerified: true, emailVerifiedAt: now }, $unset: {
         emailVerificationTokenHash: 1, emailVerificationExpires: 1, emailVerificationSentAt: 1,
-      } },
-      { new: true },
-    );
+        openingGrantEligible: 1,
+      } };
+      user = await User.findOneAndUpdate(
+        { ...tokenFilter, role: 'student', openingGrantEligible: true },
+        { ...verifiedFields, $inc: { credits: startingCredits } },
+        { new: true, session: dbSession },
+      );
+      if (user) {
+        await CreditTransaction.create([{
+          type: 'initial_grant', toUser: user._id, amount: startingCredits,
+        }], { session: dbSession });
+        return;
+      }
+      // Existing accounts lack the explicit eligibility marker and retain
+      // their historical balance. Staff accounts never receive a grant.
+      user = await User.findOneAndUpdate(tokenFilter, verifiedFields, { new: true, session: dbSession });
+    });
     if (user) return res.json({ success: true, message: 'Email verified. You can now log in.' });
     const expired = await User.exists({
       emailVerificationTokenHash: hash, emailVerified: false, emailVerificationExpires: { $lte: now },
@@ -92,6 +116,8 @@ exports.verifyEmail = async (req, res) => {
   } catch {
     logSecurityEvent('auth.verification_failed', req, { status: 500 });
     return res.status(500).json({ success: false, message: 'Unable to verify email right now.' });
+  } finally {
+    if (dbSession) await dbSession.endSession();
   }
 };
 

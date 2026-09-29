@@ -14,13 +14,14 @@ exports.getMyCreditHistory = async (req, res) => {
     // Reshape server-side so the frontend doesn't need to know the viewer's
     // own id to figure out whether this was a credit earned or spent.
     const data = transactions.map((tx) => {
-      const isEarner = tx.toUser._id.toString() === req.user.id;
+      const isEarner = tx.toUser?._id?.toString() === req.user.id;
       return {
         id: tx._id,
         direction: isEarner ? 'earned' : 'spent',
         amount: tx.amount,
-        subject: tx.session ? tx.session.subject : null,
-        counterparty: isEarner ? tx.fromUser.name : tx.toUser.name,
+        subject: tx.type === 'initial_grant' ? 'Opening credits' : tx.session?.subject || null,
+        counterparty: tx.type === 'initial_grant' ? 'Acadova'
+          : isEarner ? tx.fromUser?.name || 'Peer User' : tx.toUser?.name || 'Peer User',
         createdAt: tx.createdAt,
       };
     });

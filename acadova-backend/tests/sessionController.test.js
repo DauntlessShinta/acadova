@@ -135,6 +135,30 @@ test('acceptance changes status without creating a credit transaction', async ()
   assert.equal(creditWrites, 0);
 });
 
+test('new Session price is server-owned even when a legacy client submits another amount', async () => {
+  const fixture = sessionDoc();
+  User.findById = () => ({ select: async () => ({ _id: fixture.tutor, role: 'student' }) });
+  const stored = [];
+  Session.create = async (data) => { stored.push(data); return { ...data, async populate() {} }; };
+  for (const offered of [undefined, 1, 2, 100, 0, -1, 1.5, NaN]) {
+    const res = response();
+    await controller.createSession({ user: { id: fixture.learner, credits: 100 }, body: {
+      tutorId: fixture.tutor, subject: 'Java', scheduledAt: '2026-09-25T06:30:00.000Z',
+      meetingMethod: 'online', requestMessage: 'Help with arrays.',
+      ...(offered === undefined ? {} : { creditAmount: offered }),
+    } }, res);
+    assert.equal(res.statusCode, 201);
+    assert.equal(stored.at(-1).creditAmount, 20);
+  }
+  const insufficient = response();
+  await controller.createSession({ user: { id: fixture.learner, credits: 19 }, body: {
+    tutorId: fixture.tutor, subject: 'Java', scheduledAt: '2026-09-25T06:30:00.000Z',
+    meetingMethod: 'online', requestMessage: 'Help with arrays.',
+  } }, insufficient);
+  assert.equal(insufficient.statusCode, 400);
+  assert.equal(stored.length, 8);
+});
+
 for (const status of ['scheduled', 'declined']) {
   test(`tutor can move pending to canonical ${status} without settlement or scheduling changes`, async () => {
     const scheduledAt = new Date('2026-09-25T06:30:00.000Z');
@@ -379,6 +403,7 @@ test('learner confirmation transfers the exact amount only once', async () => {
     return { matchedCount: 1 };
   };
   CreditTransaction.findOne = () => ({ session: async () => null });
+  CreditTransaction.find = () => ({ session: async () => [] });
   User.findById = () => ({ session: async () => learner });
   User.findOneAndUpdate = async (query, update) => {
     assert.ok(session.confirmedAt, 'The session must be claimed before balance updates');
@@ -448,6 +473,7 @@ test('competing learner confirmations claim one session and settle only once', a
     return { matchedCount: 1 };
   };
   CreditTransaction.findOne = () => ({ session: async () => null });
+  CreditTransaction.find = () => ({ session: async () => [] });
   User.findById = () => ({ session: async () => learner });
   User.findOneAndUpdate = async () => { tutorCredits += 1; return { _id: stored.tutor }; };
   CreditTransaction.create = async () => { ledgerWrites += 1; };
@@ -465,7 +491,9 @@ test('competing learner confirmations claim one session and settle only once', a
 
 test('explicit confirmation of an already-paid legacy session does not repeat its credit transfer', async () => {
   const stored = sessionDoc({ status: 'completed' });
-  const priorPayment = { createdAt: new Date('2026-09-01T00:00:00.000Z') };
+  const priorPayment = { session: stored._id, fromUser: stored.learner,
+    toUser: stored.tutor, amount: stored.creditAmount, type: 'session_payment',
+    createdAt: new Date('2026-09-01T00:00:00.000Z') };
   let balanceWrites = 0;
   mongoose.startSession = async () => ({
     async withTransaction(callback) { await callback(); },
@@ -478,6 +506,7 @@ test('explicit confirmation of an already-paid legacy session does not repeat it
     return { matchedCount: 1 };
   };
   CreditTransaction.findOne = () => ({ session: async () => priorPayment });
+  CreditTransaction.find = () => ({ session: async () => [priorPayment] });
   User.findById = () => { balanceWrites += 1; throw new Error('No new payment expected'); };
   User.findOneAndUpdate = async () => { balanceWrites += 1; throw new Error('No new payment expected'); };
   CreditTransaction.create = async () => { balanceWrites += 1; throw new Error('No new payment expected'); };
@@ -577,6 +606,23 @@ test('meeting details cannot be saved after a competing cancellation', async () 
   }, res);
   assert.equal(res.statusCode, 409);
   assert.equal(stored.meetingLink, 'https://meet.example.com/java');
+});
+
+test('mismatched historical payment cannot mark legacy confirmation settled', async () => {
+  const stored = sessionDoc({ status: 'completed', creditAmount: 2 });
+  mongoose.startSession = async () => ({ async withTransaction(callback) { await callback(); }, async endSession() {} });
+  Session.findById = () => ({ session: async () => stored });
+  Session.updateOne = async () => assert.fail('Inconsistent evidence must not update Session');
+  CreditTransaction.find = () => ({ session: async () => [{
+    session: stored._id, fromUser: stored.learner, toUser: stored.tutor,
+    amount: 1, type: 'session_payment',
+  }] });
+  CreditTransaction.create = async () => assert.fail('Inconsistent evidence must not create a payment');
+  const res = response();
+  await controller.confirmSession({ params: { id: stored._id }, user: { id: stored.learner } }, res);
+  assert.equal(res.statusCode, 409);
+  assert.equal(stored.confirmedAt, undefined);
+  assert.equal(stored.creditsSettledAt, undefined);
 });
 
 test('scheduled coordination rejects a stale status change', async () => {

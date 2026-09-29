@@ -76,7 +76,7 @@ export const FeaturesPage = () => {
 
         <div style={{ textAlign: 'center' }}>
           <Link to="/register" className="btn btn-primary btn-lg">
-            Start Learning Today (+2 Credits)
+            Start Learning Today (+100 Credits after verification)
           </Link>
         </div>
       </div>
@@ -85,4 +85,3 @@ export const FeaturesPage = () => {
 };
 
 export default FeaturesPage;
-

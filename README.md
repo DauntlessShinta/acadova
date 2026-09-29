@@ -26,6 +26,8 @@ The Session API retains legacy `accepted`/`rejected` values for deployed clients
 
 The P2 Session lifecycle is implemented, but legacy compatibility remains active. No legacy status migration or historical backfill has been executed. The read-only inventory procedure and future migration safeguards are in [Session migration preparation](acadova-backend/docs/session-migration-plan.md).
 
+Newly registered Students start with 0 spendable credits and receive one ledger-backed 100-credit grant when they verify their email. New tutoring Sessions use a backend-owned, activity-based 20-credit cost, independent of meeting duration; learners do not choose the price. Existing Sessions retain their stored historical cost. Assessment rewards, resource/module spending, and Admin credit rules remain upcoming. Production opening grants require the separately approved [credit index rollout](acadova-backend/docs/credit-index-rollout.md) before deployment; no index migration or balance backfill has been run.
+
 ## Locked final scope — planned, not yet implemented
 
 The following are part of the final project scope but must not be represented as complete until implemented and verified:

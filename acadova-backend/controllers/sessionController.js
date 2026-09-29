@@ -5,9 +5,10 @@ const SessionMessage = require('../models/SessionMessage');
 const User = require('../models/User');
 const CreditTransaction = require('../models/CreditTransaction');
 const Rating = require('../models/Rating');
-const { isSessionRatingEligible } = require('../utils/sessionLifecycleCompatibility');
+const { isSessionRatingEligible, matchesPayment } = require('../utils/sessionLifecycleCompatibility');
 const { transferSessionCredits } = require('../services/sessionSettlement');
-const { isValidObjectId, isPositiveCreditAmount } = require('../middleware/validation');
+const { sessionCreditCost } = require('../config/creditRules');
+const { isValidObjectId } = require('../middleware/validation');
 
 const ALLOWED_TRANSITIONS = {
   // Legacy inputs stay stored as-is so deployed React clients retain their
@@ -75,7 +76,7 @@ const isHttpsUrl = (value) => {
 
 exports.createSession = async (req, res) => {
   try {
-    const { tutorId, subject, scheduledAt, creditAmount, meetingMethod, requestMessage } = req.body;
+    const { tutorId, subject, scheduledAt, meetingMethod, requestMessage } = req.body;
     const cleanSubject = typeof subject === 'string' ? subject.trim() : '';
     const cleanMessage = typeof requestMessage === 'string' ? requestMessage.trim() : '';
     const scheduledDate = scheduledAt ? new Date(scheduledAt) : null;
@@ -96,9 +97,9 @@ exports.createSession = async (req, res) => {
       return res.status(400).json({ success: false, message: 'Your message must be 500 characters or fewer.' });
     }
 
-    const amount = creditAmount === undefined ? 1 : creditAmount;
-    if (!isPositiveCreditAmount(amount)) {
-      return res.status(400).json({ success: false, message: 'Credit amount must be a positive number.' });
+    // Legacy clients may still submit creditAmount, but it never sets the price.
+    if (Number.isFinite(req.user.credits) && req.user.credits < sessionCreditCost) {
+      return res.status(400).json({ success: false, message: 'You need 20 credits to request a tutoring session.' });
     }
     if (sameUser(tutorId, req.user.id)) {
       return res.status(400).json({ success: false, message: 'You cannot request a session with yourself.' });
@@ -116,7 +117,7 @@ exports.createSession = async (req, res) => {
       scheduledAt: scheduledDate,
       meetingMethod,
       requestMessage: cleanMessage,
-      creditAmount: amount,
+      creditAmount: sessionCreditCost,
     });
     await session.populate(SESSION_POPULATE);
     res.status(201).json({ success: true, message: 'Session requested.', data: session });
@@ -687,10 +688,13 @@ exports.confirmSession = async (req, res) => {
 
       // Old development sessions may already have a payment transaction from
       // the previous completion flow. Confirm without moving credits again.
-      const existingTransaction = await CreditTransaction.findOne({ session: session._id }).session(dbSession);
-      if (existingTransaction) {
+      const existingTransactions = await CreditTransaction.find({ session: session._id }).session(dbSession);
+      if (existingTransactions.length > 0) {
+        if (existingTransactions.length !== 1 || !matchesPayment(session, existingTransactions[0])) {
+          throw Object.assign(new Error('This session has inconsistent credit evidence.'), { status: 409 });
+        }
         const confirmedAt = new Date();
-        await markConfirmed(confirmedAt, existingTransaction.createdAt || confirmedAt);
+        await markConfirmed(confirmedAt, existingTransactions[0].createdAt || confirmedAt);
         settledSession = session;
         alreadySettled = true;
         return;

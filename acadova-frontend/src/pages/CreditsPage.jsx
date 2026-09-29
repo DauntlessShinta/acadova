@@ -94,9 +94,9 @@ export const CreditsPage = () => {
           color="var(--brass-600)"
         />
         <StatCard
-          title="Total Credits Earned"
+          title="Total Credits Received"
           value={`+${totalEarned} Credits`}
-          subtitle="Earned through peer tutoring"
+          subtitle="Opening grant and peer tutoring"
           icon={ArrowUpRight}
           color="var(--success-text)"
         />
@@ -127,7 +127,7 @@ export const CreditsPage = () => {
               1. TEACH PEERS
             </div>
             <p style={{ fontSize: '0.85rem', color: 'var(--ink-600)', margin: 0 }}>
-              Share your mastery in topics you know. Completing a session earns you +1 to +2 credits.
+              Share your mastery in topics you know. A validated tutoring session earns 20 credits.
             </p>
           </div>
 
@@ -199,7 +199,7 @@ export const CreditsPage = () => {
                     </td>
                     <td>
                       <Badge status={tx.direction}>
-                        {tx.direction === 'earned' ? 'Earned (Taught)' : 'Spent (Learned)'}
+                        {tx.direction === 'earned' ? 'Received' : 'Spent'}
                       </Badge>
                     </td>
                     <td style={{ textAlign: 'right' }}>

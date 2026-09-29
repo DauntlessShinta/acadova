@@ -41,11 +41,11 @@ export const AboutPage = () => {
           </p>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px', marginTop: '20px' }}>
             <div style={{ background: 'var(--bg-subtle)', padding: '16px', borderRadius: 'var(--radius-md)' }}>
-              <div className="mono" style={{ fontWeight: 700, color: 'var(--brass-700)', marginBottom: 4 }}>+2 Starting Credits</div>
+              <div className="mono" style={{ fontWeight: 700, color: 'var(--brass-700)', marginBottom: 4 }}>+100 Starting Credits</div>
               <div style={{ fontSize: '0.85rem', color: 'var(--ink-600)' }}>Every new student receives an initial credit balance to book their first session.</div>
             </div>
             <div style={{ background: 'var(--bg-subtle)', padding: '16px', borderRadius: 'var(--radius-md)' }}>
-              <div className="mono" style={{ fontWeight: 700, color: 'var(--brass-700)', marginBottom: 4 }}>Atomic DB Escrow</div>
+              <div className="mono" style={{ fontWeight: 700, color: 'var(--brass-700)', marginBottom: 4 }}>Atomic Credit Transfer</div>
               <div style={{ fontSize: '0.85rem', color: 'var(--ink-600)' }}>Credits are transferred only when a session is mutually executed and completed.</div>
             </div>
             <div style={{ background: 'var(--bg-subtle)', padding: '16px', borderRadius: 'var(--radius-md)' }}>
@@ -67,7 +67,7 @@ export const AboutPage = () => {
 
         <div style={{ textAlign: 'center', marginTop: '40px' }}>
           <Link to="/register" className="btn btn-primary btn-lg">
-            Join the Acadova Network (+2 Credits)
+            Join the Acadova Network (+100 Credits after verification)
           </Link>
         </div>
       </div>
@@ -76,4 +76,3 @@ export const AboutPage = () => {
 };
 
 export default AboutPage;
-

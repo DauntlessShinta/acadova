@@ -44,7 +44,6 @@ export const FindTutorsPage = () => {
   const [scheduledAt, setScheduledAt] = useState('');
   const [meetingMethod, setMeetingMethod] = useState('online');
   const [requestMessage, setRequestMessage] = useState('');
-  const [creditCost, setCreditCost] = useState(1);
   const [modalSubmitting, setModalSubmitting] = useState(false);
   const [modalError, setModalError] = useState('');
   const [fieldErrors, setFieldErrors] = useState({});
@@ -97,7 +96,6 @@ export const FindTutorsPage = () => {
   const openRequestModal = (tutor) => {
     setSelectedTutor(tutor);
     setSessionSubject(tutor.skillsToTeach?.[0] || searchQuery || '');
-    setCreditCost(1);
     setScheduledAt('');
     setMeetingMethod('online');
     setRequestMessage('');
@@ -121,8 +119,8 @@ export const FindTutorsPage = () => {
       return;
     }
 
-    if (credits < creditCost) {
-      setModalError(`You have ${credits} credits, but this session requires ${creditCost} credit(s). Please earn credits by teaching first.`);
+    if (credits < 20) {
+      setModalError(`You have ${credits} credits, but a tutoring session requires 20. Please earn credits by teaching first.`);
       return;
     }
 
@@ -134,7 +132,6 @@ export const FindTutorsPage = () => {
         scheduledAt: scheduledAt || undefined,
         meetingMethod,
         requestMessage: requestMessage.trim(),
-        creditAmount: creditCost,
       });
 
       setIsModalOpen(false);
@@ -324,18 +321,7 @@ export const FindTutorsPage = () => {
           </div>
 
           <div className="form-group">
-            <label className="form-label" htmlFor="creditCost">
-              Credit Fee Allocated (1 or 2 Credits)
-            </label>
-            <select
-              id="creditCost"
-              className="form-select"
-              value={creditCost}
-              onChange={(e) => setCreditCost(Number(e.target.value))}
-            >
-              <option value={1}>1 Credit (Standard 30-45m session)</option>
-              <option value={2}>2 Credits (Deep Dive 60-90m session)</option>
-            </select>
+            <span className="form-label">Tutoring Session Cost: 20 credits</span>
             <span className="form-hint">
               Credits remain in your wallet until you confirm the completed session.
             </span>

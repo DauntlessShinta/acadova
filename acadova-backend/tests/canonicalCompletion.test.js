@@ -207,6 +207,17 @@ for (const firstRole of ['learner', 'tutor']) {
   });
 }
 
+test('newly priced canonical Session transfers its stored 20 credits once', async () => {
+  const state = setupSettlement({ creditAmount: 20 }, 100);
+  assert.equal((await invoke(controller.confirmSession, state.stored, state.stored.learner)).statusCode, 200);
+  assert.equal((await invoke(controller.confirmSession, state.stored, state.stored.tutor)).statusCode, 200);
+  assert.equal(state.learner.credits, 80);
+  assert.equal(state.tutorCredits, 20);
+  assert.equal(state.payments.length, 1);
+  assert.equal(state.payments[0].amount, 20);
+  assert.equal(state.paymentWrites, 1);
+});
+
 test('nonparticipant and duplicate canonical confirmation cannot write', async () => {
   const state = setupSettlement();
   assert.equal((await invoke(controller.confirmSession, state.stored, '507f1f77bcf86cd799439099')).statusCode, 403);

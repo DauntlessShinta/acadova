@@ -4,14 +4,13 @@ import { toSessionInstant } from '../utils/sessionPresentation';
 const legacyStatusActions = new Set(['accepted', 'rejected', 'completed', 'cancelled']);
 
 export const sessionService = {
-  createSession: async ({ tutorId, subject, scheduledAt, meetingMethod, requestMessage, creditAmount = 1 }) => {
+  createSession: async ({ tutorId, subject, scheduledAt, meetingMethod, requestMessage }) => {
     return api.post('/api/sessions', {
       tutorId,
       subject,
       scheduledAt: toSessionInstant(scheduledAt),
       meetingMethod,
       requestMessage,
-      creditAmount: Number(creditAmount) || 1,
     });
   },
 

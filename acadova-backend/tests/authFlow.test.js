@@ -4,7 +4,10 @@ const { randomBytes } = require('node:crypto');
 const express = require('express');
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
+const mongoose = require('mongoose');
 const User = require('../models/User');
+const CreditTransaction = require('../models/CreditTransaction');
+const authController = require('../controllers/authController');
 const emailService = require('../services/emailService');
 const { hashVerificationToken } = require('../utils/verificationTokens');
 const { authenticateToken, requireRole } = require('../middleware/authMiddleware');
@@ -15,19 +18,25 @@ test('email verification account flow without MongoDB or Gmail', async (t) => {
     exists: User.exists, create: User.create, findOne: User.findOne,
     findOneAndUpdate: User.findOneAndUpdate, findById: User.findById,
     updateOne: User.updateOne, send: emailService.sendVerificationEmail,
+    startSession: mongoose.startSession, transactionCreate: CreditTransaction.create,
     jwtSecret: process.env.JWT_SECRET, log: console.info,
   };
   process.env.JWT_SECRET = randomBytes(32).toString('hex');
   const accounts = new Map();
+  const grants = [];
   const sent = [];
   const logs = [];
   let deliveryFails = false;
+  let grantFails = false;
   console.info = (line) => logs.push(line);
 
   const matches = (user, query) => {
     if (query.email && user.email !== query.email) return false;
     if (query.emailVerificationTokenHash && user.emailVerificationTokenHash !== query.emailVerificationTokenHash) return false;
     if (query.emailVerified !== undefined && user.emailVerified !== query.emailVerified) return false;
+    if (query.role && user.role !== query.role) return false;
+    if (query.openingGrantEligible !== undefined && user.openingGrantEligible !== query.openingGrantEligible) return false;
+    if (query.credits !== undefined && user.credits !== query.credits) return false;
     if (query.emailVerificationExpires?.$gt && !(user.emailVerificationExpires > query.emailVerificationExpires.$gt)) return false;
     if (query.emailVerificationExpires?.$lte && !(user.emailVerificationExpires <= query.emailVerificationExpires.$lte)) return false;
     if (query.$or && !query.$or.some((condition) => condition.emailVerificationSentAt.$exists === false
@@ -46,8 +55,31 @@ test('email verification account flow without MongoDB or Gmail', async (t) => {
     const user = [...accounts.values()].find((account) => matches(account, query));
     if (!user) return null;
     Object.assign(user, update.$set);
+    if (update.$inc) user.credits += update.$inc.credits;
     for (const key of Object.keys(update.$unset || {})) delete user[key];
     return user;
+  };
+  mongoose.startSession = async () => ({
+    async withTransaction(callback) {
+      const snapshots = [...accounts.values()].map((user) => [user, { ...user }]);
+      const grantCount = grants.length;
+      try { await callback(); } catch (error) {
+        for (const [user, snapshot] of snapshots) {
+          for (const key of Object.keys(user)) delete user[key];
+          Object.assign(user, snapshot);
+        }
+        grants.length = grantCount;
+        throw error;
+      }
+    },
+    async endSession() {},
+  });
+  CreditTransaction.create = async ([row]) => {
+    if (grantFails) throw new Error('simulated ledger failure');
+    if (grants.some((grant) => String(grant.toUser) === String(row.toUser))) {
+      throw Object.assign(new Error('duplicate grant'), { code: 11000 });
+    }
+    grants.push(row);
   };
   User.updateOne = async (query, update) => {
     const user = [...accounts.values()].find((account) => String(account._id) === String(query._id));
@@ -78,6 +110,20 @@ test('email verification account flow without MongoDB or Gmail', async (t) => {
 
   const password = 'ValidSecret1!';
   const email = 'marie@example.test';
+  const verifyDirect = async (token) => {
+    const res = { statusCode: 200, status(code) { this.statusCode = code; return this; },
+      json(body) { this.body = body; return this; } };
+    await authController.verifyEmail({ body: { token } }, res);
+    return res.statusCode;
+  };
+  const createGrantCandidate = async (address) => {
+    const token = randomBytes(32).toString('hex');
+    const account = await User.create({ name: 'Test Student', email: address, password,
+      openingGrantEligible: true, emailVerified: false,
+      emailVerificationTokenHash: hashVerificationToken(token),
+      emailVerificationExpires: new Date(Date.now() + 60_000) });
+    return { token, account };
+  };
   try {
     await t.test('registration stores a hash and grants no JWT or privileged role', async () => {
       const result = await call('/auth/register', { name: '  María O’Neil   Smith  ', email: ' MARIE@EXAMPLE.TEST ', password });
@@ -87,6 +133,8 @@ test('email verification account flow without MongoDB or Gmail', async (t) => {
       assert.equal(user.name, 'María O’Neil Smith');
       assert.equal(user.role, 'student');
       assert.equal(user.emailVerified, false);
+      assert.equal(user.credits, 0);
+      assert.equal(user.openingGrantEligible, true);
       assert.equal(user.skillsToTeach.length, 0);
       assert.equal(sent.length, 1);
       assert.equal(sent[0].recipient, email);
@@ -140,10 +188,15 @@ test('email verification account flow without MongoDB or Gmail', async (t) => {
       user.emailVerificationExpires = new Date(Date.now() + 60_000);
       assert.equal((await call('/auth/verify-email', { token: sent[0].token })).status, 200);
       assert.equal(user.emailVerified, true);
+      assert.equal(user.credits, 100);
+      assert.equal(grants.length, 1);
+      assert.equal(grants[0].type, 'initial_grant');
+      assert.equal(grants[0].amount, 100);
       assert.ok(user.emailVerifiedAt instanceof Date);
       assert.equal(user.emailVerificationTokenHash, undefined);
       assert.equal(user.emailVerificationExpires, undefined);
       assert.equal((await call('/auth/verify-email', { token: sent[0].token })).status, 400);
+      assert.equal(grants.length, 1);
     });
     await t.test('verified Student login retains its role', async () => {
       const result = await call('/auth/login', { email, password });
@@ -162,6 +215,46 @@ test('email verification account flow without MongoDB or Gmail', async (t) => {
       assert.match(result.data.message, /already exists/);
       assert.deepEqual(accounts.get(email), before);
       assert.equal(sent.length, sentCount);
+    });
+    await t.test('failed grant rolls back verification and remains retryable', async () => {
+      const { token, account } = await createGrantCandidate('retry-grant@example.test');
+      const before = grants.length;
+      grantFails = true;
+      assert.equal(await verifyDirect(token), 500);
+      assert.equal(account.emailVerified, false);
+      assert.equal(account.credits, 0);
+      assert.equal(account.emailVerificationTokenHash, hashVerificationToken(token));
+      assert.equal(grants.length, before);
+      grantFails = false;
+      assert.equal(await verifyDirect(token), 200);
+      assert.equal(account.credits, 100);
+      assert.equal(grants.length, before + 1);
+    });
+    await t.test('concurrent verification grants once', async () => {
+      const { token, account } = await createGrantCandidate('concurrent-grant@example.test');
+      const before = grants.length;
+      const outcomes = await Promise.all([
+        verifyDirect(token), verifyDirect(token),
+      ]);
+      assert.deepEqual(outcomes.sort(), [200, 400]);
+      assert.equal(account.credits, 100);
+      assert.equal(grants.length, before + 1);
+    });
+    await t.test('pre-existing and staff accounts verify without an opening grant', async () => {
+      for (const [role, startingBalance, eligible] of [
+        ['student', 2, false], ['moderator', 0, true], ['admin', 0, true],
+      ]) {
+        const token = randomBytes(32).toString('hex');
+        const address = `${role}-verification@example.test`;
+        accounts.set(address, { _id: new mongoose.Types.ObjectId(), email: address,
+          role, credits: startingBalance, openingGrantEligible: eligible,
+          emailVerified: false, emailVerificationTokenHash: hashVerificationToken(token),
+          emailVerificationExpires: new Date(Date.now() + 60_000) });
+        const before = grants.length;
+        assert.equal(await verifyDirect(token), 200);
+        assert.equal(accounts.get(address).credits, startingBalance);
+        assert.equal(grants.length, before);
+      }
     });
     await t.test('legacy moderator without verification field keeps old password and RBAC access', async () => {
       const legacyPassword = 'legacy-password';
@@ -205,6 +298,7 @@ test('email verification account flow without MongoDB or Gmail', async (t) => {
     });
     await t.test('resend replaces old token and gives an enumeration-safe response', async () => {
       const secondEmail = 'second@example.test';
+      const before = grants.length;
       assert.equal((await call('/auth/register', { name: 'Second User', email: secondEmail, password })).status, 201);
       const oldToken = sent.at(-1).token;
       accounts.get(secondEmail).emailVerificationSentAt = new Date(Date.now() - 61_000);
@@ -216,6 +310,7 @@ test('email verification account flow without MongoDB or Gmail', async (t) => {
       assert.equal(accounts.get(secondEmail).emailVerificationTokenHash, hashVerificationToken(sent.at(-1).token));
       assert.equal((await call('/auth/verify-email', { token: oldToken })).status, 400);
       assert.equal((await call('/auth/verify-email', { token: sent.at(-1).token })).status, 200);
+      assert.equal(grants.length, before + 1);
     });
     await t.test('delivery failure retains recoverable account without logging secrets', async () => {
       deliveryFails = true;
@@ -246,6 +341,8 @@ test('email verification account flow without MongoDB or Gmail', async (t) => {
     User.findOneAndUpdate = originals.findOneAndUpdate;
     User.findById = originals.findById;
     User.updateOne = originals.updateOne;
+    mongoose.startSession = originals.startSession;
+    CreditTransaction.create = originals.transactionCreate;
     emailService.sendVerificationEmail = originals.send;
     console.info = originals.log;
     if (originals.jwtSecret === undefined) delete process.env.JWT_SECRET;

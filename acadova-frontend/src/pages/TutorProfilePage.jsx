@@ -25,7 +25,6 @@ export const TutorProfilePage = () => {
   const [scheduledAt, setScheduledAt] = useState('');
   const [meetingMethod, setMeetingMethod] = useState('online');
   const [requestMessage, setRequestMessage] = useState('');
-  const [creditCost, setCreditCost] = useState(1);
   const [submitting, setSubmitting] = useState(false);
   const [fieldErrors, setFieldErrors] = useState({});
 
@@ -76,8 +75,8 @@ export const TutorProfilePage = () => {
       return;
     }
 
-    if (credits < creditCost) {
-      setError(`Insufficient credits. You have ${credits} credits, but this session requires ${creditCost}.`);
+    if (credits < 20) {
+      setError(`Insufficient credits. You have ${credits} credits, but this session requires 20.`);
       return;
     }
 
@@ -89,7 +88,6 @@ export const TutorProfilePage = () => {
         scheduledAt: scheduledAt || undefined,
         meetingMethod,
         requestMessage: requestMessage.trim(),
-        creditAmount: creditCost,
       });
 
       setSuccessMsg(`Session requested successfully with ${tutor.name}!`);
@@ -247,16 +245,7 @@ export const TutorProfilePage = () => {
             </div>
 
             <div className="form-group">
-              <label className="form-label" htmlFor="creditCost">Credit Fee</label>
-              <select
-                id="creditCost"
-                className="form-select"
-                value={creditCost}
-                onChange={(e) => setCreditCost(Number(e.target.value))}
-              >
-                <option value={1}>1 Credit (Standard 30-45m)</option>
-                <option value={2}>2 Credits (Deep Dive 60-90m)</option>
-              </select>
+              <span className="form-label">Tutoring Session Cost: 20 credits</span>
             </div>
 
             <div style={{

@@ -1,6 +1,6 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { CANONICAL_STATUSES, classifyLegacySession } = require('../utils/sessionLifecycleCompatibility');
+const { CANONICAL_STATUSES, classifyLegacySession, isSessionRatingEligible } = require('../utils/sessionLifecycleCompatibility');
 
 const session = (overrides = {}) => ({
   _id: '507f1f77bcf86cd799439011',
@@ -60,6 +60,25 @@ test('in_progress is recognized without inferring settlement', () => {
     settlementState: 'not_applicable',
     requiresReconciliation: false,
   });
+});
+
+test('awaiting_validation is never rating-eligible and canonical completion requires both confirmations and payment', () => {
+  const awaiting = session({ status: 'awaiting_validation', completedAt: undefined, awaitingValidationAt: new Date() });
+  assert.equal(classifyLegacySession(awaiting).canonicalStatus, 'awaiting_validation');
+  assert.equal(isSessionRatingEligible(awaiting, [payment()]), false);
+  const completed = session({
+    awaitingValidationAt: new Date(), learnerConfirmedAt: new Date(), tutorConfirmedAt: new Date(),
+    confirmedAt: new Date(), creditsSettledAt: new Date(),
+  });
+  assert.equal(isSessionRatingEligible(completed, [payment()]), true);
+  assert.equal(isSessionRatingEligible({ ...completed, tutorConfirmedAt: undefined }, [payment()]), false);
+  assert.equal(isSessionRatingEligible(completed, []), false);
+  assert.equal(isSessionRatingEligible(completed, [payment(), payment()]), false);
+});
+
+test('matching payment proves historical legacy rating eligibility without fabricated timestamps', () => {
+  assert.equal(isSessionRatingEligible(session({ confirmedAt: undefined, creditsSettledAt: undefined }), [payment()]), true);
+  assert.equal(isSessionRatingEligible(session({ confirmedAt: undefined, creditsSettledAt: undefined }), []), false);
 });
 
 test('a matching ledger row proves historical settlement even without confirmation timestamps', () => {

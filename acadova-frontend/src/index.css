@@ -2083,6 +2083,21 @@ textarea:focus-visible {
   margin: 8px 0;
 }
 
+.session-validation {
+  margin-top: 20px;
+  padding-top: 17px;
+  border-top: 1px solid var(--border-subtle);
+}
+
+.session-validation h3 {
+  color: var(--acadova-primary);
+  font-size: 0.88rem;
+}
+
+.session-validation p {
+  margin: 8px 0;
+}
+
 .session-reschedule {
   margin-top: 20px;
   padding-top: 17px;

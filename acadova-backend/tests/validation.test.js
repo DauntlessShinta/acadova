@@ -148,9 +148,9 @@ test('session status validation accepts canonical request decisions and legacy a
   }
 });
 
-test('Session model retains legacy values and adds in_progress for check-in', () => {
+test('Session model retains legacy values and adds canonical validation states', () => {
   const allowed = Session.schema.path('status').enumValues;
-  assert.deepEqual(allowed, ['pending', 'accepted', 'scheduled', 'in_progress', 'rejected', 'declined', 'completed', 'cancelled']);
+  assert.deepEqual(allowed, ['pending', 'accepted', 'scheduled', 'in_progress', 'awaiting_validation', 'rejected', 'declined', 'completed', 'cancelled']);
 });
 
 test('reschedule payloads require a zoned datetime or the exact proposal ID', () => {
@@ -173,6 +173,16 @@ test('check-in accepts no client-provided identity or timestamp', () => {
     assert.equal(inspect(validateBody({}), 'body', body).res.statusCode, 400);
   }
   assert.equal(inspect(validateBody(schemas.sessionStatus), 'body', { status: 'in_progress' }).res.statusCode, 400);
+});
+
+test('finish and confirmation payloads reject unsupported negative responses or timestamps', () => {
+  assert.equal(inspect(validateBody({}), 'body', {}).downstreamCalls, 1);
+  for (const body of [
+    { outcome: 'disputed' }, { confirmedAt: new Date().toISOString() }, { userId: validId },
+  ]) {
+    assert.equal(inspect(validateBody({}), 'body', body).res.statusCode, 400);
+  }
+  assert.equal(inspect(validateBody(schemas.sessionStatus), 'body', { status: 'awaiting_validation' }).res.statusCode, 400);
 });
 
 test('peer discovery treats allowed punctuation as literal text in the database filter', async () => {

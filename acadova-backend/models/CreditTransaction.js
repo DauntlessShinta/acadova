@@ -13,5 +13,5 @@ const CreditTransactionSchema = new mongoose.Schema({
 CreditTransactionSchema.index({ session: 1 }, { unique: true });
 
 // This collection is an append-only audit log; credits are never written to
-// directly by clients, only created by learner confirmation.
+// directly by clients, only created after session confirmation requirements are met.
 module.exports = mongoose.model('CreditTransaction', CreditTransactionSchema);

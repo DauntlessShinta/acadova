@@ -1,7 +1,9 @@
 const Session = require('../models/Session');
 const Rating = require('../models/Rating');
+const CreditTransaction = require('../models/CreditTransaction');
 const { isValidObjectId, isValidRating } = require('../middleware/validation');
 const { recalculateAverageRating } = require('../utils/ratingReputation');
+const { isSessionRatingEligible } = require('../utils/sessionLifecycleCompatibility');
 
 // A participant rates the other party after a session is completed.
 exports.submitRating = async (req, res) => {
@@ -22,14 +24,18 @@ exports.submitRating = async (req, res) => {
     if (String(session.learner).toLowerCase() === String(session.tutor).toLowerCase()) {
       return res.status(400).json({ success: false, message: 'You cannot review yourself.' });
     }
-    if (session.status !== 'completed' || !session.confirmedAt || !session.creditsSettledAt) {
-      return res.status(400).json({ success: false, message: 'You can rate this session after the Learner confirms completion.' });
-    }
-
     const isLearner = session.learner.toString() === req.user.id;
     const isTutor = session.tutor.toString() === req.user.id;
     if (!isLearner && !isTutor) {
       return res.status(403).json({ success: false, message: 'You are not part of this session' });
+    }
+
+    if (session.status !== 'completed') {
+      return res.status(400).json({ success: false, message: 'You can rate this session after verified completion.' });
+    }
+    const transactions = await CreditTransaction.find({ session: session._id });
+    if (!isSessionRatingEligible(session, transactions)) {
+      return res.status(400).json({ success: false, message: 'You can rate this session after verified completion.' });
     }
 
     const toUser = isLearner ? session.tutor : session.learner;

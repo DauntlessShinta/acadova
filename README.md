@@ -22,13 +22,13 @@ Account roles are `student`, `moderator`, and `admin`. Learner and Tutor describ
 - Skills to learn/teach, tutor search and profiles, session requests, the existing session workflow, ratings/reviews, and session-related credit transactions.
 - Existing API and application security controls.
 
-The Session API retains legacy `accepted`/`rejected` values for deployed clients and also accepts canonical `scheduled`/`declined` decisions. Accepted or scheduled Sessions can exchange an explicit, peer-approved reschedule proposal. Both participants may check in from 15 minutes before until 4 hours after the agreed start; the second check-in atomically moves the Session to `in_progress`. The existing legacy `accepted` -> `completed` path remains available without check-in during rollout, while `in_progress` cannot use that completion path yet. Later lifecycle states are not active. The legacy frontend remains served, but some of its flows do not match the current API.
+The Session API retains legacy `accepted`/`rejected` values for deployed clients and also accepts canonical `scheduled`/`declined` decisions. Accepted or scheduled Sessions can exchange an explicit, peer-approved reschedule proposal. Both participants may check in from 15 minutes before until 4 hours after the agreed start; the second check-in atomically moves the Session to `in_progress`. The Tutor then finishes the canonical Session into `awaiting_validation`; both participants independently confirm, and the second confirmation completes the Session and settles credits in one database transaction. The existing legacy `accepted` -> `completed` path remains available without check-in during rollout, with its existing Learner confirmation/settlement. The legacy frontend remains served, but some of its flows do not match the current API.
 
 ## Locked final scope — planned, not yet implemented
 
 The following are part of the final project scope but must not be represented as complete until implemented and verified:
 
-- Later session lifecycle transitions, session validation, no-show and dispute handling, and verified-session credit settlement.
+- No-show and dispute handling, and remaining session lifecycle transitions.
 - Self-paced topics, modules and resources; assessments and assessment credit rewards.
 - In-app notifications, OneSignal delivery, notification cooldowns and unread reminders.
 - Expanded moderator dispute/resource/suspicious-activity workflows, system configuration, persistent audit logs, and progressive login cooldown/security events.

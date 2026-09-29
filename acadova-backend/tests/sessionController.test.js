@@ -19,6 +19,7 @@ const originals = {
   userFindById: User.findById,
   userFindOneAndUpdate: User.findOneAndUpdate,
   transactionFindOne: CreditTransaction.findOne,
+  transactionFind: CreditTransaction.find,
   transactionCreate: CreditTransaction.create,
   ratingFindOne: Rating.findOne,
   ratingExists: Rating.exists,
@@ -38,6 +39,7 @@ test.afterEach(() => {
   User.findById = originals.userFindById;
   User.findOneAndUpdate = originals.userFindOneAndUpdate;
   CreditTransaction.findOne = originals.transactionFindOne;
+  CreditTransaction.find = originals.transactionFind;
   CreditTransaction.create = originals.transactionCreate;
   Rating.findOne = originals.ratingFindOne;
   Rating.exists = originals.ratingExists;
@@ -248,6 +250,7 @@ test('unrelated student cannot open the Session Room', async () => {
 test('room refresh returns review state only for its current participant, including hidden reviews', async () => {
   const session = sessionDoc({ status: 'completed', confirmedAt: new Date(), creditsSettledAt: new Date() });
   Session.findById = async () => session;
+  CreditTransaction.find = async () => [];
   Rating.exists = async (query) => {
     assert.deepEqual(Object.keys(query).sort(), ['fromUser', 'session']);
     assert.equal(query.session, session._id);
@@ -612,6 +615,7 @@ test('new session requests require schedule, method, and request context', async
 test('rating stays locked until completion is confirmed and settled', async () => {
   const session = sessionDoc({ status: 'completed', completedAt: new Date() });
   Session.findById = async () => session;
+  CreditTransaction.find = async () => [];
   const res = response();
 
   await ratingController.submitRating({
@@ -620,7 +624,7 @@ test('rating stays locked until completion is confirmed and settled', async () =
   }, res);
 
   assert.equal(res.statusCode, 400);
-  assert.match(res.body.message, /after the Learner confirms/);
+  assert.match(res.body.message, /verified completion/);
 });
 
 test('rating becomes available after confirmation and settlement', async () => {
@@ -631,6 +635,10 @@ test('rating becomes available after confirmation and settlement', async () => {
     creditsSettledAt: new Date(),
   });
   Session.findById = async () => session;
+  CreditTransaction.find = async () => [{
+    session: session._id, fromUser: session.learner, toUser: session.tutor,
+    amount: session.creditAmount, type: 'session_payment',
+  }];
   Rating.findOne = async () => null;
   Rating.create = async (data) => ({ _id: 'rating-1', ...data });
   Rating.aggregate = async () => [{ average: 5 }];
@@ -644,6 +652,26 @@ test('rating becomes available after confirmation and settlement', async () => {
 
   assert.equal(res.statusCode, 201);
   assert.equal(res.body.data.toUser, session.tutor);
+});
+
+test('a matching legacy payment permits a historical review without fabricating confirmation timestamps', async () => {
+  const session = sessionDoc({ status: 'completed', confirmedAt: undefined, creditsSettledAt: undefined });
+  Session.findById = async () => session;
+  CreditTransaction.find = async () => [{
+    session: session._id, fromUser: session.learner, toUser: session.tutor,
+    amount: session.creditAmount, type: 'session_payment',
+  }];
+  Rating.findOne = async () => null;
+  Rating.create = async (data) => ({ _id: 'historical-rating', ...data });
+  Rating.aggregate = async () => [{ average: 5 }];
+  User.findByIdAndUpdate = async () => ({});
+  const res = response();
+  await ratingController.submitRating({
+    body: { sessionId: session._id, rating: 5 }, user: { id: session.learner },
+  }, res);
+  assert.equal(res.statusCode, 201);
+  assert.equal(session.confirmedAt, undefined);
+  assert.equal(session.creditsSettledAt, undefined);
 });
 
 test('malformed self-session cannot create a self-review', async () => {

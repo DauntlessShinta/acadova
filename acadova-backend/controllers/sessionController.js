@@ -5,6 +5,7 @@ const SessionMessage = require('../models/SessionMessage');
 const User = require('../models/User');
 const CreditTransaction = require('../models/CreditTransaction');
 const Rating = require('../models/Rating');
+const { isSessionRatingEligible } = require('../utils/sessionLifecycleCompatibility');
 const { isValidObjectId, isPositiveCreditAmount } = require('../middleware/validation');
 
 const ALLOWED_TRANSITIONS = {
@@ -146,7 +147,10 @@ exports.getSessionById = async (req, res) => {
     // does not make its author eligible to submit another one. Never persist
     // this viewer-specific field on the shared session document.
     const myReview = Boolean(await Rating.exists({ session: result.session._id, fromUser: req.user.id }));
-    res.json({ success: true, message: 'Session retrieved.', data: { ...result.session.toObject(), myReview } });
+    const payments = result.session.status === 'completed'
+      ? await CreditTransaction.find({ session: result.session._id }) : [];
+    const ratingEligible = isSessionRatingEligible(result.session, payments);
+    res.json({ success: true, message: 'Session retrieved.', data: { ...result.session.toObject(), myReview, ratingEligible } });
   } catch (error) {
     res.status(500).json({ success: false, message: 'Session could not be loaded.' });
   }
@@ -407,6 +411,48 @@ exports.checkIn = async (req, res) => {
   }
 };
 
+exports.finishSession = async (req, res) => {
+  try {
+    const result = await findParticipantSession(req, res);
+    if (!result) return;
+    const { session, isTutor } = result;
+    if (!isTutor) return res.status(403).json({ success: false, message: 'Only the Tutor can finish the live session.' });
+    if (session.status !== 'in_progress') {
+      return res.status(400).json({ success: false, message: 'Only an in-progress session can be finished.' });
+    }
+    if (!session.startedAt || !session.learnerCheckedInAt || !session.tutorCheckedInAt
+      || session.rescheduleProposalId || session.proposedScheduledAt
+      || session.learnerConfirmedAt || session.tutorConfirmedAt
+      || session.completedAt || session.confirmedAt || session.creditsSettledAt) {
+      return res.status(409).json({ success: false, message: 'Session check-in evidence is incomplete.' });
+    }
+    const updatedSession = await Session.findOneAndUpdate(
+      {
+        _id: session._id,
+        status: 'in_progress',
+        startedAt: session.startedAt,
+        learnerCheckedInAt: session.learnerCheckedInAt,
+        tutorCheckedInAt: session.tutorCheckedInAt,
+        awaitingValidationAt: null,
+        learnerConfirmedAt: null,
+        tutorConfirmedAt: null,
+        completedAt: null,
+        confirmedAt: null,
+        creditsSettledAt: null,
+        rescheduleProposalId: null,
+        proposedScheduledAt: null,
+      },
+      { $set: { status: 'awaiting_validation', awaitingValidationAt: new Date() } },
+      { new: true, runValidators: true }
+    );
+    if (!updatedSession) return res.status(409).json({ success: false, message: changedSessionMessage });
+    await updatedSession.populate(SESSION_POPULATE);
+    return res.json({ success: true, message: 'Session finished. Both participants must confirm before credits transfer.', data: updatedSession });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: 'Session could not be finished.' });
+  }
+};
+
 exports.getMessages = async (req, res) => {
   try {
     const result = await findParticipantSession(req, res);
@@ -424,7 +470,7 @@ exports.createMessage = async (req, res) => {
   try {
     const result = await findParticipantSession(req, res);
     if (!result) return;
-    if (!['accepted', 'scheduled', 'in_progress', 'completed'].includes(result.session.status)) {
+    if (!['accepted', 'scheduled', 'in_progress', 'awaiting_validation', 'completed'].includes(result.session.status)) {
       return res.status(400).json({ success: false, message: 'Messages are available after the session is accepted.' });
     }
     const body = typeof req.body.body === 'string' ? req.body.body.trim() : '';
@@ -439,21 +485,104 @@ exports.createMessage = async (req, res) => {
   }
 };
 
+const transferSessionCredits = async (session, dbSession) => {
+  const learner = await User.findById(session.learner).session(dbSession);
+  if (!learner || learner.credits < session.creditAmount) {
+    throw Object.assign(new Error('You do not have enough credits to confirm this session.'), { status: 400 });
+  }
+  const tutor = await User.findOneAndUpdate(
+    { _id: session.tutor, role: 'student' },
+    { $inc: { credits: session.creditAmount } },
+    { session: dbSession, new: true }
+  );
+  if (!tutor) throw Object.assign(new Error('Tutor account is unavailable.'), { status: 400 });
+
+  learner.credits -= session.creditAmount;
+  await learner.save({ session: dbSession });
+
+  await CreditTransaction.create([{
+    fromUser: session.learner,
+    toUser: session.tutor,
+    amount: session.creditAmount,
+    session: session._id,
+  }], { session: dbSession });
+};
+
 exports.confirmSession = async (req, res) => {
   if (!validateSessionId(req, res)) return;
   const dbSession = await mongoose.startSession();
   let settledSession;
   let alreadySettled = false;
+  let awaitingPeerConfirmation = false;
   try {
     await dbSession.withTransaction(async () => {
+      settledSession = undefined;
+      alreadySettled = false;
+      awaitingPeerConfirmation = false;
       const session = await Session.findById(req.params.id).session(dbSession);
       if (!session) throw Object.assign(new Error('Session not found.'), { status: 404 });
       const { isLearner, isTutor } = participantFlags(session, req.user.id);
       if (!isLearner && !isTutor) throw Object.assign(new Error('You are not part of this session.'), { status: 403 });
-      if (!isLearner) throw Object.assign(new Error('Only the Learner can confirm this session.'), { status: 403 });
       if (sameUser(session.learner, session.tutor)) {
         throw Object.assign(new Error('A session with the same learner and tutor cannot be confirmed.'), { status: 400 });
       }
+      if (session.status === 'awaiting_validation') {
+        if (!session.awaitingValidationAt || !session.startedAt
+          || !session.learnerCheckedInAt || !session.tutorCheckedInAt
+          || session.rescheduleProposalId || session.proposedScheduledAt
+          || session.completedAt || session.confirmedAt || session.creditsSettledAt) {
+          throw Object.assign(new Error('Session validation evidence is incomplete.'), { status: 409 });
+        }
+        const ownField = isLearner ? 'learnerConfirmedAt' : 'tutorConfirmedAt';
+        const peerField = isLearner ? 'tutorConfirmedAt' : 'learnerConfirmedAt';
+        if (session[ownField]) {
+          throw Object.assign(new Error('You have already confirmed this session.'), { status: 409 });
+        }
+        const now = new Date();
+        const finalConfirmation = Boolean(session[peerField]);
+        if (finalConfirmation) {
+          const existingPayment = await CreditTransaction.findOne({ session: session._id }).session(dbSession);
+          if (existingPayment) {
+            throw Object.assign(new Error('This session already has a credit transaction.'), { status: 409 });
+          }
+        }
+        const changes = { [ownField]: now };
+        if (finalConfirmation) {
+          Object.assign(changes, {
+            status: 'completed',
+            completedAt: now,
+            confirmedAt: isLearner ? now : session.learnerConfirmedAt,
+            creditsSettledAt: now,
+          });
+        }
+        const claim = await Session.updateOne(
+          {
+            _id: session._id,
+            status: 'awaiting_validation',
+            awaitingValidationAt: session.awaitingValidationAt,
+            startedAt: session.startedAt,
+            [ownField]: null,
+            [peerField]: finalConfirmation ? { $ne: null } : null,
+            completedAt: null,
+            confirmedAt: null,
+            creditsSettledAt: null,
+          },
+          { $set: changes },
+          { session: dbSession }
+        );
+        if (claim.matchedCount !== 1) {
+          throw Object.assign(new Error(changedSessionMessage), { status: 409 });
+        }
+        Object.assign(session, changes);
+        if (finalConfirmation) await transferSessionCredits(session, dbSession);
+        else awaitingPeerConfirmation = true;
+        settledSession = session;
+        return;
+      }
+      if (session.awaitingValidationAt) {
+        throw Object.assign(new Error('This Session cannot use the legacy confirmation flow.'), { status: 409 });
+      }
+      if (!isLearner) throw Object.assign(new Error('Only the Learner can confirm this session.'), { status: 403 });
       if (session.status !== 'completed') {
         throw Object.assign(new Error('The Tutor must mark the session complete first.'), { status: 400 });
       }
@@ -488,32 +617,15 @@ exports.confirmSession = async (req, res) => {
       const now = new Date();
       await markConfirmed(now, now);
 
-      const learner = await User.findById(session.learner).session(dbSession);
-      if (!learner || learner.credits < session.creditAmount) {
-        throw Object.assign(new Error('You do not have enough credits to confirm this session.'), { status: 400 });
-      }
-      const tutor = await User.findOneAndUpdate(
-        { _id: session.tutor, role: 'student' },
-        { $inc: { credits: session.creditAmount } },
-        { session: dbSession, new: true }
-      );
-      if (!tutor) throw Object.assign(new Error('Tutor account is unavailable.'), { status: 400 });
-
-      learner.credits -= session.creditAmount;
-      await learner.save({ session: dbSession });
-
-      await CreditTransaction.create([{
-        fromUser: session.learner,
-        toUser: session.tutor,
-        amount: session.creditAmount,
-        session: session._id,
-      }], { session: dbSession });
+      await transferSessionCredits(session, dbSession);
       settledSession = session;
     });
 
     await settledSession.populate(SESSION_POPULATE);
     const tutorName = settledSession.tutor?.name || 'the Tutor';
-    const message = alreadySettled
+    const message = awaitingPeerConfirmation
+      ? 'Confirmation saved. Waiting for your peer before credits transfer.'
+      : alreadySettled
       ? 'Session confirmed. Its existing credit transaction was not repeated.'
       : `Session completed. ${settledSession.creditAmount} credit${settledSession.creditAmount === 1 ? '' : 's'} transferred to ${tutorName}.`;
     res.json({ success: true, message, data: settledSession });

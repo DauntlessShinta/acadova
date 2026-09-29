@@ -85,8 +85,8 @@ test('nonparticipant cannot propose or decide', async () => {
   assert.ok(stored.rescheduleProposalId);
 });
 
-test('pending, completed, cancelled, declined and rejected sessions cannot reschedule', async () => {
-  for (const status of ['pending', 'completed', 'cancelled', 'declined', 'rejected', 'in_progress']) {
+test('pending, in-progress, awaiting-validation and closed sessions cannot reschedule', async () => {
+  for (const status of ['pending', 'completed', 'cancelled', 'declined', 'rejected', 'in_progress', 'awaiting_validation']) {
     const stored = sessionDoc({ status });
     mockStore(stored);
     assert.equal((await propose(stored, stored.learner)).statusCode, 400, status);

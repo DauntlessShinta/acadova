@@ -9,6 +9,7 @@ const LEGACY_STATUS_MAP = Object.freeze({
   accepted: 'scheduled',
   scheduled: 'scheduled',
   in_progress: 'in_progress',
+  awaiting_validation: 'awaiting_validation',
   rejected: 'declined',
   declined: 'declined',
   cancelled: 'cancelled',
@@ -52,4 +53,12 @@ function classifyLegacySession(session, transactions = []) {
   return { ...base, settlementState: 'not_applicable', requiresReconciliation: false };
 }
 
-module.exports = { CANONICAL_STATUSES, classifyLegacySession };
+const isSessionRatingEligible = (session, transactions = []) => (
+  session.status === 'completed'
+  && (!session.awaitingValidationAt || Boolean(
+    session.learnerConfirmedAt && session.tutorConfirmedAt && session.confirmedAt && session.creditsSettledAt
+  ))
+  && classifyLegacySession(session, transactions).settlementState === 'settled'
+);
+
+module.exports = { CANONICAL_STATUSES, classifyLegacySession, isSessionRatingEligible };

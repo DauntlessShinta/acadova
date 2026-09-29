@@ -77,7 +77,7 @@ const SessionRoom = ({ id }) => {
         lastSettlement.current = latest.creditsSettledAt;
         void refreshUser();
       }
-      if (latest.canonicalStatus == null && ['accepted', 'scheduled', 'in_progress', 'completed'].includes(latest.status)) {
+      if (latest.canonicalStatus == null && ['accepted', 'scheduled', 'in_progress', 'awaiting_validation', 'completed'].includes(latest.status)) {
         const messageResponse = await sessionService.getMessages(id);
         if (!gate.current.isCurrent(ticket)) return;
         setMessages(messageResponse.data || []);
@@ -117,7 +117,7 @@ const SessionRoom = ({ id }) => {
 
   // The current API supports actions only for its legacy response contract.
   const usesLegacyActions = session?.canonicalStatus == null;
-  const messagesAvailable = usesLegacyActions && ['accepted', 'scheduled', 'in_progress', 'completed'].includes(session?.status);
+  const messagesAvailable = usesLegacyActions && ['accepted', 'scheduled', 'in_progress', 'awaiting_validation', 'completed'].includes(session?.status);
 
   const beginAction = () => {
     if (actionInProgress.current) return false;
@@ -224,15 +224,32 @@ const SessionRoom = ({ id }) => {
     }
   };
 
+  const handleFinishSession = async () => {
+    if (!window.confirm('Finish the live session? Both participants must then confirm before credits transfer.')) return;
+    if (!beginAction()) return;
+    try {
+      const response = await sessionService.finishSession(id);
+      setSession(response.data);
+      setSuccess(response.message);
+    } catch (err) {
+      setError(err.message || 'The session could not be finished.');
+    } finally {
+      finishAction();
+    }
+  };
+
   const handleConfirm = async () => {
     const credits = `${session.creditAmount} credit${session.creditAmount === 1 ? '' : 's'}`;
-    if (!window.confirm(`Confirm that this session was completed and transfer ${credits} to ${session.tutor?.name || 'the Tutor'}?`)) return;
+    const prompt = session.status === 'awaiting_validation'
+      ? `Confirm that the tutoring interaction happened? ${credits} transfer only after both participants confirm.`
+      : `Confirm that this session was completed and transfer ${credits} to ${session.tutor?.name || 'the Tutor'}?`;
+    if (!window.confirm(prompt)) return;
     if (!beginAction()) return;
     try {
       const response = await sessionService.confirmSession(id);
       setSession(response.data);
       setSuccess(response.message);
-      await refreshUser();
+      if (response.data.creditsSettledAt) await refreshUser();
     } catch (err) {
       setError(err.message || 'Session confirmation could not be completed.');
     } finally {
@@ -306,6 +323,7 @@ const SessionRoom = ({ id }) => {
     ? 'Online'
     : session.meetingMethod === 'in-person' ? 'In person' : 'Not recorded';
   const creditLabel = `${session.creditAmount} credit${session.creditAmount === 1 ? '' : 's'}`;
+  const myValidation = isTeaching ? session.tutorConfirmedAt : session.learnerConfirmedAt;
   const acceptedReached = ['accepted', 'completed'].includes(session.status);
   const completedReached = session.status === 'completed';
   const isClosed = ['cancelled', 'declined', 'no_show', 'resolved'].includes(displayStatus.filterKey);
@@ -313,7 +331,8 @@ const SessionRoom = ({ id }) => {
     ['pending', 'accepted'].includes(session.status)
     || (isTeaching && session.status === 'completed' && !session.confirmedAt)
   );
-  const showLegacyProgress = usesLegacyActions && ['pending', 'accepted', 'rejected', 'completed', 'cancelled'].includes(session.status);
+  const showLegacyProgress = usesLegacyActions && !session.awaitingValidationAt
+    && ['pending', 'accepted', 'rejected', 'completed', 'cancelled'].includes(session.status);
 
   return (
     <div className="session-room-page">
@@ -354,6 +373,8 @@ const SessionRoom = ({ id }) => {
         </div>
         {usesLegacyActions && isTeaching && session.status === 'pending' && <button className="btn btn-primary btn-sm" type="button" disabled={actionLoading} onClick={() => runStatusAction('accepted')}>Accept request</button>}
         {usesLegacyActions && isTeaching && session.status === 'accepted' && <button className="btn btn-primary btn-sm" type="button" disabled={actionLoading} onClick={() => runStatusAction('completed')}>Complete session</button>}
+        {isTeaching && session.status === 'in_progress' && <button className="btn btn-primary btn-sm" type="button" disabled={actionLoading} onClick={handleFinishSession}>Finish live session</button>}
+        {session.status === 'awaiting_validation' && !myValidation && <button className="btn btn-primary btn-sm" type="button" disabled={actionLoading} onClick={handleConfirm}>Confirm session</button>}
         {usesLegacyActions && !isTeaching && session.status === 'completed' && !session.confirmedAt && <button className="btn btn-primary btn-sm" type="button" disabled={actionLoading} onClick={handleConfirm}>Confirm completion and transfer {creditLabel}</button>}
       </section>
 
@@ -389,6 +410,16 @@ const SessionRoom = ({ id }) => {
                   <p>Check-in is not available at this time.</p>
                 ) : null}
                 {canCheckIn && <button type="button" className="btn btn-primary btn-sm" disabled={actionLoading} onClick={handleCheckIn}>Check in</button>}
+              </div>
+            )}
+
+            {session.status === 'awaiting_validation' && (
+              <div className="session-validation">
+                <h3>Session validation</h3>
+                <p>The live interaction is finished. Credits transfer only after both participants confirm.</p>
+                <p>Learner: {session.learnerConfirmedAt ? 'Confirmed' : 'Waiting for confirmation'}</p>
+                <p>Tutor: {session.tutorConfirmedAt ? 'Confirmed' : 'Waiting for confirmation'}</p>
+                {myValidation && <p>Thanks for confirming. Waiting for your peer.</p>}
               </div>
             )}
 
@@ -503,7 +534,7 @@ const SessionRoom = ({ id }) => {
           </section>
 
           {ratingSubmitted && <Alert type="success" message="Your review for this session has been submitted." />}
-          {usesLegacyActions && session.status === 'completed' && session.confirmedAt && session.creditsSettledAt && !ratingSubmitted && (
+          {session.ratingEligible && session.status === 'completed' && !ratingSubmitted && (
             <section className="card session-room-section session-review-panel" aria-labelledby="review-heading">
               <h2 id="review-heading">Review your peer</h2>
               <form onSubmit={handleRating}>

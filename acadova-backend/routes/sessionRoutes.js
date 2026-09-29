@@ -11,6 +11,7 @@ const {
   acceptReschedule,
   declineReschedule,
   checkIn,
+  finishSession,
   getMessages,
   createMessage,
   confirmSession,
@@ -31,6 +32,7 @@ router.post('/:id/reschedule', sessionActionLimiter, validateParams(schemas.sess
 router.post('/:id/reschedule/accept', sessionActionLimiter, validateParams(schemas.sessionId), validateBody(schemas.rescheduleDecision), acceptReschedule);
 router.post('/:id/reschedule/decline', sessionActionLimiter, validateParams(schemas.sessionId), validateBody(schemas.rescheduleDecision), declineReschedule);
 router.post('/:id/check-in', sessionActionLimiter, validateParams(schemas.sessionId), validateBody({}), checkIn);
+router.post('/:id/finish', sessionActionLimiter, validateParams(schemas.sessionId), validateBody({}), finishSession);
 router.post('/:id/confirm', sessionActionLimiter, validateParams(schemas.sessionId), validateBody({}), confirmSession);
 router.get('/:id/messages', validateParams(schemas.sessionId), getMessages);
 router.post('/:id/messages', messageLimiter, validateParams(schemas.sessionId), validateBody(schemas.message), createMessage);

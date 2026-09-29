@@ -72,7 +72,7 @@ export const getSessionStatus = (session) => {
       label: 'Status unavailable', key: 'unknown', filterKey: 'unknown',
     };
   }
-  if (session?.status === 'completed' && !session.confirmedAt) {
+  if (session?.status === 'completed' && !session.confirmedAt && !session.ratingEligible) {
     return { label: 'Awaiting confirmation', key: 'waiting', filterKey: 'awaiting_validation' };
   }
   const detail = statusDetail(session?.status);
@@ -116,12 +116,19 @@ export const getSessionNextStep = (session, isTeaching, counterpartName = 'your 
   if (session?.status === 'scheduled') return `Your session with ${counterpartName} is scheduled.`;
   if (session?.status === 'in_progress') return 'This session is in progress.';
   if (session?.status === 'awaiting_validation') return 'This session is awaiting validation.';
+  if (session?.status === 'completed' && session.ratingEligible) {
+    return 'This settled session is complete. You can now review your peer.';
+  }
   if (session?.status === 'completed' && !session.confirmedAt) {
     return isTeaching
       ? 'Waiting for the Learner to confirm completion.'
       : `${counterpartName} marked this session complete. Confirm it to transfer the credits.`;
   }
-  if (session?.status === 'completed' && session.confirmedAt) return 'The exchange is complete. You can now review your peer.';
+  if (session?.status === 'completed' && session.confirmedAt) {
+    return session.awaitingValidationAt
+      ? 'Both participants confirmed. The verified session is complete and ready for review.'
+      : 'The exchange is complete. You can now review your peer.';
+  }
   if (session?.status === 'rejected' || session?.status === 'declined') return 'This request was declined. You can find another peer.';
   if (session?.status === 'cancelled') return 'This session was cancelled.';
   if (session?.status === 'no_show') return 'This session was recorded as a no-show.';

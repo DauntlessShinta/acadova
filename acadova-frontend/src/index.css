@@ -2068,6 +2068,34 @@ textarea:focus-visible {
   font-size: 0.88rem;
 }
 
+.session-reschedule {
+  margin-top: 20px;
+  padding-top: 17px;
+  border-top: 1px solid var(--border-subtle);
+}
+
+.session-reschedule h3 {
+  color: var(--acadova-primary);
+  font-size: 0.88rem;
+}
+
+.session-reschedule > p,
+.session-reschedule-proposal {
+  margin: 8px 0 14px;
+}
+
+.session-reschedule-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 9px;
+  margin-top: 8px;
+}
+
+.session-reschedule-actions .form-input {
+  max-width: 260px;
+}
+
 .session-meeting-result {
   display: grid;
   gap: 3px;

@@ -22,13 +22,13 @@ Account roles are `student`, `moderator`, and `admin`. Learner and Tutor describ
 - Skills to learn/teach, tutor search and profiles, session requests, the existing session workflow, ratings/reviews, and session-related credit transactions.
 - Existing API and application security controls.
 
-The implemented session lifecycle is currently limited to `pending`, `accepted`, `rejected`, `completed`, and `cancelled`. The legacy frontend remains served, but some of its flows do not match the current API.
+The Session API retains legacy `accepted`/`rejected` values for deployed clients and also accepts canonical `scheduled`/`declined` decisions. Accepted or scheduled Sessions can now exchange an explicit, peer-approved reschedule proposal without changing their lifecycle status or meeting details. Later lifecycle states are not active yet. The legacy frontend remains served, but some of its flows do not match the current API.
 
 ## Locked final scope — planned, not yet implemented
 
 The following are part of the final project scope but must not be represented as complete until implemented and verified:
 
-- Expanded session lifecycle, rescheduling, joining/check-in, session validation, no-show and dispute handling, and verified-session credit settlement.
+- Later session lifecycle transitions, joining/check-in, session validation, no-show and dispute handling, and verified-session credit settlement.
 - Self-paced topics, modules and resources; assessments and assessment credit rewards.
 - In-app notifications, OneSignal delivery, notification cooldowns and unread reminders.
 - Expanded moderator dispute/resource/suspicious-activity workflows, system configuration, persistent audit logs, and progressive login cooldown/security events.

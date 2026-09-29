@@ -153,6 +153,20 @@ test('Session model retains legacy values and adds only P2.4 canonical values', 
   assert.deepEqual(allowed, ['pending', 'accepted', 'scheduled', 'rejected', 'declined', 'completed', 'cancelled']);
 });
 
+test('reschedule payloads require a zoned datetime or the exact proposal ID', () => {
+  const validTime = '2030-09-25T06:30:00.000Z';
+  const validProposalId = '11111111-2222-4333-8444-555555555555';
+  assert.equal(inspect(validateBody(schemas.reschedule), 'body', { scheduledAt: validTime }).downstreamCalls, 1);
+  assert.equal(inspect(validateBody(schemas.rescheduleDecision), 'body', { proposalId: validProposalId }).downstreamCalls, 1);
+  for (const value of [{}, { scheduledAt: '2030-09-25T14:30' }, { scheduledAt: 'invalid' }, { scheduledAt: validTime, status: 'accepted' }]) {
+    assert.equal(inspect(validateBody(schemas.reschedule), 'body', value).res.statusCode, 400);
+  }
+  for (const value of [{}, { proposalId: 'bad' }, { proposalId: validProposalId, scheduledAt: validTime }]) {
+    assert.equal(inspect(validateBody(schemas.rescheduleDecision), 'body', value).res.statusCode, 400);
+  }
+  assert.equal(inspect(validateParams(schemas.sessionId), 'params', { id: 'bad-id' }).res.statusCode, 400);
+});
+
 test('peer discovery treats allowed punctuation as literal text in the database filter', async () => {
   const originalFind = User.find;
   let filter;

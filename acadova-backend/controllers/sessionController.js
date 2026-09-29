@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const { randomUUID } = require('node:crypto');
 const Session = require('../models/Session');
 const SessionMessage = require('../models/SessionMessage');
 const User = require('../models/User');
@@ -25,6 +26,13 @@ const SESSION_POPULATE = [
 
 const sameUser = (left, right) => String(left).toLowerCase() === String(right).toLowerCase();
 const changedSessionMessage = 'This session has already changed. Refresh and try again.';
+const reschedulableStatuses = ['accepted', 'scheduled'];
+const rescheduleFields = {
+  proposedScheduledAt: 1,
+  rescheduleProposedBy: 1,
+  rescheduleProposedAt: 1,
+  rescheduleProposalId: 1,
+};
 
 const participantFlags = (session, userId) => ({
   isLearner: session.learner.toString() === userId,
@@ -166,9 +174,13 @@ exports.updateSessionStatus = async (req, res) => {
 
     const changes = { status };
     if (status === 'completed') changes.completedAt = new Date();
+    const update = { $set: changes };
+    if (session.status === 'accepted' && ['completed', 'cancelled'].includes(status)) {
+      update.$unset = rescheduleFields;
+    }
     const updatedSession = await Session.findOneAndUpdate(
       { _id: session._id, status: session.status },
-      { $set: changes },
+      update,
       { new: true, runValidators: true }
     );
     if (!updatedSession) {
@@ -196,7 +208,7 @@ exports.updateCoordination = async (req, res) => {
     if (!result) return;
     const { session, isTutor } = result;
     if (!isTutor) return res.status(403).json({ success: false, message: 'Only the Tutor can update meeting details.' });
-    if (!['accepted', 'scheduled'].includes(session.status)) {
+    if (!reschedulableStatuses.includes(session.status)) {
       return res.status(400).json({ success: false, message: 'Meeting details can be updated after the session is accepted.' });
     }
 
@@ -235,6 +247,98 @@ exports.updateCoordination = async (req, res) => {
     res.status(500).json({ success: false, message: 'Meeting details could not be saved.' });
   }
 };
+
+exports.proposeReschedule = async (req, res) => {
+  try {
+    const result = await findParticipantSession(req, res);
+    if (!result) return;
+    const { session } = result;
+    if (!reschedulableStatuses.includes(session.status)) {
+      return res.status(400).json({ success: false, message: 'Only scheduled sessions can be rescheduled.' });
+    }
+    if (session.rescheduleProposalId || session.proposedScheduledAt) {
+      return res.status(409).json({ success: false, message: 'A reschedule proposal is already pending.' });
+    }
+    const proposedDate = new Date(req.body.scheduledAt);
+    if (Number.isNaN(proposedDate.getTime())) {
+      return res.status(400).json({ success: false, message: 'Enter a valid proposed date and time.' });
+    }
+    if (proposedDate <= new Date()) {
+      return res.status(400).json({ success: false, message: 'Choose a future date and time.' });
+    }
+    if (session.scheduledAt && proposedDate.getTime() === new Date(session.scheduledAt).getTime()) {
+      return res.status(400).json({ success: false, message: 'Choose a different time from the current schedule.' });
+    }
+    const updatedSession = await Session.findOneAndUpdate(
+      {
+        _id: session._id,
+        status: session.status,
+        scheduledAt: session.scheduledAt ?? null,
+        rescheduleProposalId: null,
+        proposedScheduledAt: null,
+      },
+      { $set: {
+        proposedScheduledAt: proposedDate,
+        rescheduleProposedBy: req.user.id,
+        rescheduleProposedAt: new Date(),
+        rescheduleProposalId: randomUUID(),
+      } },
+      { new: true, runValidators: true }
+    );
+    if (!updatedSession) return res.status(409).json({ success: false, message: changedSessionMessage });
+    await updatedSession.populate(SESSION_POPULATE);
+    return res.json({ success: true, message: 'Reschedule proposed. Waiting for your peer to respond.', data: updatedSession });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: 'Reschedule could not be proposed.' });
+  }
+};
+
+const decideReschedule = async (req, res, accept) => {
+  try {
+    const result = await findParticipantSession(req, res);
+    if (!result) return;
+    const { session } = result;
+    if (!reschedulableStatuses.includes(session.status)) {
+      return res.status(400).json({ success: false, message: 'Only scheduled sessions can be rescheduled.' });
+    }
+    if (!session.rescheduleProposalId || session.rescheduleProposalId !== req.body.proposalId
+      || !session.proposedScheduledAt || !session.rescheduleProposedBy) {
+      return res.status(409).json({ success: false, message: changedSessionMessage });
+    }
+    if (sameUser(session.rescheduleProposedBy, req.user.id)) {
+      return res.status(403).json({ success: false, message: 'Only the other participant can respond to this proposal.' });
+    }
+    if (accept && new Date(session.proposedScheduledAt) <= new Date()) {
+      return res.status(400).json({ success: false, message: 'This proposed time has passed. Ask for a new proposal.' });
+    }
+    const update = { $unset: rescheduleFields };
+    if (accept) update.$set = { scheduledAt: session.proposedScheduledAt };
+    const updatedSession = await Session.findOneAndUpdate(
+      {
+        _id: session._id,
+        status: session.status,
+        scheduledAt: session.scheduledAt ?? null,
+        proposedScheduledAt: session.proposedScheduledAt,
+        rescheduleProposalId: req.body.proposalId,
+        rescheduleProposedBy: session.rescheduleProposedBy,
+      },
+      update,
+      { new: true, runValidators: true }
+    );
+    if (!updatedSession) return res.status(409).json({ success: false, message: changedSessionMessage });
+    await updatedSession.populate(SESSION_POPULATE);
+    return res.json({
+      success: true,
+      message: accept ? 'Reschedule accepted. The session time was updated.' : 'Reschedule declined. The original time remains.',
+      data: updatedSession,
+    });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: 'Reschedule response could not be saved.' });
+  }
+};
+
+exports.acceptReschedule = (req, res) => decideReschedule(req, res, true);
+exports.declineReschedule = (req, res) => decideReschedule(req, res, false);
 
 exports.getMessages = async (req, res) => {
   try {

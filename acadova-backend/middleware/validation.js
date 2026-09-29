@@ -2,6 +2,7 @@ const mongoose = require('mongoose');
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const VERIFICATION_TOKEN_REGEX = /^[a-f0-9]{64}$/;
+const UUID_REGEX = /^[a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/i;
 const OBJECT_ID_REGEX = /^[a-f\d]{24}$/i;
 const ISO_DATE_TIME_REGEX = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})(?::(\d{2})(?:\.\d{1,3})?)?(Z|[+-]\d{2}:\d{2})$/;
 
@@ -109,6 +110,11 @@ const scheduledAt = (value) => {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) throw new InvalidInput('Enter a valid scheduled date and time with a timezone.');
   return date.toISOString();
+};
+
+const proposalId = (value) => {
+  if (typeof value !== 'string' || !UUID_REGEX.test(value)) throw new InvalidInput('Invalid reschedule proposal id.');
+  return value;
 };
 
 const httpsLink = (value) => {
@@ -227,6 +233,8 @@ const schemas = {
     creditAmount: optional(creditAmount),
   },
   sessionStatus: { status: oneOf('session status', ['accepted', 'scheduled', 'rejected', 'declined', 'completed', 'cancelled']) },
+  reschedule: { scheduledAt },
+  rescheduleDecision: { proposalId },
   coordination: { meetingLink: optional(httpsLink), location: optional(requiredText('Location', 300)) },
   message: { body: requiredText('Message', 1000) },
   rating: { sessionId: objectId('session id'), rating, comment: optional(requiredText('Review comment', 500, 0)) },

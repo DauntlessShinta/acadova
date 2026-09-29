@@ -47,6 +47,7 @@ const SessionRoom = ({ id }) => {
   const [success, setSuccess] = useState('');
   const [messageBody, setMessageBody] = useState('');
   const [meetingValue, setMeetingValue] = useState('');
+  const [proposedTime, setProposedTime] = useState('');
   const [ratingStars, setRatingStars] = useState(5);
   const [ratingComment, setRatingComment] = useState('');
   const [ratingSubmitted, setRatingSubmitted] = useState(false);
@@ -178,6 +179,36 @@ const SessionRoom = ({ id }) => {
     }
   };
 
+  const handleRescheduleProposal = async (event) => {
+    event.preventDefault();
+    if (!beginAction()) return;
+    try {
+      const response = await sessionService.proposeReschedule(id, proposedTime);
+      setSession(response.data);
+      setProposedTime('');
+      setSuccess(response.message);
+    } catch (err) {
+      setError(err.message || 'The new time could not be proposed.');
+    } finally {
+      finishAction();
+    }
+  };
+
+  const handleRescheduleDecision = async (accept) => {
+    if (!beginAction()) return;
+    try {
+      const response = accept
+        ? await sessionService.acceptReschedule(id, session.rescheduleProposalId)
+        : await sessionService.declineReschedule(id, session.rescheduleProposalId);
+      setSession(response.data);
+      setSuccess(response.message);
+    } catch (err) {
+      setError(err.message || 'The reschedule response could not be saved.');
+    } finally {
+      finishAction();
+    }
+  };
+
   const handleConfirm = async () => {
     const credits = `${session.creditAmount} credit${session.creditAmount === 1 ? '' : 's'}`;
     if (!window.confirm(`Confirm that this session was completed and transfer ${credits} to ${session.tutor?.name || 'the Tutor'}?`)) return;
@@ -242,6 +273,10 @@ const SessionRoom = ({ id }) => {
   }
 
   const scheduledLabel = formatSessionDateTime(session.scheduledAt);
+  const canReschedule = ['accepted', 'scheduled'].includes(session.status);
+  const hasRescheduleProposal = canReschedule && Boolean(session.rescheduleProposalId && session.proposedScheduledAt);
+  const proposedByMe = hasRescheduleProposal && idOf(session.rescheduleProposedBy) === idOf(user);
+  const proposedScheduleLabel = formatSessionDateTime(session.proposedScheduledAt);
   const meetingMethodLabel = session.meetingMethod === 'online'
     ? 'Online'
     : session.meetingMethod === 'in-person' ? 'In person' : 'Not recorded';
@@ -312,6 +347,33 @@ const SessionRoom = ({ id }) => {
               <h3>Request message</h3>
               <blockquote>{session.requestMessage || 'No request message was recorded for this older session.'}</blockquote>
             </div>
+
+            {canReschedule && (
+              <div className="session-reschedule">
+                <h3>Reschedule</h3>
+                <p className="session-muted-copy">Current agreed time: {scheduledLabel || 'Not recorded'}. A new time takes effect only when your peer accepts it.</p>
+                {hasRescheduleProposal ? (
+                  <div className="session-reschedule-proposal">
+                    <p><strong>Proposed time:</strong> {proposedScheduleLabel || 'Unavailable'}</p>
+                    <p>{proposedByMe ? 'Waiting for your peer to respond.' : `${counterpart?.name || 'Your peer'} proposed this time. The current time remains in place until you accept.`}</p>
+                    {!proposedByMe && (
+                      <div className="session-reschedule-actions">
+                        <button type="button" className="btn btn-primary btn-sm" disabled={actionLoading} onClick={() => handleRescheduleDecision(true)}>Accept new time</button>
+                        <button type="button" className="btn btn-secondary btn-sm" disabled={actionLoading} onClick={() => handleRescheduleDecision(false)}>Decline new time</button>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <form onSubmit={handleRescheduleProposal}>
+                    <label className="form-label" htmlFor="reschedule-time">Propose a new date and time</label>
+                    <div className="session-reschedule-actions">
+                      <input id="reschedule-time" className="form-input" type="datetime-local" value={proposedTime} onChange={(event) => setProposedTime(event.target.value)} required disabled={actionLoading} />
+                      <button type="submit" className="btn btn-secondary btn-sm" disabled={actionLoading}>Propose time</button>
+                    </div>
+                  </form>
+                )}
+              </div>
+            )}
 
             {session.meetingMethod === 'online' && session.meetingLink && (
               <div className="session-meeting-result">

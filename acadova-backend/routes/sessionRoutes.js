@@ -7,6 +7,9 @@ const {
   getSessionById,
   updateSessionStatus,
   updateCoordination,
+  proposeReschedule,
+  acceptReschedule,
+  declineReschedule,
   getMessages,
   createMessage,
   confirmSession,
@@ -23,6 +26,9 @@ router.get('/', getMySessions);
 router.get('/:id', validateParams(schemas.sessionId), getSessionById);
 router.patch('/:id/status', sessionActionLimiter, validateParams(schemas.sessionId), validateBody(schemas.sessionStatus), updateSessionStatus);
 router.patch('/:id/coordination', sessionActionLimiter, validateParams(schemas.sessionId), validateBody(schemas.coordination, { exactlyOne: true }), updateCoordination);
+router.post('/:id/reschedule', sessionActionLimiter, validateParams(schemas.sessionId), validateBody(schemas.reschedule), proposeReschedule);
+router.post('/:id/reschedule/accept', sessionActionLimiter, validateParams(schemas.sessionId), validateBody(schemas.rescheduleDecision), acceptReschedule);
+router.post('/:id/reschedule/decline', sessionActionLimiter, validateParams(schemas.sessionId), validateBody(schemas.rescheduleDecision), declineReschedule);
 router.post('/:id/confirm', sessionActionLimiter, validateParams(schemas.sessionId), validateBody({}), confirmSession);
 router.get('/:id/messages', validateParams(schemas.sessionId), getMessages);
 router.post('/:id/messages', messageLimiter, validateParams(schemas.sessionId), validateBody(schemas.message), createMessage);

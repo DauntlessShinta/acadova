@@ -30,6 +30,18 @@ export const sessionService = {
     api.patch(`/api/sessions/${sessionId}/coordination`, details)
   ),
 
+  proposeReschedule: async (sessionId, scheduledAt) => (
+    api.post(`/api/sessions/${sessionId}/reschedule`, { scheduledAt: toSessionInstant(scheduledAt) })
+  ),
+
+  acceptReschedule: async (sessionId, proposalId) => (
+    api.post(`/api/sessions/${sessionId}/reschedule/accept`, { proposalId })
+  ),
+
+  declineReschedule: async (sessionId, proposalId) => (
+    api.post(`/api/sessions/${sessionId}/reschedule/decline`, { proposalId })
+  ),
+
   confirmSession: async (sessionId) => api.post(`/api/sessions/${sessionId}/confirm`, {}),
 
   getMessages: async (sessionId) => api.get(`/api/sessions/${sessionId}/messages`),

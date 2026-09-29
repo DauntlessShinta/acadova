@@ -64,20 +64,23 @@ test('schema declares separate unique keys for Session payment and per-Student g
 
 test('own history tolerates a sender-less opening grant', async () => {
   const original = CreditTransaction.find;
+  const originalFind = User.find;
   CreditTransaction.find = (filter) => {
     assert.deepEqual(filter, { $or: [{ fromUser: String(learner) }, { toUser: String(learner) }] });
-    return { populate() { return this; }, sort: async () => [{
-      _id: 'grant', type: 'initial_grant', toUser: { _id: learner, name: 'Student' },
+    return { select() { return this; }, sort() { return this; }, skip() { return this; },
+      limit() { return this; }, lean: async () => [{
+      _id: 'grant', type: 'initial_grant', toUser: learner,
       fromUser: null, session: null, amount: 100, createdAt: new Date(),
     }] };
   };
   const response = { statusCode: 200, status(code) { this.statusCode = code; return this; },
     json(body) { this.body = body; return this; } };
   try {
-    await getMyCreditHistory({ user: { id: String(learner) } }, response);
+    await getMyCreditHistory({ user: { id: String(learner), credits: 100 } }, response);
     assert.equal(response.statusCode, 200);
     assert.equal(response.body.data[0].direction, 'earned');
-    assert.equal(response.body.data[0].subject, 'Opening credits');
-    assert.equal(response.body.data[0].counterparty, 'Acadova');
-  } finally { CreditTransaction.find = original; }
+    assert.equal(response.body.data[0].label, 'Starting credits');
+    assert.equal(response.body.data[0].counterparty, null);
+    assert.equal(response.body.balance, 100);
+  } finally { CreditTransaction.find = original; User.find = originalFind; }
 });

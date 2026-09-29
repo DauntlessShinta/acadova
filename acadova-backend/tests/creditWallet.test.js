@@ -5,6 +5,7 @@ const jwt = require('jsonwebtoken');
 const CreditTransaction = require('../models/CreditTransaction');
 const User = require('../models/User');
 const Session = require('../models/Session');
+const Assessment = require('../models/Assessment');
 
 const learner = '507f1f77bcf86cd799439011';
 const tutor = '507f1f77bcf86cd799439012';
@@ -21,6 +22,7 @@ test('Student wallet history is private, event-aware, bounded, and read-only', a
   const original = {
     transactionFind: CreditTransaction.find, userFind: User.find,
     userFindById: User.findById, sessionFind: Session.find,
+    assessmentFind: Assessment.find,
   };
   process.env.JWT_SECRET = 'credit-wallet-test-secret';
   let rows = [];
@@ -46,6 +48,9 @@ test('Student wallet history is private, event-aware, bounded, and read-only', a
   };
   User.find = () => ({ select: () => ({ lean: async () => peers }) });
   Session.find = () => ({ select: () => ({ lean: async () => sessions }) });
+  Assessment.find = () => ({ select: () => ({ lean: async () => [{
+    _id: sessionId, title: 'JavaScript basics',
+  }] }) });
   User.findById = (id) => ({ select: () => ({ lean: async () => ({
     _id: id, name: 'Wallet owner', email: 'safe@example.test', role: 'student',
     credits: id === learner ? 80 : 120, emailVerified: true,
@@ -123,12 +128,23 @@ test('Student wallet history is private, event-aware, bounded, and read-only', a
     assert.equal(result.body.data[0].amount, null);
     assert.equal(result.body.data[0].signedAmount, null);
     assert.equal(result.body.data[0].relatedSession, null);
+
+    rows = [{ _id: 'assessment-reward', type: 'assessment_reward', toUser: learner,
+      assessment: sessionId, amount: 20, createdAt: date('29') }];
+    result = await call('/mine', learner);
+    assert.equal(result.status, 200);
+    assert.equal(result.body.data[0].direction, 'earned');
+    assert.equal(result.body.data[0].signedAmount, 20);
+    assert.equal(result.body.data[0].label, 'Assessment reward');
+    assert.equal(result.body.data[0].description, 'JavaScript basics');
+    assert.equal(result.body.data[0].counterparty, null);
   } finally {
     await new Promise((resolve) => server.close(resolve));
     CreditTransaction.find = original.transactionFind;
     User.find = original.userFind;
     User.findById = original.userFindById;
     Session.find = original.sessionFind;
+    Assessment.find = original.assessmentFind;
     if (previousSecret === undefined) delete process.env.JWT_SECRET;
     else process.env.JWT_SECRET = previousSecret;
   }

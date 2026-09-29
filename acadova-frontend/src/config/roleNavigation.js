@@ -10,12 +10,14 @@ const authenticatedNavigation = {
     { to: '/tutors', label: 'Find Peers' },
     { to: '/sessions', label: 'Sessions' },
     { to: '/credits', label: 'Credits' },
+    { to: '/assessments', label: 'Assessments' },
     { to: '/profile', label: 'Profile' },
   ],
   moderator: [
     { to: '/moderator', label: 'Overview' },
     { to: '/moderator/reviews', label: 'Reviews' },
     { to: '/moderator/disputes', label: 'Session disputes' },
+    { to: '/moderator/assessments', label: 'Assessments' },
   ],
   admin: [
     { to: '/admin', label: 'Overview' },
@@ -23,6 +25,7 @@ const authenticatedNavigation = {
     { to: '/admin/sessions', label: 'Sessions' },
     { to: '/admin/analytics', label: 'Analytics' },
     { to: '/admin/moderation', label: 'Moderation' },
+    { to: '/admin/assessments', label: 'Assessments' },
   ],
 };
 

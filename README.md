@@ -26,14 +26,14 @@ The Session API retains legacy `accepted`/`rejected` values for deployed clients
 
 The P2 Session lifecycle is implemented, but legacy compatibility remains active. No legacy status migration or historical backfill has been executed. The read-only inventory procedure and future migration safeguards are in [Session migration preparation](acadova-backend/docs/session-migration-plan.md).
 
-Newly registered Students start with 0 spendable credits and receive one ledger-backed 100-credit grant when they verify their email. New tutoring Sessions use a backend-owned, activity-based 20-credit cost, independent of meeting duration; learners do not choose the price. Existing Sessions retain their stored historical cost. The Student wallet shows event-aware history for opening grants and tutoring transfers, while its spendable balance comes from the User account rather than a ledger sum. Assessment rewards, resource/module spending, and Admin credit rules remain upcoming. Production opening grants use the [credit index rollout](acadova-backend/docs/credit-index-rollout.md); historical balances have not been backfilled.
+Newly registered Students start with 0 spendable credits and receive one ledger-backed 100-credit grant when they verify their email. New tutoring Sessions use a backend-owned, activity-based 20-credit cost, independent of meeting duration; learners do not choose the price. Existing Sessions retain their stored historical cost. The Student wallet shows event-aware history for opening grants, tutoring transfers, and approved assessment rewards, while its spendable balance comes from the User account rather than a ledger sum. Moderator-approved multiple-choice Assessments are graded server-side; a first passing result earns 20 credits once per Student and Assessment, while failed and repeated passes earn none. Broader resources/modules, resource spending, and Admin credit rules remain upcoming. Production assessment rewards require the separately approved [reward index rollout](acadova-backend/docs/assessment-reward-index-rollout.md); historical balances have not been backfilled.
 
 ## Locked final scope — planned, not yet implemented
 
 The following are part of the final project scope but must not be represented as complete until implemented and verified:
 
 - Remaining session lifecycle transitions and post-completion reports.
-- Self-paced topics, modules and resources; assessments and assessment credit rewards.
+- Self-paced topics, modules and resources beyond the approved Assessment foundation.
 - In-app notifications, OneSignal delivery, notification cooldowns and unread reminders.
 - Expanded moderator dispute/resource/suspicious-activity workflows, system configuration, persistent audit logs, and progressive login cooldown/security events.
 

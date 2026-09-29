@@ -131,6 +131,41 @@ const searchSubject = (value) => {
   return clean;
 };
 
+const assessmentQuestions = (value) => {
+  if (!Array.isArray(value) || value.length < 3 || value.length > 10) {
+    throw new InvalidInput('An assessment needs 3 to 10 questions.');
+  }
+  return value.map((question) => {
+    if (!isPlainObject(question) || Object.keys(question).some((key) =>
+      !['prompt', 'options', 'correctIndex'].includes(key))) {
+      throw new InvalidInput('Invalid assessment question.');
+    }
+    const prompt = requiredText('Question', 300, 5)(question.prompt);
+    if (!Array.isArray(question.options) || question.options.length < 2 || question.options.length > 5) {
+      throw new InvalidInput('Each question needs 2 to 5 options.');
+    }
+    const options = question.options.map((item) => requiredText('Option', 150)(item));
+    if (!Number.isInteger(question.correctIndex) || question.correctIndex < 0
+      || question.correctIndex >= options.length) throw new InvalidInput('Invalid correct option.');
+    return { prompt, options, correctIndex: question.correctIndex };
+  });
+};
+
+const assessmentAnswers = (value) => {
+  if (!Array.isArray(value) || value.length < 3 || value.length > 10
+    || value.some((answer) => !Number.isInteger(answer) || answer < 0 || answer > 4)) {
+    throw new InvalidInput('Submit one valid option for each question.');
+  }
+  return value;
+};
+
+const assessmentPassingScore = (value) => {
+  if (!Number.isInteger(value) || value < 1 || value > 100) {
+    throw new InvalidInput('Passing score must be 1 to 100.');
+  }
+  return value;
+};
+
 const escapeRegExp = (value) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
 const isPlainObject = (value) => value !== null && typeof value === 'object'
@@ -248,6 +283,14 @@ const schemas = {
   userId: { id: objectId('user id') },
   sessionId: { id: objectId('session id') },
   reviewId: { id: objectId('review id') },
+  assessmentId: { id: objectId('assessment id') },
+  assessmentCreate: {
+    title: requiredText('Assessment title', 120, 3),
+    topic: requiredText('Assessment topic', 80, 2),
+    passingScore: assessmentPassingScore,
+    questions: assessmentQuestions,
+  },
+  assessmentSubmit: { answers: assessmentAnswers },
 };
 
 module.exports = {

@@ -24,6 +24,7 @@ import TutorProfilePage from './pages/TutorProfilePage';
 import SessionsPage from './pages/SessionsPage';
 import SessionRoomPage from './pages/SessionRoomPage';
 import CreditsPage from './pages/CreditsPage';
+import AssessmentsPage from './pages/AssessmentsPage';
 import ProfilePage from './pages/ProfilePage';
 
 // Admin Page
@@ -35,6 +36,7 @@ import AdminModerationPage from './pages/admin/AdminModerationPage';
 import ModeratorOverviewPage from './pages/moderator/ModeratorOverviewPage';
 import ModeratorReviewsPage from './pages/moderator/ModeratorReviewsPage';
 import ModeratorDisputesPage from './pages/moderator/ModeratorDisputesPage';
+import ModeratorAssessmentsPage from './pages/moderator/ModeratorAssessmentsPage';
 
 const GuestOnly = ({ children }) => {
   const { isAuthenticated, loading, user } = useAuth();
@@ -67,6 +69,7 @@ export const App = () => {
         <Route path="/sessions" element={<SessionsPage />} />
         <Route path="/sessions/:id" element={<SessionRoomPage />} />
         <Route path="/credits" element={<CreditsPage />} />
+        <Route path="/assessments" element={<AssessmentsPage />} />
         <Route path="/profile" element={<ProfilePage />} />
       </Route>
 
@@ -75,6 +78,7 @@ export const App = () => {
         <Route index element={<ModeratorOverviewPage />} />
         <Route path="reviews" element={<ModeratorReviewsPage />} />
         <Route path="disputes" element={<ModeratorDisputesPage />} />
+        <Route path="assessments" element={<ModeratorAssessmentsPage />} />
       </Route>
 
       {/* Protected Admin Routes */}
@@ -84,6 +88,7 @@ export const App = () => {
         <Route path="sessions" element={<AdminSessionsPage />} />
         <Route path="analytics" element={<AdminAnalyticsPage />} />
         <Route path="moderation" element={<AdminModerationPage />} />
+        <Route path="assessments" element={<ModeratorAssessmentsPage />} />
       </Route>
 
       {/* Fallback */}

@@ -1,6 +1,7 @@
 const CreditTransaction = require('../models/CreditTransaction');
 const User = require('../models/User');
 const Session = require('../models/Session');
+const Assessment = require('../models/Assessment');
 
 const labels = {
   session_payment: 'Tutoring session',
@@ -21,7 +22,7 @@ exports.getMyCreditHistory = async (req, res) => {
     const rows = await CreditTransaction.find({
       $or: [{ fromUser: viewerId }, { toUser: viewerId }],
     })
-      .select('_id type amount fromUser toUser session createdAt')
+      .select('_id type amount fromUser toUser session assessment createdAt')
       .sort({ createdAt: -1, _id: -1 })
       .skip((page - 1) * limit)
       .limit(limit + 1)
@@ -32,13 +33,17 @@ exports.getMyCreditHistory = async (req, res) => {
     const peerIds = [...new Set(transactions.flatMap((tx) => [tx.fromUser, tx.toUser]
       .map(idOf).filter((id) => validRef(id) && id !== viewerId)))];
     const sessionIds = [...new Set(transactions.map((tx) => idOf(tx.session)).filter(validRef))];
-    const [peers, sessions] = await Promise.all([
+    const assessmentIds = [...new Set(transactions.map((tx) => idOf(tx.assessment)).filter(validRef))];
+    const [peers, sessions, assessments] = await Promise.all([
       peerIds.length ? User.find({ _id: { $in: peerIds } }).select('_id name').lean() : [],
       sessionIds.length ? Session.find({ _id: { $in: sessionIds } })
         .select('_id subject scheduledAt learner tutor').lean() : [],
+      assessmentIds.length ? Assessment.find({ _id: { $in: assessmentIds } })
+        .select('_id title').lean() : [],
     ]);
     const peerById = new Map(peers.map((peer) => [idOf(peer._id), peer.name]));
     const sessionById = new Map(sessions.map((session) => [idOf(session._id), session]));
+    const assessmentById = new Map(assessments.map((assessment) => [idOf(assessment._id), assessment.title]));
 
     const data = transactions.map((tx) => {
       const fromViewer = idOf(tx.fromUser) === viewerId;
@@ -53,6 +58,9 @@ exports.getMyCreditHistory = async (req, res) => {
       } : null;
       let description = null;
       if (tx.type === 'initial_grant') description = 'Acadova welcome credit grant';
+      else if (tx.type === 'assessment_reward') {
+        description = assessmentById.get(idOf(tx.assessment)) || 'Approved assessment';
+      }
       else if (tx.type === 'session_payment' && session) {
         const role = idOf(session.learner) === viewerId ? 'learner'
           : idOf(session.tutor) === viewerId ? 'tutor' : null;
@@ -70,6 +78,8 @@ exports.getMyCreditHistory = async (req, res) => {
           : direction === 'spent' ? -amount : null,
         label: labels[tx.type] || 'Credit activity', description,
         occurredAt: tx.createdAt || null, relatedSession, counterparty,
+        relatedAssessment: tx.type === 'assessment_reward' && validRef(idOf(tx.assessment))
+          ? { id: idOf(tx.assessment), title: assessmentById.get(idOf(tx.assessment)) || null } : null,
         // Read-only aliases keep the deployed legacy client's history display working.
         subject: relatedSession?.subject || (tx.type === 'initial_grant' ? 'Starting credits' : null),
         createdAt: tx.createdAt || null,

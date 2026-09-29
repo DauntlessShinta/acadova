@@ -6,6 +6,9 @@ const UserSchema = new mongoose.Schema({
   password: { type: String, required: true, minlength: 6 },
   credits: { type: Number, default: 0, min: [0, 'Credits cannot be negative'],
     validate: { validator: Number.isSafeInteger, message: 'Credits must be a whole number' } },
+  // Atomic, per-account reward claim. Historical users without this field match $ne.
+  rewardedAssessments: { type: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Assessment' }],
+    select: false, default: [] },
   skillsToTeach: [{ type: String }],
   skillsToLearn: [{ type: String }],
   rating: { type: Number, default: 5.0 },

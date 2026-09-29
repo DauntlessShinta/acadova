@@ -18,7 +18,11 @@ const ratingLimiter = createRateLimiter({
 const staffActionLimiter = createRateLimiter({
   windowMs: 10 * 60 * 1000, max: 30, keyForRequest: accountKey, message: limitedMessage,
 });
+const assessmentSubmissionLimiter = createRateLimiter({
+  windowMs: 15 * 60 * 1000, max: 15, keyForRequest: accountKey, message: limitedMessage,
+});
 
 module.exports = {
   sessionCreationLimiter, sessionActionLimiter, messageLimiter, ratingLimiter, staffActionLimiter,
+  assessmentSubmissionLimiter,
 };

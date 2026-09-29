@@ -50,6 +50,7 @@ app.use('/api/ratings', require('./routes/ratingRoutes'));
 app.use('/api/analytics', require('./routes/analyticsRoutes'));
 app.use('/api/users', require('./routes/userRoutes'));
 app.use('/api/credits', require('./routes/creditRoutes'));
+app.use('/api/assessments', require('./routes/assessmentRoutes'));
 app.use('/api/moderator', require('./routes/moderatorRoutes'));
 app.use('/api/admin', require('./routes/adminRoutes'));
 

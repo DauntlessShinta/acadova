@@ -3,6 +3,7 @@ const Assessment = require('../models/Assessment');
 const AssessmentAttempt = require('../models/AssessmentAttempt');
 const CreditTransaction = require('../models/CreditTransaction');
 const User = require('../models/User');
+const LearningTopic = require('../models/LearningTopic');
 const { assessmentReward } = require('../config/creditRules');
 const { logSecurityEvent } = require('../utils/securityLogger');
 
@@ -129,7 +130,13 @@ exports.getStaffAssessment = async (req, res) => {
 
 exports.createAssessment = async (req, res) => {
   try {
-    const assessment = await Assessment.create({ ...req.body, createdBy: req.user.id, status: 'draft' });
+    let body = req.body;
+    if (body.learningTopic) {
+      const topic = await LearningTopic.findOne({ _id: body.learningTopic, status: 'published' }).lean();
+      if (!topic) return res.status(400).json({ success: false, message: 'Select a published learning topic.' });
+      body = { ...body, topic: topic.name };
+    }
+    const assessment = await Assessment.create({ ...body, createdBy: req.user.id, status: 'draft' });
     logSecurityEvent('moderation.assessment_created', req, { assessmentId: String(assessment._id) });
     return res.status(201).json({ success: true, data: { id: String(assessment._id), status: 'draft' } });
   } catch { return res.status(500).json({ success: false, message: 'Assessment could not be created.' }); }

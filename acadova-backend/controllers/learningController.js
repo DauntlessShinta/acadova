@@ -1,0 +1,232 @@
+const LearningTopic = require('../models/LearningTopic');
+const LearningResource = require('../models/LearningResource');
+const LearningModule = require('../models/LearningModule');
+const Assessment = require('../models/Assessment');
+const { logSecurityEvent } = require('../utils/securityLogger');
+
+const id = (value) => String(value);
+const topicView = (row) => ({ id: id(row._id), name: row.name, slug: row.slug,
+  description: row.description, status: row.status });
+const resourceView = (row, staff = false) => ({
+  id: id(row._id), topic: id(row.topic), title: row.title, description: row.description,
+  resourceType: row.resourceType, creditCost: row.creditCost, locked: row.creditCost > 0,
+  ...(staff ? { reviewStatus: row.reviewStatus, submittedBy: id(row.submittedBy),
+    reviewedBy: row.reviewedBy ? id(row.reviewedBy) : null, reviewNote: row.reviewNote || null } : {}),
+  ...(staff || row.creditCost === 0 ? {
+    ...(row.resourceType === 'text' ? { textContent: row.textContent } : { externalUrl: row.externalUrl }),
+  } : {}),
+});
+const moduleView = (row, staff = false) => ({
+  id: id(row._id), topic: id(row.topic), title: row.title, description: row.description,
+  creditCost: row.creditCost, locked: row.creditCost > 0,
+  ...(staff ? { status: row.status, resources: row.resources.map(id),
+    assessment: row.assessment ? id(row.assessment) : null }
+    : row.creditCost === 0 ? { resources: row.resources.map(id),
+      assessment: row.assessment ? id(row.assessment) : null } : {}),
+});
+const unavailable = (res) => res.status(404).json({ success: false, message: 'Learning content not available.' });
+const failure = (res) => res.status(500).json({ success: false, message: 'Learning content could not be processed.' });
+const slugOf = (name) => name.normalize('NFKD').replace(/[\u0300-\u036f]/g, '')
+  .toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+
+exports.listTopics = async (req, res) => {
+  try {
+    const rows = await LearningTopic.find({ status: 'published' }).sort({ name: 1 }).limit(100).lean();
+    return res.json({ success: true, data: rows.map(topicView) });
+  } catch { return failure(res); }
+};
+
+exports.getTopic = async (req, res) => {
+  try {
+    const topic = await LearningTopic.findOne({ _id: req.params.id, status: 'published' }).lean();
+    if (!topic) return unavailable(res);
+    const [resources, modules, assessments] = await Promise.all([
+      LearningResource.find({ topic: topic._id, reviewStatus: 'published' }).sort({ createdAt: -1 }).limit(100).lean(),
+      LearningModule.find({ topic: topic._id, status: 'published' }).sort({ createdAt: -1 }).limit(100).lean(),
+      Assessment.find({ status: 'published', $or: [{ learningTopic: topic._id },
+        { learningTopic: { $exists: false }, topic: topic.name }] })
+        .select('_id title topic questions').limit(100).lean(),
+    ]);
+    return res.json({ success: true, data: { ...topicView(topic), resources: resources.map((row) => resourceView(row)),
+      modules: modules.map((row) => moduleView(row)),
+      assessments: assessments.map((row) => ({ id: id(row._id), title: row.title,
+        questionCount: row.questions.length })) } });
+  } catch { return failure(res); }
+};
+
+exports.getResource = async (req, res) => {
+  try {
+    const resource = await LearningResource.findOne({ _id: req.params.id, reviewStatus: 'published' }).lean();
+    if (!resource || !await LearningTopic.exists({ _id: resource.topic, status: 'published' })) return unavailable(res);
+    return res.json({ success: true, data: resourceView(resource) });
+  } catch { return failure(res); }
+};
+
+exports.getModule = async (req, res) => {
+  try {
+    const module = await LearningModule.findOne({ _id: req.params.id, status: 'published' }).lean();
+    if (!module || !await LearningTopic.exists({ _id: module.topic, status: 'published' })) return unavailable(res);
+    // A free module may contain paid resources, but their bodies/links are never returned here.
+    const resources = module.creditCost === 0
+      ? await LearningResource.find({ _id: { $in: module.resources }, topic: module.topic,
+        reviewStatus: 'published' }).lean() : [];
+    const byId = new Map(resources.map((row) => [id(row._id), row]));
+    return res.json({ success: true, data: { ...moduleView(module),
+      ...(module.creditCost === 0 ? { resources: module.resources.map((resourceId) => byId.get(id(resourceId)))
+        .filter(Boolean).map((row) => resourceView(row)) } : {}) } });
+  } catch { return failure(res); }
+};
+
+exports.submitResource = async (req, res) => {
+  try {
+    const body = req.body;
+    if (!await LearningTopic.exists({ _id: body.topic, status: 'published' })) return unavailable(res);
+    if ((body.resourceType === 'text' && (!body.textContent || body.externalUrl))
+      || (body.resourceType === 'url' && (!body.externalUrl || body.textContent))) {
+      return res.status(400).json({ success: false, message: 'Provide only the selected resource content.' });
+    }
+    const row = await LearningResource.create({ ...body, submittedBy: req.user.id,
+      reviewStatus: 'submitted', creditCost: 0 });
+    return res.status(201).json({ success: true, data: { id: id(row._id), reviewStatus: 'submitted' } });
+  } catch { return failure(res); }
+};
+
+exports.listStaffTopics = async (req, res) => {
+  try {
+    const rows = await LearningTopic.find().sort({ createdAt: -1 }).limit(100).lean();
+    return res.json({ success: true, data: rows.map(topicView) });
+  } catch { return failure(res); }
+};
+exports.createTopic = async (req, res) => {
+  try {
+    const slug = slugOf(req.body.name);
+    if (!slug) return res.status(400).json({ success: false, message: 'Topic name needs letters or numbers.' });
+    if (process.env.NODE_ENV === 'production') {
+      const indexes = await LearningTopic.collection.indexes();
+      if (!indexes.some((index) => index.name === 'uniq_learning_topic_slug'
+        && index.unique === true && index.key?.slug === 1)) {
+        return res.status(503).json({ success: false, message: 'Topic creation is temporarily unavailable.' });
+      }
+    }
+    if (await LearningTopic.exists({ slug })) {
+      return res.status(409).json({ success: false, message: 'Topic already exists.' });
+    }
+    const row = await LearningTopic.create({ ...req.body, slug, createdBy: req.user.id, status: 'draft' });
+    logSecurityEvent('moderation.topic_created', req, { topicId: id(row._id) });
+    return res.status(201).json({ success: true, data: topicView(row) });
+  } catch (error) {
+    if (error.code === 11000) return res.status(409).json({ success: false, message: 'Topic already exists.' });
+    return failure(res);
+  }
+};
+exports.publishTopic = async (req, res) => {
+  try {
+    const row = await LearningTopic.findOneAndUpdate({ _id: req.params.id, status: 'draft' },
+      { $set: { status: 'published', publishedBy: req.user.id, publishedAt: new Date() } }, { new: true });
+    if (!row) return unavailable(res);
+    logSecurityEvent('moderation.topic_published', req, { topicId: id(row._id) });
+    return res.json({ success: true, data: topicView(row) });
+  } catch { return failure(res); }
+};
+exports.archiveTopic = async (req, res) => {
+  try {
+    const row = await LearningTopic.findOneAndUpdate({ _id: req.params.id, status: 'published' },
+      { $set: { status: 'archived', archivedAt: new Date() } }, { new: true });
+    if (!row) return unavailable(res);
+    logSecurityEvent('moderation.topic_archived', req, { topicId: id(row._id) });
+    return res.json({ success: true, data: topicView(row) });
+  } catch { return failure(res); }
+};
+
+exports.listStaffResources = async (req, res) => {
+  try {
+    const rows = await LearningResource.find().sort({ createdAt: -1 }).limit(100).lean();
+    return res.json({ success: true, data: rows.map((row) => resourceView(row, true)) });
+  } catch { return failure(res); }
+};
+exports.getStaffResource = async (req, res) => {
+  try {
+    const row = await LearningResource.findById(req.params.id).lean();
+    return row ? res.json({ success: true, data: resourceView(row, true) }) : unavailable(res);
+  } catch { return failure(res); }
+};
+exports.publishResource = async (req, res) => {
+  try {
+    const existing = await LearningResource.findOne({ _id: req.params.id, reviewStatus: 'submitted' }).lean();
+    if (!existing || !await LearningTopic.exists({ _id: existing.topic, status: 'published' })) return unavailable(res);
+    const row = await LearningResource.findOneAndUpdate({ _id: existing._id, reviewStatus: 'submitted' },
+      { $set: { reviewStatus: 'published', reviewedBy: req.user.id, publishedAt: new Date(),
+        creditCost: req.body.creditCost } }, { new: true });
+    if (!row) return unavailable(res);
+    logSecurityEvent('moderation.resource_published', req, { resourceId: id(row._id) });
+    return res.json({ success: true, data: resourceView(row, true) });
+  } catch { return failure(res); }
+};
+exports.rejectResource = async (req, res) => {
+  try {
+    const row = await LearningResource.findOneAndUpdate({ _id: req.params.id, reviewStatus: 'submitted' },
+      { $set: { reviewStatus: 'rejected', reviewedBy: req.user.id, reviewNote: req.body.reason } }, { new: true });
+    if (!row) return unavailable(res);
+    logSecurityEvent('moderation.resource_rejected', req, { resourceId: id(row._id) });
+    return res.json({ success: true, data: resourceView(row, true) });
+  } catch { return failure(res); }
+};
+exports.archiveResource = async (req, res) => {
+  try {
+    const row = await LearningResource.findOneAndUpdate({ _id: req.params.id, reviewStatus: 'published' },
+      { $set: { reviewStatus: 'archived', reviewedBy: req.user.id } }, { new: true });
+    if (!row) return unavailable(res);
+    logSecurityEvent('moderation.resource_archived', req, { resourceId: id(row._id) });
+    return res.json({ success: true, data: resourceView(row, true) });
+  } catch { return failure(res); }
+};
+
+exports.listStaffModules = async (req, res) => {
+  try {
+    const rows = await LearningModule.find().sort({ createdAt: -1 }).limit(100).lean();
+    return res.json({ success: true, data: rows.map((row) => moduleView(row, true)) });
+  } catch { return failure(res); }
+};
+const moduleReferencesValid = async (body) => {
+  const topic = await LearningTopic.findOne({ _id: body.topic, status: 'published' }).lean();
+  if (!topic) return false;
+  const resources = await LearningResource.find({ _id: { $in: body.resources }, topic: body.topic,
+    reviewStatus: 'published' }).select('_id').lean();
+  if (resources.length !== body.resources.length) return false;
+  if (!body.assessment) return true;
+  return Boolean(await Assessment.exists({ _id: body.assessment, status: 'published',
+    $or: [{ learningTopic: topic._id }, { learningTopic: { $exists: false }, topic: topic.name }] }));
+};
+exports.createModule = async (req, res) => {
+  try {
+    if (!await moduleReferencesValid(req.body)) return res.status(400).json({ success: false,
+      message: 'Module resources and assessment must be published within the same topic.' });
+    const row = await LearningModule.create({ ...req.body, status: 'draft', creditCost: 0,
+      createdBy: req.user.id });
+    logSecurityEvent('moderation.module_created', req, { moduleId: id(row._id) });
+    return res.status(201).json({ success: true, data: moduleView(row, true) });
+  } catch { return failure(res); }
+};
+exports.publishModule = async (req, res) => {
+  try {
+    const existing = await LearningModule.findOne({ _id: req.params.id, status: 'draft' }).lean();
+    if (!existing) return unavailable(res);
+    if (!await moduleReferencesValid(existing)) return res.status(409).json({ success: false,
+      message: 'Module content is no longer published in this topic.' });
+    const row = await LearningModule.findOneAndUpdate({ _id: existing._id, status: 'draft' },
+      { $set: { status: 'published', publishedBy: req.user.id, publishedAt: new Date(),
+        creditCost: req.body.creditCost } }, { new: true });
+    if (!row) return unavailable(res);
+    logSecurityEvent('moderation.module_published', req, { moduleId: id(row._id) });
+    return res.json({ success: true, data: moduleView(row, true) });
+  } catch { return failure(res); }
+};
+exports.archiveModule = async (req, res) => {
+  try {
+    const row = await LearningModule.findOneAndUpdate({ _id: req.params.id, status: 'published' },
+      { $set: { status: 'archived', archivedAt: new Date() } }, { new: true });
+    if (!row) return unavailable(res);
+    logSecurityEvent('moderation.module_archived', req, { moduleId: id(row._id) });
+    return res.json({ success: true, data: moduleView(row, true) });
+  } catch { return failure(res); }
+};

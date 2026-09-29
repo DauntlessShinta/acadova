@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import assessmentService from '../../services/assessmentService';
+import learningService from '../../services/learningService';
 import Alert from '../../components/common/Alert';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
 
@@ -10,6 +11,7 @@ const initialDraft = () => ({ title: '', topic: '', passingScore: 60,
 export const ModeratorAssessmentsPage = () => {
   const [draft, setDraft] = useState(initialDraft);
   const [assessments, setAssessments] = useState([]);
+  const [learningTopics, setLearningTopics] = useState([]);
   const [review, setReview] = useState(null);
   const [loading, setLoading] = useState(true);
   const [working, setWorking] = useState(false);
@@ -21,7 +23,11 @@ export const ModeratorAssessmentsPage = () => {
     catch (err) { setError(err.message); }
     finally { setLoading(false); }
   };
-  useEffect(() => { Promise.resolve().then(load); }, []);
+  useEffect(() => {
+    Promise.resolve().then(load);
+    learningService.staffTopics().then((response) => setLearningTopics((response.data || []).filter((item) => item.status === 'published')))
+      .catch(() => {});
+  }, []);
 
   const updateQuestion = (index, changes) => setDraft((current) => ({
     ...current, questions: current.questions.map((question, i) => i === index ? { ...question, ...changes } : question),
@@ -80,7 +86,20 @@ export const ModeratorAssessmentsPage = () => {
         onChange={(event) => setDraft((current) => ({ ...current, title: event.target.value }))} />
       <label className="form-label" htmlFor="assessment-topic">Topic</label>
       <input id="assessment-topic" className="form-input" value={draft.topic} required minLength={2} maxLength={80}
+        disabled={Boolean(draft.learningTopic)}
         onChange={(event) => setDraft((current) => ({ ...current, topic: event.target.value }))} />
+      <label className="form-label" htmlFor="assessment-learning-topic">Governed learning topic (optional)</label>
+      <select id="assessment-learning-topic" className="form-input" value={draft.learningTopic || ''}
+        onChange={(event) => setDraft((current) => {
+          const selected = learningTopics.find((item) => item.id === event.target.value);
+          const next = { ...current, topic: selected?.name || current.topic };
+          if (selected) next.learningTopic = selected.id;
+          else delete next.learningTopic;
+          return next;
+        })}>
+        <option value="">Legacy topic text only</option>
+        {learningTopics.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
+      </select>
       <label className="form-label" htmlFor="assessment-passing">Passing score (%)</label>
       <input id="assessment-passing" className="form-input" type="number" min="1" max="100" value={draft.passingScore}
         onChange={(event) => setDraft((current) => ({ ...current, passingScore: Number(event.target.value) }))} />

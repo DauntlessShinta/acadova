@@ -1,11 +1,13 @@
 import React, { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import assessmentService from '../services/assessmentService';
 import Alert from '../components/common/Alert';
 import LoadingSpinner from '../components/common/LoadingSpinner';
 
 export const AssessmentsPage = () => {
+  const [searchParams] = useSearchParams();
+  const openId = searchParams.get('open');
   const { refreshUser } = useAuth();
   const [list, setList] = useState([]);
   const [selected, setSelected] = useState(null);
@@ -19,6 +21,13 @@ export const AssessmentsPage = () => {
     assessmentService.list().then((response) => setList(response.data || []))
       .catch((err) => setError(err.message)).finally(() => setLoading(false));
   }, []);
+
+  useEffect(() => {
+    if (!openId) return;
+    assessmentService.get(openId).then((response) => {
+      setSelected(response.data); setAnswers(Array(response.data.questions.length).fill(null));
+    }).catch((err) => setError(err.message));
+  }, [openId]);
 
   const open = async (id) => {
     setError(''); setResult(null); setWorking(true);

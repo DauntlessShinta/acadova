@@ -166,6 +166,36 @@ const assessmentPassingScore = (value) => {
   return value;
 };
 
+const learningUrl = (value) => {
+  const clean = requiredText('Resource URL', 1000)(value);
+  try {
+    const url = new URL(clean);
+    if (url.protocol === 'https:' && url.hostname && !url.username && !url.password) return url.href;
+  } catch { /* Return a validation error. */ }
+  throw new InvalidInput('Resource URL must be a safe HTTPS URL.');
+};
+
+const learningPrice = (value) => {
+  if (!Number.isSafeInteger(value) || value < 0 || value > 1000) {
+    throw new InvalidInput('Credit cost must be a whole number from 0 to 1000.');
+  }
+  return value;
+};
+
+const learningResourceIds = (value) => {
+  if (!Array.isArray(value) || value.length < 1 || value.length > 20
+    || new Set(value).size !== value.length) throw new InvalidInput('Provide 1 to 20 distinct resources.');
+  return value.map(objectId('resource id'));
+};
+
+const learningResource = {
+  topic: objectId('topic id'), title: requiredText('Resource title', 120, 3),
+  description: requiredText('Resource description', 500, 3),
+  resourceType: oneOf('resource type', ['text', 'url']),
+  textContent: optional(requiredText('Resource text', 10000)),
+  externalUrl: optional(learningUrl),
+};
+
 const escapeRegExp = (value) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
 const isPlainObject = (value) => value !== null && typeof value === 'object'
@@ -287,10 +317,23 @@ const schemas = {
   assessmentCreate: {
     title: requiredText('Assessment title', 120, 3),
     topic: requiredText('Assessment topic', 80, 2),
+    learningTopic: optional(objectId('learning topic id')),
     passingScore: assessmentPassingScore,
     questions: assessmentQuestions,
   },
   assessmentSubmit: { answers: assessmentAnswers },
+  learningId: { id: objectId('learning content id') },
+  learningTopic: { name: requiredText('Topic name', 80, 2),
+    description: requiredText('Topic description', 500, 3) },
+  learningResource,
+  learningReview: { creditCost: learningPrice },
+  learningRejection: { reason: requiredText('Rejection reason', 300, 3) },
+  learningModule: {
+    topic: objectId('topic id'), title: requiredText('Module title', 120, 3),
+    description: requiredText('Module description', 500, 3), resources: learningResourceIds,
+    assessment: optional(objectId('assessment id')),
+  },
+  learningModulePublish: { creditCost: learningPrice },
 };
 
 module.exports = {

@@ -12,6 +12,8 @@ QuestionSchema.path('correctIndex').validate(function validAnswer(index) {
 const AssessmentSchema = new mongoose.Schema({
   title: { type: String, required: true, trim: true, maxlength: 120 },
   topic: { type: String, required: true, trim: true, maxlength: 80 },
+  // Optional bridge for governed topics; older assessments keep their topic text.
+  learningTopic: { type: mongoose.Schema.Types.ObjectId, ref: 'LearningTopic' },
   status: { type: String, enum: ['draft', 'published'], default: 'draft' },
   passingScore: { type: Number, required: true, min: 1, max: 100 },
   questions: { type: [QuestionSchema], validate: { validator: (items) => items.length >= 3 && items.length <= 10 } },

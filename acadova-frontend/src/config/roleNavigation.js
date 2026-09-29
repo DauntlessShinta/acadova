@@ -11,6 +11,7 @@ const authenticatedNavigation = {
     { to: '/sessions', label: 'Sessions' },
     { to: '/credits', label: 'Credits' },
     { to: '/assessments', label: 'Assessments' },
+    { to: '/learning', label: 'Learning' },
     { to: '/profile', label: 'Profile' },
   ],
   moderator: [
@@ -18,6 +19,7 @@ const authenticatedNavigation = {
     { to: '/moderator/reviews', label: 'Reviews' },
     { to: '/moderator/disputes', label: 'Session disputes' },
     { to: '/moderator/assessments', label: 'Assessments' },
+    { to: '/moderator/learning', label: 'Learning content' },
   ],
   admin: [
     { to: '/admin', label: 'Overview' },
@@ -26,6 +28,7 @@ const authenticatedNavigation = {
     { to: '/admin/analytics', label: 'Analytics' },
     { to: '/admin/moderation', label: 'Moderation' },
     { to: '/admin/assessments', label: 'Assessments' },
+    { to: '/admin/learning', label: 'Learning content' },
   ],
 };
 

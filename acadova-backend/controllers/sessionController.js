@@ -395,7 +395,7 @@ exports.checkIn = async (req, res) => {
         status: { $cond: [peerHasCheckedIn, 'in_progress', '$status'] },
         startedAt: { $cond: [peerHasCheckedIn, now, '$startedAt'] },
       } }],
-      { new: true }
+      { new: true, updatePipeline: true }
     );
     if (!updatedSession) return res.status(409).json({ success: false, message: changedSessionMessage });
     await updatedSession.populate(SESSION_POPULATE);
@@ -407,6 +407,11 @@ exports.checkIn = async (req, res) => {
       data: updatedSession,
     });
   } catch (error) {
+    console.error('Session check-in failed', {
+      name: error.name,
+      message: error.message,
+      sessionId: req.params.id,
+    });
     return res.status(500).json({ success: false, message: 'Session check-in could not be saved.' });
   }
 };

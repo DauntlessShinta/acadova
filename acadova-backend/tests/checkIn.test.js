@@ -6,11 +6,15 @@ const controller = require('../controllers/sessionController');
 
 const originalFindById = Session.findById;
 const originalFindOneAndUpdate = Session.findOneAndUpdate;
+const originalCollectionFindOneAndUpdate = Session.collection.findOneAndUpdate;
+const originalPopulate = Session.prototype.populate;
 const originalMessageCreate = SessionMessage.create;
 
 test.afterEach(() => {
   Session.findById = originalFindById;
   Session.findOneAndUpdate = originalFindOneAndUpdate;
+  Session.collection.findOneAndUpdate = originalCollectionFindOneAndUpdate;
+  Session.prototype.populate = originalPopulate;
   SessionMessage.create = originalMessageCreate;
 });
 
@@ -61,6 +65,30 @@ const invoke = async (handler, stored, actor, body = {}) => {
   await handler({ params: { id: stored._id }, user: { id: actor }, body }, res);
   return res;
 };
+
+test('legacy accepted first check-in reaches Mongoose as an update pipeline', async () => {
+  const stored = sessionDoc({
+    status: 'accepted',
+    scheduledAt: new Date(Date.now() - 65 * 60000),
+  });
+  Session.findById = async () => new Session(stored);
+  Session.findOneAndUpdate = originalFindOneAndUpdate;
+  let sentUpdate;
+  Session.collection.findOneAndUpdate = async (_filter, update) => {
+    sentUpdate = update;
+    return { ...stored, learnerCheckedInAt: update[0].$set.learnerCheckedInAt };
+  };
+  Session.prototype.populate = async function () { return this; };
+
+  const res = await invoke(controller.checkIn, stored, stored.learner);
+
+  assert.equal(res.statusCode, 200);
+  assert.ok(Array.isArray(sentUpdate));
+  assert.equal(res.body.data.status, 'accepted');
+  assert.ok(res.body.data.learnerCheckedInAt instanceof Date);
+  assert.equal(res.body.data.tutorCheckedInAt, undefined);
+  assert.equal(res.body.data.startedAt, undefined);
+});
 
 for (const status of ['scheduled', 'accepted']) {
   for (const role of ['learner', 'tutor']) {

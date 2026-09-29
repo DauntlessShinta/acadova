@@ -1,13 +1,9 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const nodemailer = require('nodemailer');
 const { sendVerificationEmail, verificationUrlFor } = require('../services/emailService');
 
-test('verification email uses Gmail SMTP without exposing credentials', async (t) => {
-  const configKeys = [
-    'FRONTEND_URL', 'MAIL_HOST', 'MAIL_PORT', 'MAIL_SECURE',
-    'MAIL_USER', 'MAIL_APP_PASSWORD', 'MAIL_FROM', 'NODE_ENV',
-  ];
+test('verification email uses Brevo HTTPS without exposing credentials', async (t) => {
+  const configKeys = ['FRONTEND_URL', 'BREVO_API_KEY', 'MAIL_FROM', 'NODE_ENV'];
   const original = Object.fromEntries(configKeys.map((key) => [key, process.env[key]]));
   t.after(() => {
     for (const key of configKeys) {
@@ -17,31 +13,24 @@ test('verification email uses Gmail SMTP without exposing credentials', async (t
   });
 
   Object.assign(process.env, {
+    NODE_ENV: 'development',
     FRONTEND_URL: 'https://acadova.example.test/register?old=1',
-    MAIL_HOST: 'smtp.gmail.com',
-    MAIL_PORT: '465',
-    MAIL_SECURE: 'true',
-    MAIL_USER: 'sender@example.test',
-    MAIL_APP_PASSWORD: 'private-app-password',
+    BREVO_API_KEY: 'private-brevo-api-key',
     MAIL_FROM: 'Acadova <sender@example.test>',
   });
 
-  const transports = [];
-  const messages = [];
-  const providerError = new Error('SMTP credentials: private-app-password');
-  let fail = false;
-  t.mock.method(nodemailer, 'createTransport', (options) => {
-    transports.push(options);
-    return {
-      sendMail: async (message) => {
-        messages.push(message);
-        if (fail) throw providerError;
-        return { accepted: [message.to] };
-      },
-    };
+  const requests = [];
+  let failure;
+  t.mock.method(globalThis, 'fetch', async (url, options) => {
+    requests.push({ url, options });
+    if (failure === 'network') throw new Error('private-brevo-api-key token=sample-token');
+    if (failure === 'provider') return { ok: false, status: 401 };
+    return { ok: true, status: 201 };
   });
+  const logged = [];
+  t.mock.method(console, 'error', (...parts) => logged.push(parts.join(' ')));
+  t.mock.method(console, 'warn', (...parts) => logged.push(parts.join(' ')));
 
-  process.env.NODE_ENV = 'development';
   assert.equal(
     verificationUrlFor('sample-token'),
     'https://acadova.example.test/verify-email?token=sample-token',
@@ -54,74 +43,82 @@ test('verification email uses Gmail SMTP without exposing credentials', async (t
   process.env.FRONTEND_URL = 'https://acadova.example.test/register?old=1';
 
   await sendVerificationEmail({ recipient: 'student@example.test', name: 'A <Student>', token: 'sample-token' });
-  assert.equal(transports.length, 1);
-  assert.deepEqual(transports[0], {
-    host: 'smtp.gmail.com', port: 465, secure: true,
-    auth: { user: 'sender@example.test', pass: 'private-app-password' },
-  });
-  assert.equal(messages.length, 1);
-  assert.equal(messages[0].to, 'student@example.test');
-  assert.equal(messages[0].from, 'Acadova <sender@example.test>');
-  assert.match(messages[0].subject, /Acadova/);
-  assert.match(messages[0].text, /https:\/\/acadova\.example\.test\/verify-email\?token=sample-token/);
-  assert.match(messages[0].html, /https:\/\/acadova\.example\.test\/verify-email\?token=sample-token/);
-  assert.match(messages[0].html, /A &lt;Student&gt;/);
-  assert.doesNotMatch(JSON.stringify(messages), /private-app-password/);
+  assert.equal(requests.length, 1);
+  assert.equal(requests[0].url, 'https://api.brevo.com/v3/smtp/email');
+  assert.equal(requests[0].options.method, 'POST');
+  assert.equal(requests[0].options.headers['Content-Type'], 'application/json');
+  assert.equal(requests[0].options.headers.Accept, 'application/json');
+  assert.equal(requests[0].options.headers['api-key'], 'private-brevo-api-key');
+  assert.ok(requests[0].options.signal instanceof AbortSignal);
+  const message = JSON.parse(requests[0].options.body);
+  assert.deepEqual(message.sender, { name: 'Acadova', email: 'sender@example.test' });
+  assert.deepEqual(message.to, [{ email: 'student@example.test', name: 'A <Student>' }]);
+  assert.equal(message.subject, 'Verify your Acadova email address');
+  assert.match(message.textContent, /https:\/\/acadova\.example\.test\/verify-email\?token=sample-token/);
+  assert.match(message.htmlContent, /https:\/\/acadova\.example\.test\/verify-email\?token=sample-token/);
+  assert.match(message.htmlContent, /A &lt;Student&gt;/);
+  assert.match(message.textContent, /45 minutes/);
+  assert.doesNotMatch(requests[0].options.body, /private-brevo-api-key/);
 
-  const logged = [];
-  t.mock.method(console, 'error', (...parts) => logged.push(parts.join(' ')));
-  t.mock.method(console, 'warn', (...parts) => logged.push(parts.join(' ')));
-  fail = true;
+  failure = 'provider';
   await assert.rejects(
     sendVerificationEmail({ recipient: 'student@example.test', name: 'A Student', token: 'sample-token' }),
     (error) => error.message === 'Verification email delivery failed'
-      && !JSON.stringify(error).includes('private-app-password'),
+      && !JSON.stringify(error).includes('private-brevo-api-key'),
   );
-  assert.equal(messages.length, 2);
-  assert.equal(transports.length, 2);
+  failure = 'network';
+  await assert.rejects(
+    sendVerificationEmail({ recipient: 'student@example.test', name: 'A Student', token: 'sample-token' }),
+    (error) => error.message === 'Verification email delivery failed'
+      && !JSON.stringify(error).includes('sample-token'),
+  );
+  failure = undefined;
   assert.deepEqual(logged, []);
 
-  fail = false;
   process.env.NODE_ENV = 'production';
   process.env.FRONTEND_URL = 'https://acadova-ze91.onrender.com';
   await sendVerificationEmail({ recipient: 'student@example.test', name: 'A Student', token: 'token+/' });
-  const publicUrl = new URL(messages.at(-1).text.match(/https:\/\/\S+/)[0]);
+  const productionMessage = JSON.parse(requests.at(-1).options.body);
+  const publicUrl = new URL(productionMessage.textContent.match(/https:\/\/\S+/)[0]);
   assert.equal(publicUrl.origin, 'https://acadova-ze91.onrender.com');
   assert.equal(publicUrl.pathname, '/verify-email');
   assert.equal(publicUrl.searchParams.get('token'), 'token+/');
-  assert.match(messages.at(-1).html, /token%2B%2F/);
+  assert.match(productionMessage.htmlContent, /token%2B%2F/);
 
-  const sentCount = messages.length;
-  delete process.env.FRONTEND_URL;
-  assert.throws(
-    () => verificationUrlFor('sample-token'),
-    /FRONTEND_URL is required/,
+  const sentCount = requests.length;
+  delete process.env.BREVO_API_KEY;
+  await assert.rejects(
+    sendVerificationEmail({ recipient: 'student@example.test', name: 'A Student', token: 'sample-token' }),
+    /Verification email delivery is not configured/,
   );
+  assert.equal(requests.length, sentCount);
+  process.env.BREVO_API_KEY = 'private-brevo-api-key';
+
+  delete process.env.FRONTEND_URL;
+  assert.throws(() => verificationUrlFor('sample-token'), /FRONTEND_URL is required/);
   await assert.rejects(
     sendVerificationEmail({ recipient: 'student@example.test', name: 'A Student', token: 'sample-token' }),
     /FRONTEND_URL is required/,
   );
-  assert.equal(messages.length, sentCount);
+  assert.equal(requests.length, sentCount);
 
   process.env.FRONTEND_URL = 'not a URL';
-  assert.throws(
-    () => verificationUrlFor('sample-token'),
-    /Invalid frontend URL/,
-  );
+  assert.throws(() => verificationUrlFor('sample-token'), /Invalid frontend URL/);
   await assert.rejects(
     sendVerificationEmail({ recipient: 'student@example.test', name: 'A Student', token: 'sample-token' }),
     /Invalid frontend URL/,
   );
-  assert.equal(messages.length, sentCount);
+  assert.equal(requests.length, sentCount);
 
   process.env.FRONTEND_URL = 'http://localhost:5173';
   await assert.rejects(
     sendVerificationEmail({ recipient: 'student@example.test', name: 'A Student', token: 'sample-token' }),
     /Invalid production frontend URL/,
   );
-  assert.equal(messages.length, sentCount);
+  assert.equal(requests.length, sentCount);
 
   process.env.NODE_ENV = 'development';
   await sendVerificationEmail({ recipient: 'student@example.test', name: 'A Student', token: 'sample-token' });
-  assert.match(messages.at(-1).text, /http:\/\/localhost:5173\/verify-email\?token=sample-token/);
+  assert.match(JSON.parse(requests.at(-1).options.body).textContent,
+    /http:\/\/localhost:5173\/verify-email\?token=sample-token/);
 });

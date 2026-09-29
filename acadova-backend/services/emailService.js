@@ -1,5 +1,3 @@
-const nodemailer = require('nodemailer');
-
 function verificationUrlFor(token) {
   const configuredUrl = typeof process.env.FRONTEND_URL === 'string'
     ? process.env.FRONTEND_URL.trim()
@@ -33,11 +31,16 @@ const escapeHtml = (value) => value.replace(/[&<>"']/g, (char) => ({
 })[char]);
 
 async function sendVerificationEmail({ recipient, name, token }) {
-  const { MAIL_HOST, MAIL_PORT, MAIL_SECURE, MAIL_USER, MAIL_APP_PASSWORD, MAIL_FROM } = process.env;
-  if (![MAIL_HOST, MAIL_PORT, MAIL_SECURE, MAIL_USER, MAIL_APP_PASSWORD, MAIL_FROM].every(Boolean)
-    || MAIL_PORT !== '465' || MAIL_SECURE !== 'true') {
-    throw new Error('SMTP delivery is not configured');
+  const { BREVO_API_KEY, MAIL_FROM } = process.env;
+  const senderMatch = typeof MAIL_FROM === 'string'
+    ? /^(?:(.+?)\s*<([^<>\s]+@[^<>\s]+)>|([^<>\s]+@[^<>\s]+))$/.exec(MAIL_FROM.trim())
+    : null;
+  if (!BREVO_API_KEY?.trim() || !senderMatch) {
+    throw new Error('Verification email delivery is not configured');
   }
+  const sender = senderMatch[2]
+    ? { email: senderMatch[2], name: senderMatch[1].trim() }
+    : { email: senderMatch[3] };
   const verificationUrl = verificationUrlFor(token);
   const safeName = escapeHtml(name);
   const safeUrl = escapeHtml(verificationUrl);
@@ -45,21 +48,25 @@ async function sendVerificationEmail({ recipient, name, token }) {
   const html = `<h1>Acadova</h1><h2>Verify your email address</h2><p>Hi ${safeName},</p><p>Thanks for creating an Acadova account. Please verify your email address to continue.</p><p><a href="${safeUrl}">Verify Email</a></p><p>This link expires in 45 minutes. If you did not create this account, ignore this email.</p>`;
 
   try {
-    const transporter = nodemailer.createTransport({
-      host: MAIL_HOST,
-      port: Number(MAIL_PORT),
-      secure: true,
-      auth: { user: MAIL_USER, pass: MAIL_APP_PASSWORD },
+    const response = await fetch('https://api.brevo.com/v3/smtp/email', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Accept: 'application/json',
+        'api-key': BREVO_API_KEY,
+      },
+      body: JSON.stringify({
+        sender,
+        to: [{ email: recipient, name }],
+        subject: 'Verify your Acadova email address',
+        textContent: plain,
+        htmlContent: html,
+      }),
+      signal: AbortSignal.timeout(10000),
     });
-    await transporter.sendMail({
-      from: MAIL_FROM,
-      to: recipient,
-      subject: 'Verify your Acadova email address',
-      text: plain,
-      html,
-    });
+    if (!response.ok) throw new Error('Brevo delivery rejected');
   } catch {
-    // SMTP errors can contain account details. Callers receive only a safe error.
+    // Provider and network errors may contain secrets or tokens. Do not expose them.
     throw new Error('Verification email delivery failed');
   }
 }

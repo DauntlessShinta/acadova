@@ -8,7 +8,9 @@ const actions = ['session.dispute_resolved', 'credit.rules_changed', 'credit.adm
   'learning.resource_approved', 'learning.resource_rejected', 'learning.resource_archived',
   'learning.module_created', 'learning.module_published', 'learning.module_archived',
   'learning.assessment_created', 'learning.assessment_published',
-  'review.moderated', 'user.suspended', 'user.reactivated', 'user.role_changed'];
+  'review.moderated', 'user.suspended', 'user.reactivated', 'user.role_changed',
+  'security.login_cooldown_started', 'security.login_cooldown_extended',
+  'security.login_success_after_failures'];
 
 export default function AdminAuditLogsPage() {
   const [rows, setRows] = useState([]);
@@ -58,7 +60,7 @@ export default function AdminAuditLogsPage() {
       <div className="table-responsive"><table className="table"><thead><tr>
         <th>Time</th><th>Actor</th><th>Role</th><th>Action</th><th>Target</th><th>Summary</th>
       </tr></thead><tbody>{rows.map((row) => <tr key={row._id}>
-        <td>{new Date(row.createdAt).toLocaleString()}</td><td>{row.actor?.name || row.actor?._id || 'Former account'}</td>
+        <td>{new Date(row.createdAt).toLocaleString()}</td><td>{row.actorRole === 'system' ? 'System' : row.actor?.name || row.actor?._id || 'Former account'}</td>
         <td>{row.actorRole}</td><td>{row.action}</td><td>{row.targetType} · {row.targetId}</td><td>{row.summary}</td>
       </tr>)}</tbody></table></div>
       {rows.length === 0 && <p className="staff-data-note">No matching audit records.</p>}

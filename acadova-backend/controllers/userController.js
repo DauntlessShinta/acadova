@@ -4,7 +4,8 @@ const { isValidObjectId, escapeRegExp } = require('../middleware/validation');
 // GET /api/users/me - the logged-in user's own profile.
 exports.getMe = async (req, res) => {
   try {
-    const user = await User.findById(req.user.id).select('-password');
+    const user = await User.findById(req.user.id)
+      .select('-password -failedLoginAttempts -lastFailedLoginAt -loginCooldownUntil');
     if (!user) {
       return res.status(404).json({ success: false, message: 'User not found' });
     }
@@ -41,7 +42,8 @@ exports.updateMe = async (req, res) => {
       updates.skillsToLearn = skillsToLearn;
     }
 
-    const user = await User.findByIdAndUpdate(req.user.id, updates, { new: true, runValidators: true }).select('-password');
+    const user = await User.findByIdAndUpdate(req.user.id, updates, { new: true, runValidators: true })
+      .select('-password -failedLoginAttempts -lastFailedLoginAt -loginCooldownUntil');
     res.json({ success: true, message: 'Profile updated', data: user });
   } catch (error) {
     res.status(500).json({ success: false, message: 'Server error while updating profile' });

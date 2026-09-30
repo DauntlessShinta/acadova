@@ -10,15 +10,20 @@ const ACTIONS = Object.freeze({
   moduleArchived: 'learning.module_archived', review: 'review.moderated',
   assessmentCreated: 'learning.assessment_created', assessmentPublished: 'learning.assessment_published',
   suspended: 'user.suspended', reactivated: 'user.reactivated', role: 'user.role_changed',
+  loginCooldownStarted: 'security.login_cooldown_started',
+  loginCooldownExtended: 'security.login_cooldown_extended',
+  loginSuccessAfterFailures: 'security.login_success_after_failures',
 });
 
 // Only known non-secret scalar fields may enter persistent metadata. Never accept a request body.
 const SAFE_FIELDS = new Set(['resolution', 'direction', 'amount', 'reference', 'beforeVersion',
   'afterVersion', 'previousRole', 'newRole', 'hidden', 'previousStatus', 'newStatus', 'creditCost']);
+const LOGIN_SECURITY_ACTIONS = new Set([ACTIONS.loginCooldownStarted,
+  ACTIONS.loginCooldownExtended, ACTIONS.loginSuccessAfterFailures]);
 
 async function recordAudit({ actor, action, targetType, targetId, summary, metadata = {}, session }) {
   if (!actor?.id || !['moderator', 'admin'].includes(actor.role)
-    || !Object.values(ACTIONS).includes(action)
+    || !Object.values(ACTIONS).includes(action) || LOGIN_SECURITY_ACTIONS.has(action)
     || !['Session', 'CreditConfig', 'CreditTransaction', 'LearningTopic', 'LearningResource',
       'LearningModule', 'Assessment', 'Rating', 'User'].includes(targetType)
     || !targetId || typeof summary !== 'string') throw new Error('Invalid audit event');
@@ -44,4 +49,22 @@ async function auditedContentChange(req, action, targetType, summary, write, met
   } finally { await dbSession.endSession(); }
 }
 
-module.exports = { ACTIONS, recordAudit, auditedContentChange };
+const SECURITY_SUMMARIES = Object.freeze({
+  [ACTIONS.loginCooldownStarted]: 'Account login cooldown started',
+  [ACTIONS.loginCooldownExtended]: 'Account login cooldown extended',
+  [ACTIONS.loginSuccessAfterFailures]: 'Successful login after failed attempts',
+});
+
+async function recordLoginSecurityAudit({ userId, action, failureCount, cooldownSeconds = 0 }) {
+  if (!mongoose.isValidObjectId(userId) || !SECURITY_SUMMARIES[action]
+    || !Number.isSafeInteger(failureCount) || failureCount < 1
+    || !Number.isSafeInteger(cooldownSeconds) || cooldownSeconds < 0 || cooldownSeconds > 300) {
+    throw new Error('Invalid login security audit event');
+  }
+  const [entry] = await AuditLog.create([{ actorRole: 'system', action,
+    targetType: 'User', targetId: String(userId), summary: SECURITY_SUMMARIES[action],
+    metadata: { failureCount, cooldownSeconds } }]);
+  return entry;
+}
+
+module.exports = { ACTIONS, recordAudit, auditedContentChange, recordLoginSecurityAudit };

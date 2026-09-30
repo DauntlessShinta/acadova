@@ -85,7 +85,7 @@ test('Admin role and status changes are stale-safe, audited, and preserve accoun
 
 test('suspended account cannot obtain a fresh login token', async () => {
   const oldFind = User.findOne;
-  User.findOne = () => ({ lean: async () => ({ _id: studentId, role: 'student',
+  User.findOne = () => ({ select() { return this; }, lean: async () => ({ _id: studentId, role: 'student',
     password: bcrypt.hashSync('correct-password', 4), emailVerified: true, suspendedAt: new Date() }) });
   try {
     const res = response(); await auth.login({ body: { email: 'student@example.test',

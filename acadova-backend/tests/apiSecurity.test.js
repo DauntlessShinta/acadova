@@ -5,6 +5,7 @@ const express = require('express');
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
 const User = require('../models/User');
+const loginSecurity = require('../services/loginSecurityService');
 const Session = require('../models/Session');
 const Rating = require('../models/Rating');
 const { validationErrorHandler } = require('../middleware/validation');
@@ -28,6 +29,7 @@ test('API protection and role boundaries work without a database connection', as
   const originalFindById = User.findById;
   const originalFindOne = User.findOne;
   const originalFind = User.find;
+  const originalResetLogin = loginSecurity.resetAfterSuccess;
   const originalSessionFindById = Session.findById;
   const originalRatingFind = Rating.find;
   const originalRatingExists = Rating.exists;
@@ -52,10 +54,11 @@ test('API protection and role boundaries work without a database connection', as
       } : null;
     } }),
   });
-  User.findOne = ({ email }) => ({ lean: async () => email === 'learner@example.test' ? {
+  User.findOne = ({ email }) => ({ select() { return this; }, lean: async () => email === 'learner@example.test' ? {
     _id: learnerId, name: 'Learner', email, role: 'student', credits: 2,
     password: bcrypt.hashSync(password, 4),
   } : null });
+  loginSecurity.resetAfterSuccess = async (user) => user;
   User.find = (filter) => filter
     ? { select: () => ({ sort: () => ({ limit: async () => [] }) }) }
     : { select: () => ({ sort: async () => [] }) };
@@ -323,6 +326,7 @@ test('API protection and role boundaries work without a database connection', as
     User.findById = originalFindById;
     User.findOne = originalFindOne;
     User.find = originalFind;
+    loginSecurity.resetAfterSuccess = originalResetLogin;
     Session.findById = originalSessionFindById;
     Rating.find = originalRatingFind;
     Rating.exists = originalRatingExists;

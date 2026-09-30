@@ -50,6 +50,7 @@ export const registrationErrorMessage = (error) => {
 
 export const loginErrorMessage = (error) => {
   if (error?.status === 401) return 'Email or password is incorrect.';
+  if (error?.status === 429) return 'Too many login attempts. Please try again shortly.';
   if (!error?.status) return 'Unable to reach Acadova. Check your connection and try again.';
   if (error.status >= 500) return 'Acadova is temporarily unavailable. Please try again.';
   return 'Unable to sign in. Please try again.';

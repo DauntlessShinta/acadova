@@ -1,8 +1,10 @@
 const mongoose = require('mongoose');
 
 const AuditLogSchema = new mongoose.Schema({
-  actor: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true, immutable: true },
-  actorRole: { type: String, enum: ['moderator', 'admin'], required: true, immutable: true },
+  // Pre-authentication security events have no proven user actor.
+  actor: { type: mongoose.Schema.Types.ObjectId, ref: 'User',
+    required() { return this.actorRole !== 'system'; }, immutable: true },
+  actorRole: { type: String, enum: ['moderator', 'admin', 'system'], required: true, immutable: true },
   action: { type: String, required: true, immutable: true },
   targetType: { type: String, required: true, immutable: true },
   targetId: { type: String, required: true, immutable: true },

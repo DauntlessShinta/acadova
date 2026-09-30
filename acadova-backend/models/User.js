@@ -4,6 +4,10 @@ const UserSchema = new mongoose.Schema({
   name: { type: String, required: true, trim: true },
   email: { type: String, required: true, unique: true, lowercase: true, trim: true },
   password: { type: String, required: true, minlength: 6 },
+  // Missing on historical accounts behaves as zero; never returned by profile APIs.
+  failedLoginAttempts: { type: Number, default: 0, select: false, min: 0 },
+  lastFailedLoginAt: { type: Date, select: false },
+  loginCooldownUntil: { type: Date, select: false },
   credits: { type: Number, default: 0, min: [0, 'Credits cannot be negative'],
     validate: { validator: Number.isSafeInteger, message: 'Credits must be a whole number' } },
   // Atomic, per-account reward claim. Historical users without this field match $ne.

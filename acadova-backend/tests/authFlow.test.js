@@ -9,6 +9,7 @@ const User = require('../models/User');
 const CreditTransaction = require('../models/CreditTransaction');
 const CreditConfig = require('../models/CreditConfig');
 const authController = require('../controllers/authController');
+const loginSecurity = require('../services/loginSecurityService');
 const emailService = require('../services/emailService');
 const { hashVerificationToken } = require('../utils/verificationTokens');
 const { authenticateToken, requireRole } = require('../middleware/authMiddleware');
@@ -22,6 +23,7 @@ test('email verification account flow without MongoDB or Gmail', async (t) => {
     startSession: mongoose.startSession, transactionCreate: CreditTransaction.create,
     jwtSecret: process.env.JWT_SECRET, log: console.info,
     configFindById: CreditConfig.findById,
+    failedLogin: loginSecurity.recordFailedLogin, resetLogin: loginSecurity.resetAfterSuccess,
   };
   process.env.JWT_SECRET = randomBytes(32).toString('hex');
   const accounts = new Map();
@@ -62,6 +64,15 @@ test('email verification account flow without MongoDB or Gmail', async (t) => {
     Object.assign(user, update.$set);
     if (update.$inc) user.credits += update.$inc.credits;
     for (const key of Object.keys(update.$unset || {})) delete user[key];
+    return user;
+  };
+  loginSecurity.recordFailedLogin = async (user) => {
+    user.failedLoginAttempts = (user.failedLoginAttempts || 0) + 1;
+    return { count: user.failedLoginAttempts, cooldownSeconds: 0 };
+  };
+  loginSecurity.resetAfterSuccess = async (user) => {
+    user.failedLoginAttempts = 0;
+    delete user.loginCooldownUntil;
     return user;
   };
   mongoose.startSession = async () => ({
@@ -369,6 +380,8 @@ test('email verification account flow without MongoDB or Gmail', async (t) => {
     emailService.sendVerificationEmail = originals.send;
     console.info = originals.log;
     CreditConfig.findById = originals.configFindById;
+    loginSecurity.recordFailedLogin = originals.failedLogin;
+    loginSecurity.resetAfterSuccess = originals.resetLogin;
     if (originals.jwtSecret === undefined) delete process.env.JWT_SECRET;
     else process.env.JWT_SECRET = originals.jwtSecret;
   }

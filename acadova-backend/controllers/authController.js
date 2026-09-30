@@ -8,6 +8,18 @@ const { createVerificationToken, hashVerificationToken } = require('../utils/ver
 const { logSecurityEvent } = require('../utils/securityLogger');
 const { startingCredits } = require('../config/creditRules');
 const { getEffectiveCreditRules } = require('../services/creditRuleService');
+const loginSecurity = require('../services/loginSecurityService');
+const { failureThreshold } = require('../config/loginSecurity');
+const { ACTIONS, recordLoginSecurityAudit } = require('../services/auditService');
+
+// Unknown accounts still perform a password comparison to avoid an obvious
+// fast path that reveals whether an email is registered.
+const UNKNOWN_ACCOUNT_HASH = bcrypt.hashSync('acadova-unknown-account', 10);
+
+async function auditLoginSafely(event) {
+  try { await recordLoginSecurityAudit(event); }
+  catch { logSecurityEvent('auth.audit_unavailable', {}, { action: event.action }); }
+}
 
 function signToken(user) {
   return jwt.sign({ id: user._id, role: user.role }, process.env.JWT_SECRET, { expiresIn: '7d' });
@@ -167,15 +179,46 @@ exports.login = async (req, res) => {
     };
     // Lean avoids applying the new default to legacy MongoDB records where
     // emailVerified does not exist. Only explicit false requires verification.
-    const user = await User.findOne({ email }).lean();
-    if (!user || !await bcrypt.compare(password, user.password)) return genericFailure();
+    const user = await User.findOne({ email })
+      .select('+failedLoginAttempts +lastFailedLoginAt +loginCooldownUntil').lean();
+    if (!user) {
+      await bcrypt.compare(password, UNKNOWN_ACCOUNT_HASH);
+      return genericFailure();
+    }
+    const now = new Date();
+    const cooldownResponse = () => res.status(429).json({ success: false,
+      message: 'Too many login attempts. Please try again shortly.' });
+    if (user.loginCooldownUntil && new Date(user.loginCooldownUntil) > now) return cooldownResponse();
+    if (!await bcrypt.compare(password, user.password)) {
+      const failure = await loginSecurity.recordFailedLogin(user, now);
+      if (failure?.count >= failureThreshold) {
+        await auditLoginSafely({ userId: user._id,
+          action: failure.count === failureThreshold ? ACTIONS.loginCooldownStarted : ACTIONS.loginCooldownExtended,
+          failureCount: failure.count, cooldownSeconds: failure.cooldownSeconds });
+      }
+      return genericFailure();
+    }
     if (user.suspendedAt) {
       return res.status(403).json({ success: false, code: 'ACCOUNT_SUSPENDED', message: 'Account is suspended' });
     }
     if (user.emailVerified === false) {
       return res.status(403).json({ success: false, code: 'EMAIL_VERIFICATION_REQUIRED', message: 'Please verify your email before logging in.' });
     }
-    return res.json({ success: true, message: 'Login successful', data: { token: signToken(user), user: publicUser(user) } });
+    const active = await loginSecurity.resetAfterSuccess(user, now);
+    if (!active) {
+      // A concurrent suspension, verification change, password change, or
+      // cooldown won the race; never issue a JWT from the stale read.
+      const current = await User.findById(user._id).select('suspendedAt emailVerified +loginCooldownUntil').lean();
+      if (current?.suspendedAt) return res.status(403).json({ success: false,
+        code: 'ACCOUNT_SUSPENDED', message: 'Account is suspended' });
+      if (current?.emailVerified === false) return res.status(403).json({ success: false,
+        code: 'EMAIL_VERIFICATION_REQUIRED', message: 'Please verify your email before logging in.' });
+      if (current?.loginCooldownUntil && new Date(current.loginCooldownUntil) > new Date()) return cooldownResponse();
+      return genericFailure();
+    }
+    if (user.failedLoginAttempts > 0) await auditLoginSafely({ userId: user._id,
+      action: ACTIONS.loginSuccessAfterFailures, failureCount: user.failedLoginAttempts });
+    return res.json({ success: true, message: 'Login successful', data: { token: signToken(active), user: publicUser(active) } });
   } catch {
     logSecurityEvent('auth.login_error', req, { status: 500 });
     return res.status(500).json({ success: false, message: 'Server error during login' });

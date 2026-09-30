@@ -14,6 +14,10 @@ const UserSchema = new mongoose.Schema({
   rating: { type: Number, default: 5.0 },
   role: { type: String, enum: ['student', 'moderator', 'admin'], default: 'student' },
   emailVerified: { type: Boolean, default: false },
+  // Missing on historical accounts means active. Checked against the database on every protected request.
+  suspendedAt: { type: Date, default: null },
+  suspendedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+  suspensionReason: { type: String, maxlength: 500 },
   // Explicitly set only by new registrations; historical accounts are never backfilled.
   openingGrantEligible: { type: Boolean, default: false, select: false },
   // Registration-time snapshot; older eligible registrations without it retain the original 100.

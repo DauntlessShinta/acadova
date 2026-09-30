@@ -31,6 +31,7 @@ import ProfilePage from './pages/ProfilePage';
 // Admin Page
 import AdminOverviewPage from './pages/admin/AdminOverviewPage';
 import AdminUsersPage from './pages/admin/AdminUsersPage';
+import AdminAuditLogsPage from './pages/admin/AdminAuditLogsPage';
 import AdminSessionsPage from './pages/admin/AdminSessionsPage';
 import AdminAnalyticsPage from './pages/admin/AdminAnalyticsPage';
 import AdminCreditsPage from './pages/admin/AdminCreditsPage';
@@ -90,6 +91,7 @@ export const App = () => {
       <Route path="/admin" element={<StaffLayout area="admin" />}>
         <Route index element={<AdminOverviewPage />} />
         <Route path="users" element={<AdminUsersPage />} />
+        <Route path="audit-logs" element={<AdminAuditLogsPage />} />
         <Route path="sessions" element={<AdminSessionsPage />} />
         <Route path="analytics" element={<AdminAnalyticsPage />} />
         <Route path="credits" element={<AdminCreditsPage />} />

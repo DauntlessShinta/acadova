@@ -169,6 +169,9 @@ exports.login = async (req, res) => {
     // emailVerified does not exist. Only explicit false requires verification.
     const user = await User.findOne({ email }).lean();
     if (!user || !await bcrypt.compare(password, user.password)) return genericFailure();
+    if (user.suspendedAt) {
+      return res.status(403).json({ success: false, code: 'ACCOUNT_SUSPENDED', message: 'Account is suspended' });
+    }
     if (user.emailVerified === false) {
       return res.status(403).json({ success: false, code: 'EMAIL_VERIFICATION_REQUIRED', message: 'Please verify your email before logging in.' });
     }

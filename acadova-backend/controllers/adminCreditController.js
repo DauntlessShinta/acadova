@@ -5,6 +5,7 @@ const CreditTransaction = require('../models/CreditTransaction');
 const User = require('../models/User');
 const { RULE_ID, getEffectiveCreditRules } = require('../services/creditRuleService');
 const { logSecurityEvent } = require('../utils/securityLogger');
+const { ACTIONS, recordAudit } = require('../services/auditService');
 
 const publicRules = ({ startingCreditGrant, tutoringSessionCost, assessmentReward, version }) =>
   ({ startingCreditGrant, tutoringSessionCost, assessmentReward, version });
@@ -52,6 +53,8 @@ exports.updateCreditRules = async (req, res) => {
       }
       changed = publicRules(after);
       await CreditRuleChange.create([{ actor: req.user.id, before, after: changed }], { session: dbSession });
+      await recordAudit({ actor: req.user, action: ACTIONS.rules, targetType: 'CreditConfig', targetId: RULE_ID,
+        summary: 'Credit rules changed', metadata: { beforeVersion: before.version, afterVersion: changed.version }, session: dbSession });
     });
     logSecurityEvent('admin.credit_rules_changed', req, { beforeVersion: req.body.expectedVersion,
       afterVersion: changed.version });
@@ -109,6 +112,9 @@ exports.adjustCredits = async (req, res) => {
         adjustmentReason: reason, adjustmentReference: reference,
         ...(direction === 'credit' ? { toUser: targetStudentId } : { fromUser: targetStudentId }),
       }], { session: dbSession });
+      await recordAudit({ actor: req.user, action: ACTIONS.adjustment, targetType: 'CreditTransaction',
+        targetId: entry._id, summary: 'Admin credit adjustment',
+        metadata: { direction, amount, reference }, session: dbSession });
     });
     logSecurityEvent('admin.credit_adjustment', req, { targetId: targetStudentId, direction,
       amount, reference });

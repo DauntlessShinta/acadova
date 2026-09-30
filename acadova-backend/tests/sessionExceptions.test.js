@@ -5,6 +5,7 @@ const Session = require('../models/Session');
 const User = require('../models/User');
 const CreditTransaction = require('../models/CreditTransaction');
 const Rating = require('../models/Rating');
+const AuditLog = require('../models/AuditLog');
 const sessionController = require('../controllers/sessionController');
 const moderatorController = require('../controllers/moderatorController');
 const ratingController = require('../controllers/ratingController');
@@ -18,6 +19,7 @@ const originals = {
   userFindOneAndUpdate: User.findOneAndUpdate, userFindByIdAndUpdate: User.findByIdAndUpdate,
   ratingFindOne: Rating.findOne, ratingCreate: Rating.create, ratingAggregate: Rating.aggregate,
   transactionFind: CreditTransaction.find, startSession: mongoose.startSession,
+  auditCreate: AuditLog.create,
 };
 test.afterEach(() => {
   Session.findById = originals.findById;
@@ -35,6 +37,7 @@ test.afterEach(() => {
   Rating.create = originals.ratingCreate;
   Rating.aggregate = originals.ratingAggregate;
   mongoose.startSession = originals.startSession;
+  AuditLog.create = originals.auditCreate;
 });
 
 const ids = {
@@ -67,7 +70,7 @@ const matches = (stored, filter) => Object.entries(filter).every(([key, value]) 
 ));
 const invoke = async (handler, stored, actor, body = {}) => {
   const res = response();
-  await handler({ params: { id: stored._id }, user: { id: actor }, body }, res);
+  await handler({ params: { id: stored._id }, user: { id: actor, role: 'moderator' }, body }, res);
   return res;
 };
 const noShowStore = (overrides = {}) => {
@@ -178,6 +181,7 @@ test('no-show may be disputed without inventing attendance evidence', async () =
 });
 
 const resolutionStore = (overrides = {}, initialCredits = 5) => {
+  AuditLog.create = async ([entry]) => [entry];
   const stored = doc({
     ...awaitingEvidence, status: 'disputed', disputedAt: new Date(), disputedBy: ids.learner,
     disputeReason: 'The lesson did not happen.', ...overrides,
@@ -326,8 +330,20 @@ test('pre-existing payment blocks either resolution outcome', async () => {
   assert.equal(state.stored.status, 'disputed');
 });
 
+test('audit failure rolls back Moderator dispute resolution and settlement', async () => {
+  const state = resolutionStore();
+  AuditLog.create = async () => { throw new Error('Audit storage unavailable'); };
+  const result = await resolve(state.stored);
+  assert.equal(result.statusCode, 500);
+  assert.equal(state.stored.status, 'disputed');
+  assert.equal(state.learner.credits, 5);
+  assert.equal(state.tutorCredits, 0);
+  assert.equal(state.payments.length, 0);
+});
+
 test('Moderator dispute list is restricted to disputed records', async () => {
   let filter;
+  CreditTransaction.find = () => ({ select() { return this; }, lean: async () => [] });
   Session.find = (query) => {
     filter = query;
     return { populate() { return this; }, sort() { return this; }, limit: async () => [doc({ status: 'disputed' })] };
@@ -337,6 +353,11 @@ test('Moderator dispute list is restricted to disputed records', async () => {
   assert.equal(res.statusCode, 200);
   assert.deepEqual(filter, { status: 'disputed' });
   assert.equal(res.body.data.length, 1);
+  assert.deepEqual(res.body.data[0].reviewIndicators, []);
+  CreditTransaction.find = () => ({ select() { return this; }, lean: async () => [{ session: ids.session }] });
+  const anomaly = response();
+  await moderatorController.listDisputedSessions({}, anomaly);
+  assert.deepEqual(anomaly.body.data[0].reviewIndicators, ['prior_credit_transaction']);
 });
 
 test('rating endpoint accepts only valid settled resolution, still rejecting duplicates and outsiders', async () => {

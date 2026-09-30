@@ -34,14 +34,16 @@ P3.6 adds Admin-managed starting grants, tutoring Session costs, and assessment 
 
 Phase 3 credit activity is limited to `initial_grant`, `session_payment`, `assessment_reward`, `learning_unlock`, and `admin_adjustment`. New debits use conditional database balance checks; Admin analytics separates tutoring transfers from credits issued or spent. The read-only [credit verification and reconciliation guide](acadova-backend/docs/phase3-credit-verification.md) lists required unique indexes, a guarded `--dry-run` inventory command, legacy-balance limitations, and final E2E checks. Recorded ledger totals are not a lifetime balance reconstruction for older accounts.
 
+P4 adds persistent append-only AuditLog records for Moderator dispute/content/review actions and Admin credit, role, and account-status actions. These privileged mutations and their required audit evidence share MongoDB transactions. Admins can browse bounded, filtered audit pages; Moderators do not receive global audit access. Admins may suspend/reactivate non-Admin accounts with a reason, and suspension blocks both new login and already-issued JWT access without deleting historical activity. P4 logs begin at deployment; older privileged actions are not fabricated. Production audit-index planning is documented in [AuditLog rollout](acadova-backend/docs/audit-log-rollout.md).
+
 ## Locked final scope — planned, not yet implemented
 
 The following are part of the final project scope but must not be represented as complete until implemented and verified:
 
-- Remaining session lifecycle transitions and post-completion reports.
+- Broader post-completion report intake beyond Session disputes.
 - Complex progress tracking is not included in the learning-content foundation.
 - In-app notifications, OneSignal delivery, notification cooldowns and unread reminders.
-- Expanded moderator dispute/resource/suspicious-activity workflows, system configuration, persistent audit logs, and progressive login cooldown/security events.
+- Broader report intake and deterministic suspicious-activity dashboards, system configuration beyond credit rules, and progressive login cooldown/security events.
 
 ## Future enhancements outside the locked final scope
 

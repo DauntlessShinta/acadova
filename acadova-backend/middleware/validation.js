@@ -328,6 +328,8 @@ const schemas = {
   message: { body: requiredText('Message', 1000) },
   rating: { sessionId: objectId('session id'), rating, comment: optional(requiredText('Review comment', 500, 0)) },
   role: { role: oneOf('role', ['student', 'moderator']) },
+  userStatus: { status: oneOf('account status', ['active', 'suspended']),
+    reason: optional(requiredText('Suspension reason', 500, 10)) },
   visibility: { hidden: booleanValue('hidden') },
   userId: { id: objectId('user id') },
   sessionId: { id: objectId('session id') },

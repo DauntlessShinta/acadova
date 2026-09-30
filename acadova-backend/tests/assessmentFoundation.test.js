@@ -8,6 +8,7 @@ const AssessmentAttempt = require('../models/AssessmentAttempt');
 const CreditTransaction = require('../models/CreditTransaction');
 const CreditConfig = require('../models/CreditConfig');
 const User = require('../models/User');
+const AuditLog = require('../models/AuditLog');
 
 const student = '507f1f77bcf86cd799439011';
 const other = '507f1f77bcf86cd799439012';
@@ -51,6 +52,7 @@ test('approved assessment grading, access, one-time reward, and rollback', async
     userFindById: User.findById, userUpdate: User.findOneAndUpdate,
     transactionCreate: CreditTransaction.create, startSession: mongoose.startSession,
     configFindById: CreditConfig.findById,
+    auditCreate: AuditLog.create,
   };
   process.env.JWT_SECRET = 'assessment-test-secret';
   process.env.NODE_ENV = 'test';
@@ -70,7 +72,9 @@ test('approved assessment grading, access, one-time reward, and rollback', async
   Assessment.findOne = (filter) => ({ lean: async () => assessment.status === filter.status
     && String(assessment._id) === String(filter._id) ? assessment : null });
   Assessment.findById = (id) => ({ lean: async () => String(assessment._id) === String(id) ? assessment : null });
-  Assessment.create = async (body) => { assessment = { _id: assessmentId, ...body }; return assessment; };
+  Assessment.create = async (body) => { assessment = { _id: assessmentId, ...body[0] }; return [assessment]; };
+  const audits = [];
+  AuditLog.create = async ([entry]) => { audits.push(entry); return [entry]; };
   Assessment.findOneAndUpdate = async (filter, update) => {
     if (assessment.status !== filter.status || String(assessment._id) !== String(filter._id)) return null;
     assessment = { ...assessment, ...update.$set };
@@ -151,6 +155,8 @@ test('approved assessment grading, access, one-time reward, and rollback', async
     assert.equal((await call(`/moderator/assessments/${assessmentId}/publish`, student, 'POST', {})).status, 403);
     assert.equal((await call(`/moderator/assessments/${assessmentId}/publish`, moderator, 'POST', {})).status, 200);
     assert.equal(assessment.status, 'published');
+    assert.deepEqual(audits.map((entry) => entry.action),
+      ['learning.assessment_created', 'learning.assessment_published']);
     assert.equal(String(assessment.approvedBy), moderator);
     assert.equal((await call(`/moderator/assessments/${assessmentId}/publish`, moderator, 'POST', {})).status, 409);
 
@@ -242,6 +248,7 @@ test('approved assessment grading, access, one-time reward, and rollback', async
     Assessment.create = original.assessmentCreate;
     Assessment.findOneAndUpdate = original.assessmentUpdate;
     Assessment.findById = original.assessmentFindById;
+    AuditLog.create = original.auditCreate;
     AssessmentAttempt.create = original.attemptCreate;
     AssessmentAttempt.findOne = original.attemptFindOne;
     User.findById = original.userFindById;

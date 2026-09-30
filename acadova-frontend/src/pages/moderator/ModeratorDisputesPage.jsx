@@ -69,6 +69,8 @@ export const ModeratorDisputesPage = () => {
               {session.noShowAt && <p><strong>No-show evidence:</strong> {session.noShowAbsent === 'both' ? 'Neither checked in' : `${session.noShowAbsent} absent`} · recorded {formatSessionDateTime(session.noShowAt)}</p>}
               <p><strong>Disputed by:</strong> {participantName(session.disputedBy)} · {formatSessionDateTime(session.disputedAt)}</p>
               <p><strong>Reason:</strong> {session.disputeReason}</p>
+              {session.reviewIndicators?.includes('prior_credit_transaction') && <Alert type="danger" message="Review required: a credit transaction already exists for this disputed session. Resolution is blocked until investigated." />}
+              {session.reviewIndicators?.includes('no_show_reported') && <p className="staff-data-note">Review indicator: a no-show was reported. Compare it with the check-in timestamps.</p>}
               <label className="form-label" htmlFor={`resolution-note-${session._id}`}>Resolution note</label>
               <textarea id={`resolution-note-${session._id}`} className="form-textarea" minLength={10} maxLength={500} rows={3} value={notes[session._id] || ''} onChange={(event) => setNotes((current) => ({ ...current, [session._id]: event.target.value }))} disabled={Boolean(workingId)} />
               <div className="session-dispute-actions">

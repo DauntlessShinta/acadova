@@ -7,6 +7,7 @@ const LearningTopic = require('../models/LearningTopic');
 const { assessmentReward } = require('../config/creditRules');
 const { getEffectiveCreditRules } = require('../services/creditRuleService');
 const { logSecurityEvent } = require('../utils/securityLogger');
+const { ACTIONS, auditedContentChange } = require('../services/auditService');
 
 const hasRewardIndex = (index) => index.name === 'uniq_assessment_reward_recipient_assessment'
   && index.unique === true && index.key?.toUser === 1 && index.key?.assessment === 1
@@ -139,7 +140,9 @@ exports.createAssessment = async (req, res) => {
       if (!topic) return res.status(400).json({ success: false, message: 'Select a published learning topic.' });
       body = { ...body, topic: topic.name };
     }
-    const assessment = await Assessment.create({ ...body, createdBy: req.user.id, status: 'draft' });
+    const assessment = await auditedContentChange(req, ACTIONS.assessmentCreated, 'Assessment',
+      'Assessment created', async (session) => (await Assessment.create([
+        { ...body, createdBy: req.user.id, status: 'draft' }], { session }))[0]);
     logSecurityEvent('moderation.assessment_created', req, { assessmentId: String(assessment._id) });
     return res.status(201).json({ success: true, data: { id: String(assessment._id), status: 'draft' } });
   } catch { return res.status(500).json({ success: false, message: 'Assessment could not be created.' }); }
@@ -147,11 +150,12 @@ exports.createAssessment = async (req, res) => {
 
 exports.publishAssessment = async (req, res) => {
   try {
-    const assessment = await Assessment.findOneAndUpdate(
-      { _id: req.params.id, status: 'draft' },
-      { $set: { status: 'published', approvedBy: req.user.id, publishedAt: new Date() } },
-      { new: true },
-    );
+    const assessment = await auditedContentChange(req, ACTIONS.assessmentPublished, 'Assessment',
+      'Assessment published', (session) => Assessment.findOneAndUpdate(
+        { _id: req.params.id, status: 'draft' },
+        { $set: { status: 'published', approvedBy: req.user.id, publishedAt: new Date() } },
+        { new: true, session },
+      ));
     if (!assessment) return res.status(409).json({ success: false, message: 'Only a draft assessment can be published.' });
     logSecurityEvent('moderation.assessment_published', req, { assessmentId: String(assessment._id) });
     return res.json({ success: true, data: { id: String(assessment._id), status: 'published' } });

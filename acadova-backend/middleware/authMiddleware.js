@@ -29,11 +29,14 @@ async function authenticateToken(req, res, next) {
     // The database is authoritative for authorization. A role change takes
     // effect on the next protected request even when the JWT is still valid.
     const user = await User.findById(payload.id)
-      .select('_id name email role credits emailVerified')
+      .select('_id name email role credits emailVerified suspendedAt')
       .lean();
 
     if (!user) {
       return res.status(401).json({ success: false, message: 'Account is no longer available' });
+    }
+    if (user.suspendedAt) {
+      return res.status(403).json({ success: false, code: 'ACCOUNT_SUSPENDED', message: 'Account is suspended' });
     }
     // Lean reads leave the new field absent on pre-existing accounts.
     if (user.emailVerified === false) {

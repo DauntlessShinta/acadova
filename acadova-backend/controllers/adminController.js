@@ -1,9 +1,11 @@
 const User = require('../models/User');
+const mongoose = require('mongoose');
 const Session = require('../models/Session');
 const CreditTransaction = require('../models/CreditTransaction');
 const { classifyLegacySession, isSessionRatingEligible } = require('../utils/sessionLifecycleCompatibility');
 const { isValidObjectId } = require('../middleware/validation');
 const { logSecurityEvent } = require('../utils/securityLogger');
+const { ACTIONS, recordAudit } = require('../services/auditService');
 
 const MANAGEABLE_ROLES = new Set(['student', 'moderator']);
 
@@ -11,7 +13,7 @@ const MANAGEABLE_ROLES = new Set(['student', 'moderator']);
 exports.listUsers = async (req, res) => {
   try {
     const users = await User.find()
-      .select('name email role credits rating skillsToTeach skillsToLearn createdAt')
+      .select('name email role credits rating skillsToTeach skillsToLearn emailVerified suspendedAt suspensionReason createdAt')
       .sort({ createdAt: -1 });
 
     res.json({ success: true, message: 'Users retrieved', data: users });
@@ -56,6 +58,7 @@ exports.listSessions = async (req, res) => {
 
 // PATCH /api/admin/users/:id/role - manages only student/moderator access.
 exports.updateUserRole = async (req, res) => {
+  let dbSession;
   try {
     const { id } = req.params;
     const { role } = req.body;
@@ -70,27 +73,65 @@ exports.updateUserRole = async (req, res) => {
       return res.status(400).json({ success: false, message: 'You cannot change your own role' });
     }
 
-    const target = await User.findById(id).select('_id role');
-    if (!target) {
-      return res.status(404).json({ success: false, message: 'User not found' });
-    }
-    if (target.role === 'admin') {
-      return res.status(403).json({ success: false, message: 'Admin roles cannot be changed through this endpoint' });
-    }
-
-    const updatedUser = await User.findByIdAndUpdate(
-      id,
-      { role },
-      { returnDocument: 'after', runValidators: true }
-    ).select('name email role credits rating skillsToTeach skillsToLearn createdAt');
-    if (!updatedUser) {
-      return res.status(404).json({ success: false, message: 'User not found' });
-    }
+    dbSession = await mongoose.startSession();
+    let updatedUser;
+    await dbSession.withTransaction(async () => {
+      const target = await User.findById(id).select('_id role').session(dbSession).lean();
+      if (!target) throw Object.assign(new Error('User not found'), { status: 404 });
+      if (target.role === 'admin') throw Object.assign(new Error('Admin roles cannot be changed'), { status: 403 });
+      if (target.role === role) throw Object.assign(new Error('Role is already set'), { status: 409 });
+      updatedUser = await User.findOneAndUpdate({ _id: id, role: target.role }, { $set: { role } },
+        { new: true, runValidators: true, session: dbSession })
+        .select('name email role credits rating skillsToTeach skillsToLearn emailVerified suspendedAt suspensionReason createdAt');
+      if (!updatedUser) throw Object.assign(new Error('Role changed. Reload and try again.'), { status: 409 });
+      await recordAudit({ actor: req.user, action: ACTIONS.role, targetType: 'User', targetId: id,
+        summary: role === 'moderator' ? 'Moderator access granted' : 'Moderator access revoked',
+        metadata: { previousRole: target.role, newRole: role }, session: dbSession });
+    });
 
     logSecurityEvent('admin.role_changed', req, { targetId: id, newRole: role });
 
     return res.json({ success: true, message: `User role updated to ${role}`, data: updatedUser });
   } catch (error) {
-    return res.status(500).json({ success: false, message: 'Server error while updating user role' });
-  }
+    return res.status(error.status || 503).json({ success: false,
+      message: error.status ? error.message : 'User role could not be updated' });
+  } finally { if (dbSession) await dbSession.endSession(); }
+};
+
+// Status changes preserve Sessions, ledger entries, reviews and historical references.
+exports.updateUserStatus = async (req, res) => {
+  const { id } = req.params;
+  const suspend = req.body.status === 'suspended';
+  if (suspend && !req.body.reason) return res.status(400).json({ success: false, message: 'Suspension reason is required' });
+  if (id === req.user.id) return res.status(400).json({ success: false, message: 'You cannot change your own account status' });
+  let dbSession;
+  try {
+    dbSession = await mongoose.startSession();
+    let updatedUser;
+    await dbSession.withTransaction(async () => {
+      const target = await User.findById(id).select('_id role suspendedAt').session(dbSession).lean();
+      if (!target) throw Object.assign(new Error('User not found'), { status: 404 });
+      if (target.role === 'admin') throw Object.assign(new Error('Admin accounts are protected'), { status: 403 });
+      if (Boolean(target.suspendedAt) === suspend) {
+        throw Object.assign(new Error('Account status is already set'), { status: 409 });
+      }
+      const filter = { _id: id, role: target.role, suspendedAt: suspend ? null : target.suspendedAt };
+      const changes = suspend
+        ? { suspendedAt: new Date(), suspendedBy: req.user.id, suspensionReason: req.body.reason }
+        : { suspendedAt: null, suspendedBy: null, suspensionReason: null };
+      updatedUser = await User.findOneAndUpdate(filter, { $set: changes },
+        { new: true, runValidators: true, session: dbSession })
+        .select('name email role credits rating skillsToTeach skillsToLearn emailVerified suspendedAt suspensionReason createdAt');
+      if (!updatedUser) throw Object.assign(new Error('Account changed. Reload and try again.'), { status: 409 });
+      await recordAudit({ actor: req.user, action: suspend ? ACTIONS.suspended : ACTIONS.reactivated,
+        targetType: 'User', targetId: id, summary: suspend ? 'Account suspended' : 'Account reactivated',
+        metadata: { previousStatus: suspend ? 'active' : 'suspended',
+          newStatus: suspend ? 'suspended' : 'active' }, session: dbSession });
+    });
+    logSecurityEvent(suspend ? 'admin.user_suspended' : 'admin.user_reactivated', req, { targetId: id });
+    return res.json({ success: true, data: updatedUser });
+  } catch (error) {
+    return res.status(error.status || 503).json({ success: false,
+      message: error.status ? error.message : 'Account status could not be updated' });
+  } finally { if (dbSession) await dbSession.endSession(); }
 };

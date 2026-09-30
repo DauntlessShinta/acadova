@@ -10,6 +10,7 @@ const LearningModule = require('../models/LearningModule');
 const Assessment = require('../models/Assessment');
 const CreditTransaction = require('../models/CreditTransaction');
 const LearningUnlock = require('../models/LearningUnlock');
+const AuditLog = require('../models/AuditLog');
 
 const student = '507f1f77bcf86cd799439011';
 const moderator = '507f1f77bcf86cd799439012';
@@ -55,6 +56,7 @@ test('learning routes enforce governance, safe previews, and no spending', async
     assessmentFind: Assessment.find, assessmentExists: Assessment.exists,
     transactionCreate: CreditTransaction.create, secret: process.env.JWT_SECRET, env: process.env.NODE_ENV,
     unlockFind: LearningUnlock.find, unlockExists: LearningUnlock.exists,
+    startSession: mongoose.startSession, auditCreate: AuditLog.create,
   };
   process.env.JWT_SECRET = 'learning-test-secret';
   process.env.NODE_ENV = 'test';
@@ -63,6 +65,7 @@ test('learning routes enforce governance, safe previews, and no spending', async
   const resources = [];
   const modules = [];
   let ledgerWrites = 0;
+  const audits = [];
   const match = (row, filter = {}) => Object.entries(filter).every(([key, expected]) => {
     if (key === '$or') return expected.some((part) => match(row, part));
     if (expected && typeof expected === 'object' && '$in' in expected) return expected.$in.some((value) => String(row[key]) === String(value));
@@ -84,8 +87,8 @@ test('learning routes enforce governance, safe previews, and no spending', async
     emailVerified: true, credits: 100, name: 'Test', email: 'test@example.test' }) }) });
   LearningTopic.find = find(topics); LearningTopic.findOne = one(topics);
   LearningTopic.exists = async (filter) => topics.some((row) => match(row, filter));
-  LearningTopic.create = async (body) => { const row = { _id: new mongoose.Types.ObjectId().toString(), ...body };
-    topics.push(row); return clone(row); };
+  LearningTopic.create = async (body) => { const row = { _id: new mongoose.Types.ObjectId().toString(), ...body[0] };
+    topics.push(row); return [clone(row)]; };
   LearningTopic.findOneAndUpdate = update(topics);
   LearningResource.find = find(resources); LearningResource.findOne = one(resources);
   LearningResource.findById = (id) => ({ lean: async () => clone(resources.find((row) => row._id === id) || null) });
@@ -93,12 +96,14 @@ test('learning routes enforce governance, safe previews, and no spending', async
     ...body }; resources.push(row); return clone(row); };
   LearningResource.findOneAndUpdate = update(resources);
   LearningModule.find = find(modules); LearningModule.findOne = one(modules);
-  LearningModule.create = async (body) => { const row = { _id: moduleId, ...body }; modules.push(row); return clone(row); };
+  LearningModule.create = async (body) => { const row = { _id: moduleId, ...body[0] }; modules.push(row); return [clone(row)]; };
   LearningModule.findOneAndUpdate = update(modules);
   Assessment.find = () => query([]); Assessment.exists = async () => true;
   CreditTransaction.create = async () => { ledgerWrites += 1; throw new Error('Unexpected ledger write'); };
   LearningUnlock.find = () => ({ select: () => ({ lean: async () => [] }) });
   LearningUnlock.exists = async () => false;
+  AuditLog.create = async ([entry]) => { audits.push(entry); return [entry]; };
+  mongoose.startSession = async () => ({ async withTransaction(callback) { await callback(); }, async endSession() {} });
 
   const app = express(); app.use(express.json());
   app.use('/api/learning', require('../routes/learningRoutes'));
@@ -148,6 +153,7 @@ test('learning routes enforce governance, safe previews, and no spending', async
       { creditCost: 1.5 })).status, 400);
     assert.equal((await call(`/moderator/learning/resources/${resourceId}/publish`, moderator, 'POST',
       { creditCost: 0 })).status, 200);
+    assert.equal(audits.some((entry) => entry.action === 'learning.resource_approved'), true);
     assert.equal((await call(`/learning/resources/${resourceId}`, student)).body.data.textContent, 'Protected lesson text');
     resources[0].reviewStatus = 'submitted';
     assert.equal((await call(`/moderator/learning/resources/${resourceId}/publish`, admin, 'POST',
@@ -166,6 +172,7 @@ test('learning routes enforce governance, safe previews, and no spending', async
     const secondId = urlSubmit.body.data.id;
     assert.equal((await call(`/moderator/learning/resources/${secondId}/reject`, moderator, 'POST',
       { reason: 'Out of date' })).status, 200);
+    assert.equal(audits.some((entry) => entry.action === 'learning.resource_rejected'), true);
     assert.equal((await call(`/learning/resources/${secondId}`, student)).status, 404);
 
     const moduleBody = { topic: topicId, title: 'Basics module', description: 'Start with this', resources: [resourceId] };
@@ -202,6 +209,7 @@ test('learning routes enforce governance, safe previews, and no spending', async
     LearningModule.findOneAndUpdate = originals.moduleUpdate; Assessment.find = originals.assessmentFind;
     Assessment.exists = originals.assessmentExists; CreditTransaction.create = originals.transactionCreate;
     LearningUnlock.find = originals.unlockFind; LearningUnlock.exists = originals.unlockExists;
+    mongoose.startSession = originals.startSession; AuditLog.create = originals.auditCreate;
     process.env.JWT_SECRET = originals.secret; process.env.NODE_ENV = originals.env;
   }
 });

@@ -6,6 +6,7 @@ const { transferSessionCredits } = require('../services/sessionSettlement');
 const { isValidObjectId } = require('../middleware/validation');
 const { recalculateAverageRating } = require('../utils/ratingReputation');
 const { logSecurityEvent } = require('../utils/securityLogger');
+const { ACTIONS, recordAudit } = require('../services/auditService');
 
 const populateModerationRating = (query) => query
   .populate('fromUser', 'name')
@@ -28,6 +29,7 @@ exports.listRatingsForModeration = async (req, res) => {
 
 // PATCH /api/moderator/ratings/:id/visibility
 exports.updateRatingVisibility = async (req, res) => {
+  let dbSession;
   try {
     const { id } = req.params;
     const { hidden } = req.body;
@@ -39,18 +41,24 @@ exports.updateRatingVisibility = async (req, res) => {
       return res.status(400).json({ success: false, message: 'hidden must be a boolean' });
     }
 
-    const rating = await Rating.findById(id);
-    if (!rating) {
-      return res.status(404).json({ success: false, message: 'Review not found' });
-    }
-
-    rating.isHidden = hidden;
-    rating.moderatedBy = req.user.id;
-    rating.moderatedAt = new Date();
-    await rating.save();
+    dbSession = await mongoose.startSession();
+    let rating;
+    await dbSession.withTransaction(async () => {
+      const previous = await Rating.findById(id).session(dbSession).lean();
+      if (!previous) throw Object.assign(new Error('Review not found'), { status: 404 });
+      if (Boolean(previous.isHidden) === hidden) {
+        throw Object.assign(new Error('Review visibility is already set'), { status: 409 });
+      }
+      rating = await Rating.findOneAndUpdate({ _id: id, isHidden: hidden ? { $ne: true } : true },
+        { $set: { isHidden: hidden, moderatedBy: req.user.id, moderatedAt: new Date() } },
+        { new: true, session: dbSession });
+      if (!rating) throw Object.assign(new Error('Review changed. Reload and try again.'), { status: 409 });
+      await recordAudit({ actor: req.user, action: ACTIONS.review, targetType: 'Rating', targetId: id,
+        summary: hidden ? 'Review hidden' : 'Review restored', metadata: { hidden }, session: dbSession });
+      await recalculateAverageRating(rating.toUser, dbSession);
+    });
     logSecurityEvent('moderation.visibility_changed', req, { reviewId: id, hidden });
 
-    await recalculateAverageRating(rating.toUser);
     const populatedRating = await populateModerationRating(Rating.findById(rating._id));
 
     return res.json({
@@ -59,8 +67,9 @@ exports.updateRatingVisibility = async (req, res) => {
       data: populatedRating,
     });
   } catch (error) {
-    return res.status(500).json({ success: false, message: 'Server error while updating review visibility' });
-  }
+    return res.status(error.status || 503).json({ success: false,
+      message: error.status ? error.message : 'Review visibility could not be updated' });
+  } finally { if (dbSession) await dbSession.endSession(); }
 };
 
 exports.listDisputedSessions = async (req, res) => {
@@ -69,7 +78,14 @@ exports.listDisputedSessions = async (req, res) => {
       .populate([{ path: 'learner', select: 'name' }, { path: 'tutor', select: 'name' }, { path: 'disputedBy', select: 'name' }])
       .sort({ disputedAt: -1 })
       .limit(100);
-    return res.json({ success: true, message: 'Disputed sessions retrieved.', data: sessions });
+    const payments = sessions.length ? await CreditTransaction.find({ session: { $in: sessions.map((row) => row._id) } })
+      .select('session type amount').lean() : [];
+    const paymentIds = new Set(payments.map((row) => String(row.session)));
+    const data = sessions.map((row) => ({ ...row.toObject(), reviewIndicators: [
+      ...(row.noShowAt ? ['no_show_reported'] : []),
+      ...(paymentIds.has(String(row._id)) ? ['prior_credit_transaction'] : []),
+    ] }));
+    return res.json({ success: true, message: 'Disputed sessions retrieved.', data });
   } catch (error) {
     return res.status(500).json({ success: false, message: 'Disputed sessions could not be loaded.' });
   }
@@ -131,6 +147,8 @@ exports.resolveSessionDispute = async (req, res) => {
       }
       Object.assign(session, changes);
       if (resolution === 'confirm_session') await transferSessionCredits(session, dbSession);
+      await recordAudit({ actor: req.user, action: ACTIONS.dispute, targetType: 'Session',
+        targetId: session._id, summary: 'Session dispute resolved', metadata: { resolution }, session: dbSession });
       resolvedSession = session;
     });
     await resolvedSession.populate([{ path: 'learner', select: 'name' }, { path: 'tutor', select: 'name' }]);

@@ -6,6 +6,7 @@ const jwt = require('jsonwebtoken');
 const { randomUUID } = require('node:crypto');
 const CreditConfig = require('../models/CreditConfig');
 const CreditRuleChange = require('../models/CreditRuleChange');
+const AuditLog = require('../models/AuditLog');
 const CreditTransaction = require('../models/CreditTransaction');
 const User = require('../models/User');
 const { getEffectiveCreditRules } = require('../services/creditRuleService');
@@ -24,6 +25,7 @@ test('P3.6 rule defaults, prospective snapshots, validation, and audited Admin a
   const old = {
     configFind: CreditConfig.findById, configCreate: CreditConfig.create,
     configUpdate: CreditConfig.findOneAndUpdate, changeCreate: CreditRuleChange.create,
+    auditCreate: AuditLog.create,
     userFind: User.findOne, userUpdate: User.findOneAndUpdate,
     ledgerFind: CreditTransaction.findOne, ledgerCreate: CreditTransaction.create,
     startSession: mongoose.startSession, secret: process.env.JWT_SECRET,
@@ -32,6 +34,7 @@ test('P3.6 rule defaults, prospective snapshots, validation, and audited Admin a
   let config = null;
   let balance = 100;
   const changes = [];
+  const audits = [];
   const ledger = [];
   let failLedger = false;
   let transactionQueue = Promise.resolve();
@@ -42,6 +45,7 @@ test('P3.6 rule defaults, prospective snapshots, validation, and audited Admin a
     config = { ...config, ...update.$set, version: config.version + 1 }; return config;
   };
   CreditRuleChange.create = async ([value]) => { changes.push(value); return [value]; };
+  AuditLog.create = async ([value]) => { audits.push(value); return [value]; };
   User.findOne = (filter) => ({ select() { return this; }, session() { return this; },
     lean: async () => filter._id === student && filter.role === 'student' ? { credits: balance } : null });
   User.findOneAndUpdate = async (filter, update) => {
@@ -66,9 +70,11 @@ test('P3.6 rule defaults, prospective snapshots, validation, and audited Admin a
     transactionQueue = new Promise((resolve) => { release = resolve; });
     await prior;
     const oldBalance = balance; const oldLedger = ledger.length; const oldChanges = changes.length;
+    const oldAudits = audits.length;
     const oldConfig = config && { ...config };
     try { await callback(); } catch (error) {
-      balance = oldBalance; ledger.length = oldLedger; changes.length = oldChanges; config = oldConfig; throw error;
+      balance = oldBalance; ledger.length = oldLedger; changes.length = oldChanges;
+      audits.length = oldAudits; config = oldConfig; throw error;
     } finally { release(); }
   }, async endSession() {} });
   try {
@@ -88,6 +94,8 @@ test('P3.6 rule defaults, prospective snapshots, validation, and audited Admin a
     assert.equal(changes.length, 1);
     assert.equal(changes[0].actor, admin);
     assert.equal(changes[0].before.startingCreditGrant, 100);
+    assert.equal(audits[0].action, 'credit.rules_changed');
+    assert.deepEqual(audits[0].metadata, { beforeVersion: 0, afterVersion: 1 });
     const stale = response();
     await controller.updateCreditRules(req({ startingCreditGrant: 140, tutoringSessionCost: 30,
       assessmentReward: 35, expectedVersion: 0 }), stale);
@@ -111,12 +119,15 @@ test('P3.6 rule defaults, prospective snapshots, validation, and audited Admin a
     assert.equal(ledger[0].fromUser, undefined);
     assert.equal(ledger[0].adjustmentActor, admin);
     assert.equal(ledger[0].adjustmentReason, 'Correct verified reward');
+    assert.equal(audits.filter((entry) => entry.action === 'credit.admin_adjustment').length, 1);
+    assert.equal(JSON.stringify(audits).includes('Correct verified reward'), false);
     const repeated = response();
     await controller.adjustCredits(req({ targetStudentId: student, direction: 'credit', amount: 15,
       reason: 'Correct verified reward', reference: ref }), repeated);
     assert.equal(repeated.body.repeated, true);
     assert.equal(balance, 115);
     assert.equal(ledger.length, 1);
+    assert.equal(audits.filter((entry) => entry.action === 'credit.admin_adjustment').length, 1);
     const conflicting = response();
     await controller.adjustCredits(req({ targetStudentId: student, direction: 'credit', amount: 14,
       reason: 'Correct verified reward', reference: ref }), conflicting);
@@ -141,6 +152,18 @@ test('P3.6 rule defaults, prospective snapshots, validation, and audited Admin a
     assert.deepEqual(raceRequests.map((res) => res.statusCode).sort(), [200, 201]);
     assert.equal(balance, 102);
     assert.equal(ledger.filter((row) => row.adjustmentReference === raceRef).length, 1);
+    const workingAuditCreate = AuditLog.create;
+    AuditLog.create = async () => { throw new Error('Audit storage unavailable'); };
+    const auditFailure = response();
+    await controller.adjustCredits(req({ targetStudentId: student, direction: 'credit', amount: 5,
+      reason: 'Verified balance correction', reference: randomUUID() }), auditFailure);
+    assert.equal(auditFailure.statusCode, 503);
+    assert.equal(balance, 102); assert.equal(ledger.length, 3);
+    const ruleAuditFailure = response();
+    await controller.updateCreditRules(req({ startingCreditGrant: 140, tutoringSessionCost: 30,
+      assessmentReward: 35, expectedVersion: 2 }), ruleAuditFailure);
+    assert.equal(ruleAuditFailure.statusCode, 503); assert.equal(config.version, 2);
+    AuditLog.create = workingAuditCreate;
     failLedger = true;
     const failure = response();
     await controller.adjustCredits(req({ targetStudentId: student, direction: 'credit', amount: 5,
@@ -162,6 +185,7 @@ test('P3.6 rule defaults, prospective snapshots, validation, and audited Admin a
   } finally {
     CreditConfig.findById = old.configFind; CreditConfig.create = old.configCreate;
     CreditConfig.findOneAndUpdate = old.configUpdate; CreditRuleChange.create = old.changeCreate;
+    AuditLog.create = old.auditCreate;
     User.findOne = old.userFind; User.findOneAndUpdate = old.userUpdate;
     CreditTransaction.findOne = old.ledgerFind; CreditTransaction.create = old.ledgerCreate;
     mongoose.startSession = old.startSession;

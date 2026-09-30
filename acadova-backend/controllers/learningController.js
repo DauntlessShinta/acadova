@@ -4,6 +4,7 @@ const LearningModule = require('../models/LearningModule');
 const Assessment = require('../models/Assessment');
 const LearningUnlock = require('../models/LearningUnlock');
 const { logSecurityEvent } = require('../utils/securityLogger');
+const { ACTIONS, auditedContentChange } = require('../services/auditService');
 
 const id = (value) => String(value);
 const topicView = (row) => ({ id: id(row._id), name: row.name, slug: row.slug,
@@ -130,7 +131,9 @@ exports.createTopic = async (req, res) => {
     if (await LearningTopic.exists({ slug })) {
       return res.status(409).json({ success: false, message: 'Topic already exists.' });
     }
-    const row = await LearningTopic.create({ ...req.body, slug, createdBy: req.user.id, status: 'draft' });
+    const row = await auditedContentChange(req, ACTIONS.topicCreated, 'LearningTopic', 'Learning topic created',
+      async (session) => (await LearningTopic.create([{ ...req.body, slug, createdBy: req.user.id,
+        status: 'draft' }], { session }))[0]);
     logSecurityEvent('moderation.topic_created', req, { topicId: id(row._id) });
     return res.status(201).json({ success: true, data: topicView(row) });
   } catch (error) {
@@ -140,8 +143,9 @@ exports.createTopic = async (req, res) => {
 };
 exports.publishTopic = async (req, res) => {
   try {
-    const row = await LearningTopic.findOneAndUpdate({ _id: req.params.id, status: 'draft' },
-      { $set: { status: 'published', publishedBy: req.user.id, publishedAt: new Date() } }, { new: true });
+    const row = await auditedContentChange(req, ACTIONS.topicPublished, 'LearningTopic', 'Learning topic published',
+      (session) => LearningTopic.findOneAndUpdate({ _id: req.params.id, status: 'draft' },
+        { $set: { status: 'published', publishedBy: req.user.id, publishedAt: new Date() } }, { new: true, session }));
     if (!row) return unavailable(res);
     logSecurityEvent('moderation.topic_published', req, { topicId: id(row._id) });
     return res.json({ success: true, data: topicView(row) });
@@ -149,8 +153,9 @@ exports.publishTopic = async (req, res) => {
 };
 exports.archiveTopic = async (req, res) => {
   try {
-    const row = await LearningTopic.findOneAndUpdate({ _id: req.params.id, status: 'published' },
-      { $set: { status: 'archived', archivedAt: new Date() } }, { new: true });
+    const row = await auditedContentChange(req, ACTIONS.topicArchived, 'LearningTopic', 'Learning topic archived',
+      (session) => LearningTopic.findOneAndUpdate({ _id: req.params.id, status: 'published' },
+        { $set: { status: 'archived', archivedAt: new Date() } }, { new: true, session }));
     if (!row) return unavailable(res);
     logSecurityEvent('moderation.topic_archived', req, { topicId: id(row._id) });
     return res.json({ success: true, data: topicView(row) });
@@ -173,9 +178,10 @@ exports.publishResource = async (req, res) => {
   try {
     const existing = await LearningResource.findOne({ _id: req.params.id, reviewStatus: 'submitted' }).lean();
     if (!existing || !await LearningTopic.exists({ _id: existing.topic, status: 'published' })) return unavailable(res);
-    const row = await LearningResource.findOneAndUpdate({ _id: existing._id, reviewStatus: 'submitted' },
+    const row = await auditedContentChange(req, ACTIONS.resourcePublished, 'LearningResource', 'Learning resource approved',
+      (session) => LearningResource.findOneAndUpdate({ _id: existing._id, reviewStatus: 'submitted' },
       { $set: { reviewStatus: 'published', reviewedBy: req.user.id, publishedAt: new Date(),
-        creditCost: req.body.creditCost } }, { new: true });
+        creditCost: req.body.creditCost } }, { new: true, session }), { creditCost: req.body.creditCost });
     if (!row) return unavailable(res);
     logSecurityEvent('moderation.resource_published', req, { resourceId: id(row._id) });
     return res.json({ success: true, data: resourceView(row, true) });
@@ -183,8 +189,9 @@ exports.publishResource = async (req, res) => {
 };
 exports.rejectResource = async (req, res) => {
   try {
-    const row = await LearningResource.findOneAndUpdate({ _id: req.params.id, reviewStatus: 'submitted' },
-      { $set: { reviewStatus: 'rejected', reviewedBy: req.user.id, reviewNote: req.body.reason } }, { new: true });
+    const row = await auditedContentChange(req, ACTIONS.resourceRejected, 'LearningResource', 'Learning resource rejected',
+      (session) => LearningResource.findOneAndUpdate({ _id: req.params.id, reviewStatus: 'submitted' },
+        { $set: { reviewStatus: 'rejected', reviewedBy: req.user.id, reviewNote: req.body.reason } }, { new: true, session }));
     if (!row) return unavailable(res);
     logSecurityEvent('moderation.resource_rejected', req, { resourceId: id(row._id) });
     return res.json({ success: true, data: resourceView(row, true) });
@@ -192,8 +199,9 @@ exports.rejectResource = async (req, res) => {
 };
 exports.archiveResource = async (req, res) => {
   try {
-    const row = await LearningResource.findOneAndUpdate({ _id: req.params.id, reviewStatus: 'published' },
-      { $set: { reviewStatus: 'archived', reviewedBy: req.user.id } }, { new: true });
+    const row = await auditedContentChange(req, ACTIONS.resourceArchived, 'LearningResource', 'Learning resource archived',
+      (session) => LearningResource.findOneAndUpdate({ _id: req.params.id, reviewStatus: 'published' },
+        { $set: { reviewStatus: 'archived', reviewedBy: req.user.id } }, { new: true, session }));
     if (!row) return unavailable(res);
     logSecurityEvent('moderation.resource_archived', req, { resourceId: id(row._id) });
     return res.json({ success: true, data: resourceView(row, true) });
@@ -220,8 +228,9 @@ exports.createModule = async (req, res) => {
   try {
     if (!await moduleReferencesValid(req.body)) return res.status(400).json({ success: false,
       message: 'Module resources and assessment must be published within the same topic.' });
-    const row = await LearningModule.create({ ...req.body, status: 'draft', creditCost: 0,
-      createdBy: req.user.id });
+    const row = await auditedContentChange(req, ACTIONS.moduleCreated, 'LearningModule', 'Learning module created',
+      async (session) => (await LearningModule.create([{ ...req.body, status: 'draft', creditCost: 0,
+        createdBy: req.user.id }], { session }))[0]);
     logSecurityEvent('moderation.module_created', req, { moduleId: id(row._id) });
     return res.status(201).json({ success: true, data: moduleView(row, true) });
   } catch { return failure(res); }
@@ -232,9 +241,10 @@ exports.publishModule = async (req, res) => {
     if (!existing) return unavailable(res);
     if (!await moduleReferencesValid(existing)) return res.status(409).json({ success: false,
       message: 'Module content is no longer published in this topic.' });
-    const row = await LearningModule.findOneAndUpdate({ _id: existing._id, status: 'draft' },
+    const row = await auditedContentChange(req, ACTIONS.modulePublished, 'LearningModule', 'Learning module published',
+      (session) => LearningModule.findOneAndUpdate({ _id: existing._id, status: 'draft' },
       { $set: { status: 'published', publishedBy: req.user.id, publishedAt: new Date(),
-        creditCost: req.body.creditCost } }, { new: true });
+        creditCost: req.body.creditCost } }, { new: true, session }), { creditCost: req.body.creditCost });
     if (!row) return unavailable(res);
     logSecurityEvent('moderation.module_published', req, { moduleId: id(row._id) });
     return res.json({ success: true, data: moduleView(row, true) });
@@ -242,8 +252,9 @@ exports.publishModule = async (req, res) => {
 };
 exports.archiveModule = async (req, res) => {
   try {
-    const row = await LearningModule.findOneAndUpdate({ _id: req.params.id, status: 'published' },
-      { $set: { status: 'archived', archivedAt: new Date() } }, { new: true });
+    const row = await auditedContentChange(req, ACTIONS.moduleArchived, 'LearningModule', 'Learning module archived',
+      (session) => LearningModule.findOneAndUpdate({ _id: req.params.id, status: 'published' },
+        { $set: { status: 'archived', archivedAt: new Date() } }, { new: true, session }));
     if (!row) return unavailable(res);
     logSecurityEvent('moderation.module_archived', req, { moduleId: id(row._id) });
     return res.json({ success: true, data: moduleView(row, true) });

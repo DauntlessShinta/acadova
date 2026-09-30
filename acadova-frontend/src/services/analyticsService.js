@@ -26,6 +26,9 @@ export const analyticsService = {
   updateUserRole: async (id, role) => {
     return api.patch(`/api/admin/users/${id}/role`, { role });
   },
+  updateUserStatus: async (id, status, reason) => api.patch(`/api/admin/users/${id}/status`,
+    { status, ...(reason ? { reason } : {}) }),
+  getAuditLogs: async (params = {}) => api.get(`/api/admin/audit-logs?${new URLSearchParams(params)}`),
 };
 
 export default analyticsService;

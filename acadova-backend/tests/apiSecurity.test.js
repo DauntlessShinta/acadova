@@ -141,6 +141,9 @@ test('API protection and role boundaries work without a database connection', as
     await t.test('student is denied admin and moderator endpoints despite forged JWT role', async () => {
       const token = tokenFor(learnerId);
       assert.equal((await call('/admin/users', { token })).response.status, 403, JSON.stringify(logs));
+      assert.equal((await call('/admin/audit-logs', { token })).response.status, 403);
+      assert.equal((await call(`/admin/users/${tutorId}/status`, { token, method: 'PATCH',
+        body: { status: 'suspended', reason: 'Validated misconduct report' } })).response.status, 403);
       assert.equal((await call('/moderator/ratings', { token })).response.status, 403);
       assert.equal((await call(`/moderator/sessions/${sessionId}/resolve`, {
         token, method: 'POST', body: { resolution: 'confirm_session', resolutionNote: 'Reviewed the evidence.' },
@@ -152,6 +155,7 @@ test('API protection and role boundaries work without a database connection', as
       assert.equal(allowed.response.status, 200);
       assert.deepEqual(allowed.data.data, []);
       assert.equal((await call('/admin/users', { token })).response.status, 403);
+      assert.equal((await call('/admin/audit-logs', { token })).response.status, 403);
       assert.equal((await call(`/admin/users/${learnerId}/role`, {
         token, method: 'PATCH', body: { role: 'moderator' },
       })).response.status, 403);
@@ -169,6 +173,10 @@ test('API protection and role boundaries work without a database connection', as
       const result = await call('/admin/users', { token: tokenFor(adminId) });
       assert.equal(result.response.status, 200);
       assert.deepEqual(result.data.data, []);
+      for (const method of ['POST', 'PATCH', 'DELETE']) {
+        assert.equal((await call('/admin/audit-logs', { token: tokenFor(adminId), method,
+          body: method === 'DELETE' ? undefined : {} })).response.status, 404);
+      }
     });
     await t.test('staff cannot enter student credit, rating, or peer discovery workflows', async () => {
       const token = tokenFor(adminId);

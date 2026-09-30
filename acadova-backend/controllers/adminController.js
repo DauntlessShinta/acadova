@@ -6,6 +6,7 @@ const { classifyLegacySession, isSessionRatingEligible } = require('../utils/ses
 const { isValidObjectId } = require('../middleware/validation');
 const { logSecurityEvent } = require('../utils/securityLogger');
 const { ACTIONS, recordAudit } = require('../services/auditService');
+const notifications = require('../services/notificationService');
 
 const MANAGEABLE_ROLES = new Set(['student', 'moderator']);
 
@@ -129,6 +130,9 @@ exports.updateUserStatus = async (req, res) => {
           newStatus: suspend ? 'suspended' : 'active' }, session: dbSession });
     });
     logSecurityEvent(suspend ? 'admin.user_suspended' : 'admin.user_reactivated', req, { targetId: id });
+    await notifications.notifySafely({ recipient: id,
+      type: suspend ? 'account.suspended' : 'account.reactivated', relatedType: 'User', relatedId: id,
+      eventKey: `account.${suspend ? 'suspended' : 'reactivated'}:${id}:${updatedUser.suspendedAt || updatedUser.updatedAt || Date.now()}` });
     return res.json({ success: true, data: updatedUser });
   } catch (error) {
     return res.status(error.status || 503).json({ success: false,

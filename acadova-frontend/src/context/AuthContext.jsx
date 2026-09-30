@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useEffect, useCallback } fr
 import authService from '../services/authService';
 import userService from '../services/userService';
 import { setOnUnauthorized } from '../services/api';
+import { syncPushIdentity } from '../services/pushClient';
 
 const AuthContext = createContext(null);
 
@@ -49,6 +50,12 @@ export const AuthProvider = ({ children }) => {
     });
     refreshUser();
   }, [refreshUser, logout]);
+
+  useEffect(() => {
+    void syncPushIdentity(user?._id || user?.id || null).catch(() => {
+      // In-app notifications remain available when push setup or permission fails.
+    });
+  }, [user?._id, user?.id]);
 
   useEffect(() => {
     const refreshAuthoritativeRole = () => {

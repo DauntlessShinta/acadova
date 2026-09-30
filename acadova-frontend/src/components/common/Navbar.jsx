@@ -3,6 +3,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Layers, LogOut, Menu, ShieldCheck, User, X } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { getRoleHomeRoute, getRoleNavigation, normalizeRole } from '../../config/roleNavigation';
+import NotificationBell from './NotificationBell';
 
 const publicLinks = [
   { to: '/#how-it-works', label: 'How It Works' },
@@ -87,6 +88,7 @@ export const Navbar = () => {
             </>
           ) : (
             <>
+              <NotificationBell />
               {isStudent ? (
                 <>
                   <Link to="/credits" className="credit-pill"><span className="dot" />{credits} Credits</Link>

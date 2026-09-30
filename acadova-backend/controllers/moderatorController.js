@@ -7,6 +7,7 @@ const { isValidObjectId } = require('../middleware/validation');
 const { recalculateAverageRating } = require('../utils/ratingReputation');
 const { logSecurityEvent } = require('../utils/securityLogger');
 const { ACTIONS, recordAudit } = require('../services/auditService');
+const notifications = require('../services/notificationService');
 
 const populateModerationRating = (query) => query
   .populate('fromUser', 'name')
@@ -58,6 +59,9 @@ exports.updateRatingVisibility = async (req, res) => {
       await recalculateAverageRating(rating.toUser, dbSession);
     });
     logSecurityEvent('moderation.visibility_changed', req, { reviewId: id, hidden });
+    await notifications.notifySafely({ recipient: rating.fromUser, type: 'review.moderated',
+      relatedType: 'Rating', relatedId: rating._id,
+      eventKey: `review.moderated:${id}:${hidden}:${rating.moderatedAt.toISOString()}` });
 
     const populatedRating = await populateModerationRating(Rating.findById(rating._id));
 
@@ -152,6 +156,8 @@ exports.resolveSessionDispute = async (req, res) => {
       resolvedSession = session;
     });
     await resolvedSession.populate([{ path: 'learner', select: 'name' }, { path: 'tutor', select: 'name' }]);
+    await notifications.notifySession('session.resolved', resolvedSession,
+      [resolvedSession.learner, resolvedSession.tutor]);
     return res.json({
       success: true,
       message: resolution === 'confirm_session'

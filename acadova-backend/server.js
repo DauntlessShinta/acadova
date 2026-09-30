@@ -54,6 +54,7 @@ app.use('/api/assessments', require('./routes/assessmentRoutes'));
 app.use('/api/learning', require('./routes/learningRoutes'));
 app.use('/api/moderator', require('./routes/moderatorRoutes'));
 app.use('/api/admin', require('./routes/adminRoutes'));
+app.use('/api/notifications', require('./routes/notificationRoutes'));
 
 app.get('/api/health', validateQuery(), (req, res) => res.json({ status: 'Acadova API Running' }));
 

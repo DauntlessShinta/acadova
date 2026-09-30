@@ -3051,3 +3051,24 @@ textarea:focus-visible {
 .session-dispute-card { padding: 1.25rem; }
 .session-dispute-card h2 { margin-top: 0; }
 .session-dispute-actions { display: flex; flex-wrap: wrap; gap: .75rem; margin-top: .75rem; }
+.notification-center { position: relative; flex: 0 0 auto; }
+.notification-trigger { position: relative; display: inline-flex; align-items: center; justify-content: center; width: 38px; height: 38px; border: 1px solid var(--border, #d8dee8); border-radius: 10px; color: inherit; background: transparent; cursor: pointer; }
+.notification-badge { position: absolute; top: -7px; right: -7px; min-width: 19px; padding: 1px 4px; border-radius: 20px; background: #c53636; color: white; font-size: 10px; font-weight: 700; }
+.notification-panel { position: absolute; z-index: 100; right: 0; top: calc(100% + 8px); width: min(360px, calc(100vw - 24px)); max-height: 460px; overflow: auto; border: 1px solid #d8dee8; border-radius: 12px; background: white; color: #1b2940; box-shadow: 0 12px 28px #14233c2b; }
+.notification-panel-header { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 14px; border-bottom: 1px solid #e6eaf0; }
+.notification-panel-header button, .notification-push { border: 0; background: transparent; color: #245ea8; cursor: pointer; font: inherit; font-size: 12px; }
+.notification-panel-header button:disabled { opacity: .5; cursor: default; }
+.notification-list { margin: 0; padding: 0; list-style: none; }
+.notification-list li + li { border-top: 1px solid #e6eaf0; }
+.notification-list button { display: grid; width: 100%; gap: 4px; padding: 12px 14px; border: 0; background: white; color: inherit; text-align: left; cursor: pointer; }
+.notification-list button.is-unread { background: #eff6ff; }
+.notification-list button:hover { background: #e7f0fc; }
+.notification-list span { font-size: 13px; }
+.notification-list small { color: #66768c; font-size: 11px; }
+.notification-empty, .notification-error { margin: 0; padding: 14px; font-size: 13px; }
+.notification-error { color: #a52222; }
+.notification-push { width: 100%; padding: 12px; border-top: 1px solid #e6eaf0; text-align: left; }
+@media (max-width: 1080px) {
+  .site-nav-actions { display: flex; }
+  .site-nav-actions > :not(.notification-center) { display: none; }
+}

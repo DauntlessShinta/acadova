@@ -4,6 +4,7 @@ import { ArrowLeft, Layers, LogOut, Menu, ShieldCheck, X } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { canAccessStaffArea, getRoleHomeRoute, getRoleNavigation } from '../config/roleNavigation';
 import LoadingSpinner from '../components/common/LoadingSpinner';
+import NotificationBell from '../components/common/NotificationBell';
 
 export const StaffLayout = ({ area }) => {
   const { user, isAuthenticated, loading, logout } = useAuth();
@@ -69,6 +70,7 @@ export const StaffLayout = ({ area }) => {
         <header className="staff-topbar">
           <button ref={menuButtonRef} type="button" className="staff-menu-button" aria-label="Open staff navigation" aria-expanded={menuOpen} aria-controls="staff-mobile-navigation" onClick={() => setMenuOpen(true)}><Menu size={21} /></button>
           <span><strong>{isAdminArea ? 'Administration' : 'Moderator'}</strong><small>{current}</small></span>
+          <NotificationBell />
           <div className="staff-topbar-account"><ShieldCheck size={16} /> {user.name || 'Staff'}</div>
         </header>
         <main className="staff-content" id="main-content"><Outlet /></main>

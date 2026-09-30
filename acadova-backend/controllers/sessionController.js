@@ -9,6 +9,7 @@ const { isSessionRatingEligible, matchesPayment } = require('../utils/sessionLif
 const { transferSessionCredits } = require('../services/sessionSettlement');
 const { getEffectiveCreditRules } = require('../services/creditRuleService');
 const { isValidObjectId } = require('../middleware/validation');
+const notifications = require('../services/notificationService');
 
 const ALLOWED_TRANSITIONS = {
   // Legacy inputs stay stored as-is so deployed React clients retain their
@@ -27,7 +28,9 @@ const SESSION_POPULATE = [
   { path: 'tutor', select: 'name' },
 ];
 
-const sameUser = (left, right) => String(left).toLowerCase() === String(right).toLowerCase();
+const sameUser = (left, right) => String(left?._id || left).toLowerCase()
+  === String(right?._id || right).toLowerCase();
+const otherParticipant = (session, actorId) => sameUser(session.learner, actorId) ? session.tutor : session.learner;
 const changedSessionMessage = 'This session has already changed. Refresh and try again.';
 const reschedulableStatuses = ['accepted', 'scheduled'];
 const rescheduleFields = {
@@ -120,6 +123,7 @@ exports.createSession = async (req, res) => {
       requestMessage: cleanMessage,
       creditAmount: tutoringSessionCost,
     });
+    await notifications.notifySession('session.requested', session, [tutorId]);
     await session.populate(SESSION_POPULATE);
     res.status(201).json({ success: true, message: 'Session requested.', data: session });
   } catch (error) {
@@ -197,6 +201,14 @@ exports.updateSessionStatus = async (req, res) => {
       return res.status(409).json({ success: false, message: changedSessionMessage });
     }
     await updatedSession.populate(SESSION_POPULATE);
+
+    const notificationType = ['accepted', 'scheduled'].includes(status) ? 'session.accepted'
+      : ['rejected', 'declined'].includes(status) ? 'session.declined'
+        : status === 'completed' ? 'session.awaiting_validation'
+          : status === 'cancelled' ? 'session.cancelled' : null;
+    if (notificationType) await notifications.notifySession(notificationType, updatedSession,
+      [status === 'cancelled' ? otherParticipant(updatedSession, req.user.id) : updatedSession.learner]);
+    if (status === 'cancelled') await notifications.invalidateUpcoming(updatedSession);
 
     const message = {
       completed: 'Session marked complete. Waiting for learner confirmation.',
@@ -297,6 +309,8 @@ exports.proposeReschedule = async (req, res) => {
     );
     if (!updatedSession) return res.status(409).json({ success: false, message: changedSessionMessage });
     await updatedSession.populate(SESSION_POPULATE);
+    await notifications.notifySession('session.reschedule_proposed', updatedSession,
+      [otherParticipant(updatedSession, req.user.id)], updatedSession.rescheduleProposalId);
     return res.json({ success: true, message: 'Reschedule proposed. Waiting for your peer to respond.', data: updatedSession });
   } catch (error) {
     return res.status(500).json({ success: false, message: 'Reschedule could not be proposed.' });
@@ -341,6 +355,9 @@ const decideReschedule = async (req, res, accept) => {
     );
     if (!updatedSession) return res.status(409).json({ success: false, message: changedSessionMessage });
     await updatedSession.populate(SESSION_POPULATE);
+    if (accept) await notifications.invalidateUpcoming(updatedSession);
+    await notifications.notifySession(accept ? 'session.reschedule_accepted' : 'session.reschedule_declined',
+      updatedSession, [session.rescheduleProposedBy], req.body.proposalId);
     return res.json({
       success: true,
       message: accept ? 'Reschedule accepted. The session time was updated.' : 'Reschedule declined. The original time remains.',
@@ -402,6 +419,8 @@ exports.checkIn = async (req, res) => {
     );
     if (!updatedSession) return res.status(409).json({ success: false, message: changedSessionMessage });
     await updatedSession.populate(SESSION_POPULATE);
+    if (updatedSession.status === 'in_progress') await notifications.notifySession('session.started',
+      updatedSession, [otherParticipant(updatedSession, req.user.id)]);
     return res.json({
       success: true,
       message: updatedSession.status === 'in_progress'
@@ -455,6 +474,8 @@ exports.finishSession = async (req, res) => {
     );
     if (!updatedSession) return res.status(409).json({ success: false, message: changedSessionMessage });
     await updatedSession.populate(SESSION_POPULATE);
+    await notifications.notifySession('session.awaiting_validation', updatedSession,
+      [updatedSession.learner, updatedSession.tutor]);
     return res.json({ success: true, message: 'Session finished. Both participants must confirm before credits transfer.', data: updatedSession });
   } catch (error) {
     return res.status(500).json({ success: false, message: 'Session could not be finished.' });
@@ -510,6 +531,8 @@ exports.reportNoShow = async (req, res) => {
     );
     if (!updatedSession) return res.status(409).json({ success: false, message: changedSessionMessage });
     await updatedSession.populate(SESSION_POPULATE);
+    await notifications.notifySession('session.no_show', updatedSession,
+      [otherParticipant(updatedSession, req.user.id)]);
     return res.json({ success: true, message: 'No-show recorded. No credits were transferred.', data: updatedSession });
   } catch (error) {
     return res.status(500).json({ success: false, message: 'No-show could not be recorded.' });
@@ -554,6 +577,8 @@ exports.disputeSession = async (req, res) => {
     );
     if (!updatedSession) return res.status(409).json({ success: false, message: changedSessionMessage });
     await updatedSession.populate(SESSION_POPULATE);
+    await notifications.notifySession('session.disputed', updatedSession,
+      [otherParticipant(updatedSession, req.user.id)]);
     return res.json({ success: true, message: 'Dispute submitted for Moderator review. No credits were transferred.', data: updatedSession });
   } catch (error) {
     return res.status(500).json({ success: false, message: 'Dispute could not be submitted.' });
@@ -567,6 +592,9 @@ exports.getMessages = async (req, res) => {
     const messages = await SessionMessage.find({ session: result.session._id })
       .populate('sender', 'name')
       .sort({ createdAt: 1 });
+    if (mongoose.connection.readyState === 1) {
+      await notifications.markThreadRead(result.session._id, req.user.id);
+    }
     res.json({ success: true, message: 'Messages retrieved.', data: messages });
   } catch (error) {
     res.status(500).json({ success: false, message: 'Session messages could not be loaded.' });
@@ -585,6 +613,9 @@ exports.createMessage = async (req, res) => {
     if (body.length > 1000) return res.status(400).json({ success: false, message: 'Your message must be 1000 characters or fewer.' });
 
     const message = await SessionMessage.create({ session: result.session._id, sender: req.user.id, body });
+    try { await notifications.notifyMessage(result.session, message,
+      otherParticipant(result.session, req.user.id)); }
+    catch { console.warn('Message notification unavailable'); }
     await message.populate('sender', 'name');
     res.status(201).json({ success: true, message: 'Message sent.', data: message });
   } catch (error) {
@@ -709,6 +740,8 @@ exports.confirmSession = async (req, res) => {
     });
 
     await settledSession.populate(SESSION_POPULATE);
+    if (!awaitingPeerConfirmation) await notifications.notifySession('session.completed', settledSession,
+      [settledSession.learner, settledSession.tutor]);
     const tutorName = settledSession.tutor?.name || 'the Tutor';
     const message = awaitingPeerConfirmation
       ? 'Confirmation saved. Waiting for your peer before credits transfer.'

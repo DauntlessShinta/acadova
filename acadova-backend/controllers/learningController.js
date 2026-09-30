@@ -5,6 +5,7 @@ const Assessment = require('../models/Assessment');
 const LearningUnlock = require('../models/LearningUnlock');
 const { logSecurityEvent } = require('../utils/securityLogger');
 const { ACTIONS, auditedContentChange } = require('../services/auditService');
+const notifications = require('../services/notificationService');
 
 const id = (value) => String(value);
 const topicView = (row) => ({ id: id(row._id), name: row.name, slug: row.slug,
@@ -184,6 +185,9 @@ exports.publishResource = async (req, res) => {
         creditCost: req.body.creditCost } }, { new: true, session }), { creditCost: req.body.creditCost });
     if (!row) return unavailable(res);
     logSecurityEvent('moderation.resource_published', req, { resourceId: id(row._id) });
+    await notifications.notifySafely({ recipient: row.submittedBy, type: 'learning.content_status',
+      relatedType: 'LearningResource', relatedId: row._id,
+      eventKey: `learning.content_status:${id(row._id)}:published` });
     return res.json({ success: true, data: resourceView(row, true) });
   } catch { return failure(res); }
 };
@@ -194,6 +198,9 @@ exports.rejectResource = async (req, res) => {
         { $set: { reviewStatus: 'rejected', reviewedBy: req.user.id, reviewNote: req.body.reason } }, { new: true, session }));
     if (!row) return unavailable(res);
     logSecurityEvent('moderation.resource_rejected', req, { resourceId: id(row._id) });
+    await notifications.notifySafely({ recipient: row.submittedBy, type: 'learning.content_status',
+      relatedType: 'LearningResource', relatedId: row._id,
+      eventKey: `learning.content_status:${id(row._id)}:rejected` });
     return res.json({ success: true, data: resourceView(row, true) });
   } catch { return failure(res); }
 };
@@ -204,6 +211,9 @@ exports.archiveResource = async (req, res) => {
         { $set: { reviewStatus: 'archived', reviewedBy: req.user.id } }, { new: true, session }));
     if (!row) return unavailable(res);
     logSecurityEvent('moderation.resource_archived', req, { resourceId: id(row._id) });
+    await notifications.notifySafely({ recipient: row.submittedBy, type: 'learning.content_status',
+      relatedType: 'LearningResource', relatedId: row._id,
+      eventKey: `learning.content_status:${id(row._id)}:archived` });
     return res.json({ success: true, data: resourceView(row, true) });
   } catch { return failure(res); }
 };

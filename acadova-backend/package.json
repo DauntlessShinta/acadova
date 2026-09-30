@@ -5,6 +5,7 @@
   "main": "server.js",
   "scripts": {
     "test": "node --test",
+    "notifications:scan": "node jobs/notificationReminders.js",
     "start": "node server.js",
     "dev": "nodemon server.js",
     "index.js": "nodemon server.js"

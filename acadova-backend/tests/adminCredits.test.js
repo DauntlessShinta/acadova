@@ -93,6 +93,14 @@ test('P3.6 rule defaults, prospective snapshots, validation, and audited Admin a
       assessmentReward: 35, expectedVersion: 0 }), stale);
     assert.equal(stale.statusCode, 409);
     assert.equal(config.startingCreditGrant, 120);
+    const concurrent = [response(), response()];
+    await Promise.all(concurrent.map((res, index) => controller.updateCreditRules(req({
+      startingCreditGrant: index === 0 ? 125 : 130, tutoringSessionCost: 25,
+      assessmentReward: 30, expectedVersion: 1,
+    }), res)));
+    assert.deepEqual(concurrent.map((res) => res.statusCode).sort(), [200, 409]);
+    assert.equal(config.version, 2);
+    assert.equal(changes.length, 2);
 
     const credit = response();
     await controller.adjustCredits(req({ targetStudentId: student, direction: 'credit', amount: 15,
@@ -166,6 +174,9 @@ test('P3.6 rule defaults, prospective snapshots, validation, and audited Admin a
 });
 
 test('adjustment ledger shape and partial uniqueness are explicit', async () => {
+  await assert.rejects(new CreditConfig({ _id: 'another_rules_document',
+    startingCreditGrant: 100, tutoringSessionCost: 20, assessmentReward: 20,
+    version: 1, updatedBy: admin }).validate());
   await new CreditTransaction({ type: 'admin_adjustment', amount: 10, toUser: student,
     adjustmentTarget: student, adjustmentActor: admin, adjustmentDirection: 'credit',
     adjustmentReason: 'Verified correction', adjustmentReference: ref }).validate();

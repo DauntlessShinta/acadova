@@ -68,9 +68,15 @@ export const AdminCreditsPage = () => {
       setError('Select a Student and enter a valid amount and reason. Debits cannot make balances negative.');
       return;
     }
-    if (!window.confirm(`${direction === 'credit' ? 'Credit' : 'Debit'} ${numericAmount} credits ${direction === 'credit' ? 'to' : 'from'} ${target.name}? Balance: ${target.credits} → ${projected}. Reason: ${reason.trim()}`)) return;
     setBusy(true); setError(''); setSuccess('');
     try {
+      const currentStudents = (await api.get('/api/admin/users')).data.filter((user) => user.role === 'student');
+      setStudents(currentStudents);
+      const currentTarget = currentStudents.find((student) => student._id === targetStudentId);
+      if (!currentTarget) throw new Error('Student is no longer available. Reload and choose another account.');
+      const currentProjected = currentTarget.credits + (direction === 'credit' ? numericAmount : -numericAmount);
+      if (currentProjected < 0) throw new Error('This debit would make the current balance negative.');
+      if (!window.confirm(`${direction === 'credit' ? 'Credit' : 'Debit'} ${numericAmount} credits ${direction === 'credit' ? 'to' : 'from'} ${currentTarget.name}? Balance: ${currentTarget.credits} → ${currentProjected}. Reason: ${reason.trim()}`)) return;
       const response = await api.post('/api/admin/credits/adjustments', {
         targetStudentId, direction, amount: numericAmount, reason: reason.trim(), reference,
       });

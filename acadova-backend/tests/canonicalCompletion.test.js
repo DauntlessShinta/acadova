@@ -123,7 +123,12 @@ const setupSettlement = (overrides = {}, initialCredits = 5) => {
     paymentWrites += 1;
   };
   User.findById = () => ({ session: async () => learner });
-  User.findOneAndUpdate = async (_query, update) => {
+  User.findOneAndUpdate = async (query, update) => {
+    if (String(query._id) === String(stored.learner)) {
+      if (learner.credits < query.credits.$gte) return null;
+      learner.credits += update.$inc.credits;
+      return learner;
+    }
     tutorCredits += update.$inc.credits;
     return { _id: stored.tutor };
   };

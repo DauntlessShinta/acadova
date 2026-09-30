@@ -220,7 +220,12 @@ const resolutionStore = (overrides = {}, initialCredits = 5) => {
     payments.push({ ...row, type: 'session_payment' });
   };
   User.findById = () => ({ session: async () => learner });
-  User.findOneAndUpdate = async (_filter, update) => {
+  User.findOneAndUpdate = async (filter, update) => {
+    if (String(filter._id) === String(stored.learner)) {
+      if (learner.credits < filter.credits.$gte) return null;
+      learner.credits += update.$inc.credits;
+      return learner;
+    }
     tutorCredits += update.$inc.credits;
     return { _id: ids.tutor };
   };

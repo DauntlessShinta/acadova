@@ -32,6 +32,8 @@ P3.5A adds governed learning topics, Student-submitted text or HTTPS-link resour
 
 P3.6 adds Admin-managed starting grants, tutoring Session costs, and assessment rewards (defaults 100 / 20 / 20, each 1–1000 whole credits). Rules apply to new events only: registration snapshots its starting grant, new Sessions store their cost, and rewarded attempts retain their actual award. Historical balances and ledger rows remain unchanged. Admin-only credit/debit corrections require a Student target, reason, actor, and idempotency reference; the balance change and `admin_adjustment` ledger row are atomic. Rule changes have a durable before/after actor record. Corrections fail closed in production until the separately managed [Admin adjustment index rollout](acadova-backend/docs/admin-credit-index-rollout.md) is complete. These credits have no real-money value.
 
+Phase 3 credit activity is limited to `initial_grant`, `session_payment`, `assessment_reward`, `learning_unlock`, and `admin_adjustment`. New debits use conditional database balance checks; Admin analytics separates tutoring transfers from credits issued or spent. The read-only [credit verification and reconciliation guide](acadova-backend/docs/phase3-credit-verification.md) lists required unique indexes, a guarded `--dry-run` inventory command, legacy-balance limitations, and final E2E checks. Recorded ledger totals are not a lifetime balance reconstruction for older accounts.
+
 ## Locked final scope — planned, not yet implemented
 
 The following are part of the final project scope but must not be represented as complete until implemented and verified:

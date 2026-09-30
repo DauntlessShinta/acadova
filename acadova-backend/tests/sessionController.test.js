@@ -416,6 +416,11 @@ test('learner confirmation transfers the exact amount only once', async () => {
   User.findById = () => ({ session: async () => learner });
   User.findOneAndUpdate = async (query, update) => {
     assert.ok(session.confirmedAt, 'The session must be claimed before balance updates');
+    if (String(query._id) === String(session.learner)) {
+      assert.equal(query.credits.$gte, 2);
+      learner.credits += update.$inc.credits;
+      return learner;
+    }
     tutorCredits += update.$inc.credits;
     return { _id: query._id };
   };
@@ -484,7 +489,14 @@ test('competing learner confirmations claim one session and settle only once', a
   CreditTransaction.findOne = () => ({ session: async () => null });
   CreditTransaction.find = () => ({ session: async () => [] });
   User.findById = () => ({ session: async () => learner });
-  User.findOneAndUpdate = async () => { tutorCredits += 1; return { _id: stored.tutor }; };
+  User.findOneAndUpdate = async (query, update) => {
+    if (String(query._id) === String(stored.learner)) {
+      if (learner.credits < query.credits.$gte) return null;
+      learner.credits += update.$inc.credits;
+      return learner;
+    }
+    tutorCredits += 1; return { _id: stored.tutor };
+  };
   CreditTransaction.create = async () => { ledgerWrites += 1; };
   const first = response();
   const second = response();

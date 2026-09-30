@@ -55,7 +55,7 @@ export const AssessmentsPage = () => {
 
   return <div>
     <h1>Assessments</h1>
-    <p>Complete a published assessment to earn credits for learning. A passing result earns 20 credits once per assessment.</p>
+    <p>Complete a published assessment to earn the current credit reward once per assessment.</p>
     <Alert type="danger" message={error} onClose={() => setError('')} />
     {loading ? <LoadingSpinner text="Loading assessments..." /> : list.length === 0
       ? <div className="card"><p>No published assessments are available yet.</p></div>
@@ -69,7 +69,7 @@ export const AssessmentsPage = () => {
       {result ? <div role="status">
         <h3>{result.passed ? 'Passed' : 'Not passed yet'}</h3>
         <p>Score: {result.score}%</p>
-        <p>{result.rewardIssued ? '+20 credits earned' : 'No credits awarded for this attempt.'}</p>
+        <p>{result.rewardIssued ? `+${result.creditsAwarded} credits earned` : 'No credits awarded for this attempt.'}</p>
         {!result.rewardIssued && result.passed && <p>You already earned the one-time reward for this assessment.</p>}
         <Link to="/credits" className="btn btn-secondary btn-sm">View credit wallet</Link>
         <button type="button" className="btn btn-secondary btn-sm" onClick={() => { setResult(null); setAnswers(Array(selected.questions.length).fill(null)); }}>Try again</button>

@@ -4,7 +4,7 @@ const rule = { type: Number, required: true, min: 1, max: 1000,
   validate: { validator: Number.isSafeInteger, message: 'Credit rule must be a whole number' } };
 
 const CreditConfigSchema = new mongoose.Schema({
-  _id: { type: String, default: 'credit_rules' },
+  _id: { type: String, default: 'credit_rules', enum: ['credit_rules'] },
   startingCreditGrant: rule,
   tutoringSessionCost: rule,
   assessmentReward: rule,

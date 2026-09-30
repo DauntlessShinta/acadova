@@ -7,6 +7,7 @@ const emailService = require('../services/emailService');
 const { createVerificationToken, hashVerificationToken } = require('../utils/verificationTokens');
 const { logSecurityEvent } = require('../utils/securityLogger');
 const { startingCredits } = require('../config/creditRules');
+const { getEffectiveCreditRules } = require('../services/creditRuleService');
 
 function signToken(user) {
   return jwt.sign({ id: user._id, role: user.role }, process.env.JWT_SECRET, { expiresIn: '7d' });
@@ -33,6 +34,7 @@ exports.register = async (req, res) => {
     const existing = await User.findOne({ email }).lean();
     if (existing) return existingRegistrationResponse(res, existing);
     const verification = createVerificationToken();
+    const rules = await getEffectiveCreditRules();
     const user = await User.create({
       name,
       email,
@@ -40,6 +42,7 @@ exports.register = async (req, res) => {
       credits: 0,
       emailVerified: false,
       openingGrantEligible: true,
+      openingGrantAmount: rules.startingCreditGrant,
       emailVerificationTokenHash: verification.hash,
       emailVerificationExpires: verification.expires,
       emailVerificationSentAt: new Date(),
@@ -85,18 +88,21 @@ exports.verifyEmail = async (req, res) => {
       user = undefined;
       const tokenFilter = { emailVerificationTokenHash: hash, emailVerified: false,
         emailVerificationExpires: { $gt: now } };
+      const pending = await User.findOne({ ...tokenFilter, role: 'student', openingGrantEligible: true })
+        .select('+openingGrantAmount').session(dbSession).lean();
+      const grantAmount = pending?.openingGrantAmount || startingCredits;
       const verifiedFields = { $set: { emailVerified: true, emailVerifiedAt: now }, $unset: {
         emailVerificationTokenHash: 1, emailVerificationExpires: 1, emailVerificationSentAt: 1,
-        openingGrantEligible: 1,
+        openingGrantEligible: 1, openingGrantAmount: 1,
       } };
       user = await User.findOneAndUpdate(
         { ...tokenFilter, role: 'student', openingGrantEligible: true },
-        { ...verifiedFields, $inc: { credits: startingCredits } },
+        { ...verifiedFields, $inc: { credits: grantAmount } },
         { new: true, session: dbSession },
       );
       if (user) {
         await CreditTransaction.create([{
-          type: 'initial_grant', toUser: user._id, amount: startingCredits,
+          type: 'initial_grant', toUser: user._id, amount: grantAmount,
         }], { session: dbSession });
         return;
       }

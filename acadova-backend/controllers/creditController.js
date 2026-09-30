@@ -5,13 +5,23 @@ const Session = require('../models/Session');
 const Assessment = require('../models/Assessment');
 const LearningResource = require('../models/LearningResource');
 const LearningModule = require('../models/LearningModule');
+const { getEffectiveCreditRules } = require('../services/creditRuleService');
+
+exports.getCurrentCreditRules = async (req, res) => {
+  try {
+    const { tutoringSessionCost } = await getEffectiveCreditRules();
+    return res.json({ success: true, data: { tutoringSessionCost } });
+  } catch {
+    return res.status(503).json({ success: false, message: 'Credit rules are temporarily unavailable.' });
+  }
+};
 
 const labels = {
   session_payment: 'Tutoring session',
   initial_grant: 'Starting credits',
   assessment_reward: 'Assessment reward',
   learning_unlock: 'Learning unlock',
-  admin_adjustment: 'Credit adjustment',
+  admin_adjustment: 'Admin credit adjustment',
 };
 const idOf = (value) => value?.toString();
 const validRef = (id) => typeof id === 'string' && /^[a-f\d]{24}$/i.test(id);
@@ -25,7 +35,7 @@ exports.getMyCreditHistory = async (req, res) => {
     const rows = await CreditTransaction.find({
       $or: [{ fromUser: viewerId }, { toUser: viewerId }],
     })
-      .select('_id type amount fromUser toUser session assessment resource module unlock createdAt')
+      .select('_id type amount fromUser toUser session assessment resource module unlock adjustmentReason createdAt')
       .sort({ createdAt: -1, _id: -1 })
       .skip((page - 1) * limit)
       .limit(limit + 1)
@@ -91,6 +101,7 @@ exports.getMyCreditHistory = async (req, res) => {
       } : null;
       let description = null;
       if (tx.type === 'initial_grant') description = 'Acadova welcome credit grant';
+      else if (tx.type === 'admin_adjustment') description = tx.adjustmentReason || 'Credit correction';
       else if (tx.type === 'assessment_reward') {
         description = assessmentById.get(idOf(tx.assessment)) || 'Approved assessment';
       }

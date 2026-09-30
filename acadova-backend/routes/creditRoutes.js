@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const { authenticateToken, requireRole } = require('../middleware/authMiddleware');
-const { getMyCreditHistory } = require('../controllers/creditController');
+const { getMyCreditHistory, getCurrentCreditRules } = require('../controllers/creditController');
 
 const historyQuery = (req, res, next) => {
   if (Object.keys(req.query).some((key) => !['page', 'limit'].includes(key))) {
@@ -22,5 +22,7 @@ const historyQuery = (req, res, next) => {
 router.use(authenticateToken, requireRole('student'));
 
 router.get('/mine', historyQuery, getMyCreditHistory);
+router.get('/rules', (req, res, next) => Object.keys(req.query).length
+  ? res.status(400).json({ success: false, message: 'Unexpected query field.' }) : next(), getCurrentCreditRules);
 
 module.exports = router;

@@ -7,7 +7,7 @@ const CreditTransaction = require('../models/CreditTransaction');
 const Rating = require('../models/Rating');
 const { isSessionRatingEligible, matchesPayment } = require('../utils/sessionLifecycleCompatibility');
 const { transferSessionCredits } = require('../services/sessionSettlement');
-const { sessionCreditCost } = require('../config/creditRules');
+const { getEffectiveCreditRules } = require('../services/creditRuleService');
 const { isValidObjectId } = require('../middleware/validation');
 
 const ALLOWED_TRANSITIONS = {
@@ -98,8 +98,9 @@ exports.createSession = async (req, res) => {
     }
 
     // Legacy clients may still submit creditAmount, but it never sets the price.
-    if (Number.isFinite(req.user.credits) && req.user.credits < sessionCreditCost) {
-      return res.status(400).json({ success: false, message: 'You need 20 credits to request a tutoring session.' });
+    const { tutoringSessionCost } = await getEffectiveCreditRules();
+    if (Number.isFinite(req.user.credits) && req.user.credits < tutoringSessionCost) {
+      return res.status(400).json({ success: false, message: `You need ${tutoringSessionCost} credits to request a tutoring session.` });
     }
     if (sameUser(tutorId, req.user.id)) {
       return res.status(400).json({ success: false, message: 'You cannot request a session with yourself.' });
@@ -117,7 +118,7 @@ exports.createSession = async (req, res) => {
       scheduledAt: scheduledDate,
       meetingMethod,
       requestMessage: cleanMessage,
-      creditAmount: sessionCreditCost,
+      creditAmount: tutoringSessionCost,
     });
     await session.populate(SESSION_POPULATE);
     res.status(201).json({ success: true, message: 'Session requested.', data: session });

@@ -6,6 +6,7 @@ const jwt = require('jsonwebtoken');
 const Assessment = require('../models/Assessment');
 const AssessmentAttempt = require('../models/AssessmentAttempt');
 const CreditTransaction = require('../models/CreditTransaction');
+const CreditConfig = require('../models/CreditConfig');
 const User = require('../models/User');
 
 const student = '507f1f77bcf86cd799439011';
@@ -49,9 +50,14 @@ test('approved assessment grading, access, one-time reward, and rollback', async
     attemptCreate: AssessmentAttempt.create, attemptFindOne: AssessmentAttempt.findOne,
     userFindById: User.findById, userUpdate: User.findOneAndUpdate,
     transactionCreate: CreditTransaction.create, startSession: mongoose.startSession,
+    configFindById: CreditConfig.findById,
   };
   process.env.JWT_SECRET = 'assessment-test-secret';
   process.env.NODE_ENV = 'test';
+  let configuredReward = 20;
+  CreditConfig.findById = () => ({ session() { return this; }, lean: async () => ({
+    startingCreditGrant: 100, tutoringSessionCost: 20, assessmentReward: configuredReward, version: 1,
+  }) });
   let assessment = draft();
   let accounts = new Map([[student, { credits: 100, claims: [] }], [other, { credits: 100, claims: [] }]]);
   let attempts = [];
@@ -190,6 +196,8 @@ test('approved assessment grading, access, one-time reward, and rollback', async
       assessment: String(transactions[0].assessment) },
     { type: 'assessment_reward', amount: 20, toUser: student, fromUser: undefined,
       assessment: assessmentId });
+    configuredReward = 30;
+    assert.equal((await call(`/assessments/attempts/${result.body.data.id}`, student)).body.data.creditsAwarded, 20);
     assert.equal((await call(`/assessments/attempts/${result.body.data.id}`, other)).status, 404);
     assert.equal((await call(`/assessments/attempts/${result.body.data.id}`, student)).body.data.passed, true);
 
@@ -213,9 +221,11 @@ test('approved assessment grading, access, one-time reward, and rollback', async
       call(`/assessments/${assessmentId}/submit`, other, 'POST', { answers: [0, 1, 2] }),
       call(`/assessments/${assessmentId}/submit`, other, 'POST', { answers: [0, 1, 2] }),
     ]);
-    assert.deepEqual(firstPassRace.map((item) => item.body.data.creditsAwarded).sort((a, b) => a - b), [0, 20]);
-    assert.equal(accounts.get(other).credits, 120);
+    assert.deepEqual(firstPassRace.map((item) => item.body.data.creditsAwarded).sort((a, b) => a - b), [0, 30]);
+    assert.equal(accounts.get(other).credits, 130);
     assert.equal(transactions.length, 2);
+    assert.equal(transactions[0].amount, 20);
+    assert.equal(transactions[1].amount, 30);
 
     const originalIndexes = CreditTransaction.collection.indexes;
     process.env.NODE_ENV = 'production';
@@ -238,6 +248,7 @@ test('approved assessment grading, access, one-time reward, and rollback', async
     User.findOneAndUpdate = original.userUpdate;
     CreditTransaction.create = original.transactionCreate;
     mongoose.startSession = original.startSession;
+    CreditConfig.findById = original.configFindById;
     if (oldSecret === undefined) delete process.env.JWT_SECRET;
     else process.env.JWT_SECRET = oldSecret;
     if (oldEnv === undefined) delete process.env.NODE_ENV;

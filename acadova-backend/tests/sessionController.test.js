@@ -5,6 +5,7 @@ const Session = require('../models/Session');
 const SessionMessage = require('../models/SessionMessage');
 const User = require('../models/User');
 const CreditTransaction = require('../models/CreditTransaction');
+const CreditConfig = require('../models/CreditConfig');
 const Rating = require('../models/Rating');
 const controller = require('../controllers/sessionController');
 const ratingController = require('../controllers/ratingController');
@@ -27,7 +28,10 @@ const originals = {
   ratingAggregate: Rating.aggregate,
   userFindByIdAndUpdate: User.findByIdAndUpdate,
   startSession: mongoose.startSession,
+  configFindById: CreditConfig.findById,
 };
+
+CreditConfig.findById = () => ({ lean: async () => null });
 
 test.afterEach(() => {
   Session.findById = originals.sessionFindById;
@@ -47,7 +51,10 @@ test.afterEach(() => {
   Rating.aggregate = originals.ratingAggregate;
   User.findByIdAndUpdate = originals.userFindByIdAndUpdate;
   mongoose.startSession = originals.startSession;
+  CreditConfig.findById = () => ({ lean: async () => null });
 });
+
+test.after(() => { CreditConfig.findById = originals.configFindById; });
 
 const response = () => ({
   statusCode: 200,
@@ -137,6 +144,8 @@ test('acceptance changes status without creating a credit transaction', async ()
 
 test('new Session price is server-owned even when a legacy client submits another amount', async () => {
   const fixture = sessionDoc();
+  CreditConfig.findById = () => ({ lean: async () => ({ startingCreditGrant: 120,
+    tutoringSessionCost: 25, assessmentReward: 30, version: 1 }) });
   User.findById = () => ({ select: async () => ({ _id: fixture.tutor, role: 'student' }) });
   const stored = [];
   Session.create = async (data) => { stored.push(data); return { ...data, async populate() {} }; };
@@ -148,10 +157,10 @@ test('new Session price is server-owned even when a legacy client submits anothe
       ...(offered === undefined ? {} : { creditAmount: offered }),
     } }, res);
     assert.equal(res.statusCode, 201);
-    assert.equal(stored.at(-1).creditAmount, 20);
+    assert.equal(stored.at(-1).creditAmount, 25);
   }
   const insufficient = response();
-  await controller.createSession({ user: { id: fixture.learner, credits: 19 }, body: {
+  await controller.createSession({ user: { id: fixture.learner, credits: 24 }, body: {
     tutorId: fixture.tutor, subject: 'Java', scheduledAt: '2026-09-25T06:30:00.000Z',
     meetingMethod: 'online', requestMessage: 'Help with arrays.',
   } }, insufficient);

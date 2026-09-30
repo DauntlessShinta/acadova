@@ -1,2 +1,2 @@
-// Server-owned academic credit rules; Admin configuration is a later phase.
+// Historical defaults. Current rules are resolved by creditRuleService.
 module.exports = Object.freeze({ startingCredits: 100, sessionCreditCost: 20, assessmentReward: 20 });

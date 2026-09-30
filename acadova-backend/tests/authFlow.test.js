@@ -7,6 +7,7 @@ const bcrypt = require('bcryptjs');
 const mongoose = require('mongoose');
 const User = require('../models/User');
 const CreditTransaction = require('../models/CreditTransaction');
+const CreditConfig = require('../models/CreditConfig');
 const authController = require('../controllers/authController');
 const emailService = require('../services/emailService');
 const { hashVerificationToken } = require('../utils/verificationTokens');
@@ -20,6 +21,7 @@ test('email verification account flow without MongoDB or Gmail', async (t) => {
     updateOne: User.updateOne, send: emailService.sendVerificationEmail,
     startSession: mongoose.startSession, transactionCreate: CreditTransaction.create,
     jwtSecret: process.env.JWT_SECRET, log: console.info,
+    configFindById: CreditConfig.findById,
   };
   process.env.JWT_SECRET = randomBytes(32).toString('hex');
   const accounts = new Map();
@@ -28,6 +30,7 @@ test('email verification account flow without MongoDB or Gmail', async (t) => {
   const logs = [];
   let deliveryFails = false;
   let grantFails = false;
+  let configuredRules = null;
   console.info = (line) => logs.push(line);
 
   const matches = (user, query) => {
@@ -49,7 +52,9 @@ test('email verification account flow without MongoDB or Gmail', async (t) => {
     accounts.set(user.email, user);
     return user;
   };
-  User.findOne = ({ email }) => ({ lean: async () => accounts.get(email) || null });
+  CreditConfig.findById = () => ({ lean: async () => configuredRules });
+  User.findOne = (query) => ({ select() { return this; }, session() { return this; },
+    lean: async () => [...accounts.values()].find((user) => matches(user, query)) || null });
   User.findById = (id) => ({ select: () => ({ lean: async () => [...accounts.values()].find((user) => String(user._id) === String(id)) || null }) });
   User.findOneAndUpdate = async (query, update) => {
     const user = [...accounts.values()].find((account) => matches(account, query));
@@ -135,6 +140,7 @@ test('email verification account flow without MongoDB or Gmail', async (t) => {
       assert.equal(user.emailVerified, false);
       assert.equal(user.credits, 0);
       assert.equal(user.openingGrantEligible, true);
+      assert.equal(user.openingGrantAmount, 100);
       assert.equal(user.skillsToTeach.length, 0);
       assert.equal(sent.length, 1);
       assert.equal(sent[0].recipient, email);
@@ -239,6 +245,23 @@ test('email verification account flow without MongoDB or Gmail', async (t) => {
       assert.deepEqual(outcomes.sort(), [200, 400]);
       assert.equal(account.credits, 100);
       assert.equal(grants.length, before + 1);
+    });
+    await t.test('new registrations snapshot a changed grant while earlier pending users keep 100', async () => {
+      const older = await createGrantCandidate('older-pending@example.test');
+      configuredRules = { startingCreditGrant: 120, tutoringSessionCost: 25,
+        assessmentReward: 30, version: 1 };
+      const registered = await call('/auth/register', { name: 'New Student',
+        email: 'new-grant@example.test', password });
+      assert.equal(registered.status, 201);
+      const newer = accounts.get('new-grant@example.test');
+      assert.equal(newer.openingGrantAmount, 120);
+      assert.equal(await verifyDirect(older.token), 200);
+      assert.equal(older.account.credits, 100);
+      assert.equal(await verifyDirect(sent.at(-1).token), 200);
+      assert.equal(newer.credits, 120);
+      assert.equal(grants.at(-1).amount, 120);
+      assert.equal(accounts.get(email).credits, 100);
+      configuredRules = null;
     });
     await t.test('pre-existing and staff accounts verify without an opening grant', async () => {
       for (const [role, startingBalance, eligible] of [
@@ -345,6 +368,7 @@ test('email verification account flow without MongoDB or Gmail', async (t) => {
     CreditTransaction.create = originals.transactionCreate;
     emailService.sendVerificationEmail = originals.send;
     console.info = originals.log;
+    CreditConfig.findById = originals.configFindById;
     if (originals.jwtSecret === undefined) delete process.env.JWT_SECRET;
     else process.env.JWT_SECRET = originals.jwtSecret;
   }

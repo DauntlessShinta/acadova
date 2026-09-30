@@ -182,6 +182,25 @@ const learningPrice = (value) => {
   return value;
 };
 
+const boundedCredit = (value) => {
+  if (!Number.isSafeInteger(value) || value < 1 || value > 1000) {
+    throw new InvalidInput('Credit value must be a whole number from 1 to 1000.');
+  }
+  return value;
+};
+
+const creditRuleVersion = (value) => {
+  if (!Number.isSafeInteger(value) || value < 0) throw new InvalidInput('Invalid credit rule version.');
+  return value;
+};
+
+const adjustmentReference = (value) => {
+  if (typeof value !== 'string' || !UUID_REGEX.test(value)) {
+    throw new InvalidInput('A valid adjustment reference is required.');
+  }
+  return value.toLowerCase();
+};
+
 const learningResourceIds = (value) => {
   if (!Array.isArray(value) || value.length < 1 || value.length > 20
     || new Set(value).size !== value.length) throw new InvalidInput('Provide 1 to 20 distinct resources.');
@@ -334,6 +353,19 @@ const schemas = {
     assessment: optional(objectId('assessment id')),
   },
   learningModulePublish: { creditCost: learningPrice },
+  creditRules: {
+    startingCreditGrant: boundedCredit,
+    tutoringSessionCost: boundedCredit,
+    assessmentReward: boundedCredit,
+    expectedVersion: creditRuleVersion,
+  },
+  adminCreditAdjustment: {
+    targetStudentId: objectId('Student id'),
+    direction: oneOf('adjustment direction', ['credit', 'debit']),
+    amount: boundedCredit,
+    reason: requiredText('Adjustment reason', 500, 10),
+    reference: adjustmentReference,
+  },
 };
 
 module.exports = {

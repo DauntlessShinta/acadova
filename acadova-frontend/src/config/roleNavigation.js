@@ -26,6 +26,7 @@ const authenticatedNavigation = {
     { to: '/admin/users', label: 'Users' },
     { to: '/admin/sessions', label: 'Sessions' },
     { to: '/admin/analytics', label: 'Analytics' },
+    { to: '/admin/credits', label: 'Credits' },
     { to: '/admin/moderation', label: 'Moderation' },
     { to: '/admin/assessments', label: 'Assessments' },
     { to: '/admin/learning', label: 'Learning content' },

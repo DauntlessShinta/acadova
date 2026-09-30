@@ -5,6 +5,7 @@ const CreditTransaction = require('../models/CreditTransaction');
 const User = require('../models/User');
 const LearningTopic = require('../models/LearningTopic');
 const { assessmentReward } = require('../config/creditRules');
+const { getEffectiveCreditRules } = require('../services/creditRuleService');
 const { logSecurityEvent } = require('../utils/securityLogger');
 
 const hasRewardIndex = (index) => index.name === 'uniq_assessment_reward_recipient_assessment'
@@ -21,7 +22,7 @@ const publicAssessment = (assessment) => ({
 const resultView = (attempt) => ({
   id: String(attempt._id), assessmentId: String(attempt.assessment),
   score: attempt.score, passed: attempt.passed, rewardIssued: attempt.rewardIssued,
-  creditsAwarded: attempt.rewardIssued ? assessmentReward : 0,
+  creditsAwarded: attempt.rewardIssued ? (attempt.rewardAmount ?? assessmentReward) : 0,
   submittedAt: attempt.submittedAt,
 });
 
@@ -82,16 +83,18 @@ exports.submitAssessment = async (req, res) => {
     dbSession = await mongoose.startSession();
     let result;
     await dbSession.withTransaction(async () => {
+      const rules = await getEffectiveCreditRules(dbSession);
       const claimed = await User.findOneAndUpdate(
         { _id: req.user.id, role: 'student', rewardedAssessments: { $ne: assessment._id } },
-        { $addToSet: { rewardedAssessments: assessment._id }, $inc: { credits: assessmentReward } },
+        { $addToSet: { rewardedAssessments: assessment._id }, $inc: { credits: rules.assessmentReward } },
         { session: dbSession, new: true },
       );
-      const [attempt] = await AssessmentAttempt.create([{ ...baseAttempt, rewardIssued: Boolean(claimed) }],
+      const [attempt] = await AssessmentAttempt.create([{ ...baseAttempt, rewardIssued: Boolean(claimed),
+        ...(claimed ? { rewardAmount: rules.assessmentReward } : {}) }],
         { session: dbSession });
       if (claimed) {
         await CreditTransaction.create([{
-          type: 'assessment_reward', toUser: req.user.id, amount: assessmentReward,
+          type: 'assessment_reward', toUser: req.user.id, amount: rules.assessmentReward,
           assessment: assessment._id, result: attempt._id,
         }], { session: dbSession });
       }

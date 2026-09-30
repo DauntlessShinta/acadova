@@ -33,6 +33,7 @@ import AdminOverviewPage from './pages/admin/AdminOverviewPage';
 import AdminUsersPage from './pages/admin/AdminUsersPage';
 import AdminSessionsPage from './pages/admin/AdminSessionsPage';
 import AdminAnalyticsPage from './pages/admin/AdminAnalyticsPage';
+import AdminCreditsPage from './pages/admin/AdminCreditsPage';
 import AdminModerationPage from './pages/admin/AdminModerationPage';
 import ModeratorOverviewPage from './pages/moderator/ModeratorOverviewPage';
 import ModeratorReviewsPage from './pages/moderator/ModeratorReviewsPage';
@@ -91,6 +92,7 @@ export const App = () => {
         <Route path="users" element={<AdminUsersPage />} />
         <Route path="sessions" element={<AdminSessionsPage />} />
         <Route path="analytics" element={<AdminAnalyticsPage />} />
+        <Route path="credits" element={<AdminCreditsPage />} />
         <Route path="moderation" element={<AdminModerationPage />} />
         <Route path="assessments" element={<ModeratorAssessmentsPage />} />
         <Route path="learning" element={<ModeratorLearningPage />} />

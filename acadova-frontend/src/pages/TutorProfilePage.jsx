@@ -3,6 +3,7 @@ import { useParams, Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import userService from '../services/userService';
 import sessionService from '../services/sessionService';
+import creditService from '../services/creditService';
 import StarRating from '../components/common/StarRating';
 import Alert from '../components/common/Alert';
 import LoadingSpinner from '../components/common/LoadingSpinner';
@@ -27,6 +28,7 @@ export const TutorProfilePage = () => {
   const [requestMessage, setRequestMessage] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [fieldErrors, setFieldErrors] = useState({});
+  const [sessionCost, setSessionCost] = useState(null);
 
   useEffect(() => {
     const fetchTutor = async () => {
@@ -49,6 +51,8 @@ export const TutorProfilePage = () => {
 
     if (id) {
       fetchTutor();
+      creditService.getCurrentRules().then((response) => setSessionCost(response.data.tutoringSessionCost))
+        .catch(() => setSessionCost(null));
     }
   }, [id]);
 
@@ -75,8 +79,8 @@ export const TutorProfilePage = () => {
       return;
     }
 
-    if (credits < 20) {
-      setError(`Insufficient credits. You have ${credits} credits, but this session requires 20.`);
+    if (sessionCost !== null && credits < sessionCost) {
+      setError(`Insufficient credits. You have ${credits} credits, but this session requires ${sessionCost}.`);
       return;
     }
 
@@ -245,7 +249,7 @@ export const TutorProfilePage = () => {
             </div>
 
             <div className="form-group">
-              <span className="form-label">Tutoring Session Cost: 20 credits</span>
+              <span className="form-label">Tutoring Session Cost: {sessionCost ?? 'Unavailable'} credits</span>
             </div>
 
             <div style={{

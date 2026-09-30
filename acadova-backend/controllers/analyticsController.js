@@ -73,16 +73,34 @@ exports.getRatingAnalytics = async (req, res) => {
 // Supports the Credit Transactions variable.
 exports.getCreditAnalytics = async (req, res) => {
   try {
-    const [summary] = await CreditTransaction.aggregate([
-      { $group: { _id: null, totalTransactions: { $sum: 1 }, totalCreditsMoved: { $sum: '$amount' } } },
+    const rows = await CreditTransaction.aggregate([
+      { $group: { _id: { type: '$type', direction: '$adjustmentDirection' },
+        count: { $sum: 1 }, amount: { $sum: '$amount' } } },
     ]);
+    const breakdown = {
+      sessionTransferred: 0, initialGranted: 0, assessmentAwarded: 0,
+      learningSpent: 0, adminAdded: 0, adminRemoved: 0,
+    };
+    let totalTransactions = 0;
+    let totalCreditsMoved = 0;
+    for (const row of rows) {
+      totalTransactions += row.count;
+      totalCreditsMoved += row.amount;
+      if (row._id.type === 'session_payment') breakdown.sessionTransferred += row.amount;
+      if (row._id.type === 'initial_grant') breakdown.initialGranted += row.amount;
+      if (row._id.type === 'assessment_reward') breakdown.assessmentAwarded += row.amount;
+      if (row._id.type === 'learning_unlock') breakdown.learningSpent += row.amount;
+      if (row._id.type === 'admin_adjustment' && row._id.direction === 'credit') breakdown.adminAdded += row.amount;
+      if (row._id.type === 'admin_adjustment' && row._id.direction === 'debit') breakdown.adminRemoved += row.amount;
+    }
 
     res.json({
       success: true,
       message: 'Credit transaction analytics',
       data: {
-        totalTransactions: summary ? summary.totalTransactions : 0,
-        totalCreditsMoved: summary ? summary.totalCreditsMoved : 0,
+        totalTransactions,
+        totalCreditsMoved,
+        breakdown,
       },
     });
   } catch (error) {

@@ -7,6 +7,7 @@ const AssessmentAttemptSchema = new mongoose.Schema({
   score: { type: Number, required: true, min: 0, max: 100 },
   passed: { type: Boolean, required: true },
   rewardIssued: { type: Boolean, required: true, default: false },
+  rewardAmount: { type: Number, min: 1, max: 1000 },
   submittedAt: { type: Date, default: Date.now },
 }, { timestamps: true, autoIndex: process.env.NODE_ENV !== 'production' });
 

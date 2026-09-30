@@ -16,6 +16,8 @@ const UserSchema = new mongoose.Schema({
   emailVerified: { type: Boolean, default: false },
   // Explicitly set only by new registrations; historical accounts are never backfilled.
   openingGrantEligible: { type: Boolean, default: false, select: false },
+  // Registration-time snapshot; older eligible registrations without it retain the original 100.
+  openingGrantAmount: { type: Number, select: false, min: 1, max: 1000 },
   emailVerifiedAt: { type: Date },
   emailVerificationTokenHash: { type: String, select: false },
   emailVerificationExpires: { type: Date, select: false },

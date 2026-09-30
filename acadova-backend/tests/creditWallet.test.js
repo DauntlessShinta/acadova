@@ -194,6 +194,21 @@ test('Student wallet history is private, event-aware, bounded, and read-only', a
     assert.equal(result.body.data.find((item) => item.id === 'module-unlock').label, 'Learning module');
 
     rows = [
+      { _id: 'admin-credit', type: 'admin_adjustment', toUser: learner,
+        adjustmentReason: 'Verified missed reward', amount: 15, createdAt: date('27') },
+      { _id: 'admin-debit', type: 'admin_adjustment', fromUser: learner,
+        adjustmentReason: 'Reversed wrong grant', amount: 5, createdAt: date('28') },
+    ];
+    result = await call('/mine', learner);
+    assert.equal(result.body.balance, 80);
+    assert.deepEqual(result.body.summary, { recordedEarned: 15, recordedSpent: 5 });
+    assert.equal(result.body.data.find((item) => item.id === 'admin-credit').signedAmount, 15);
+    assert.equal(result.body.data.find((item) => item.id === 'admin-debit').signedAmount, -5);
+    assert.equal(result.body.data[0].label, 'Admin credit adjustment');
+    assert.equal(result.body.data.find((item) => item.id === 'admin-credit').description, 'Verified missed reward');
+    assert.equal((await call('/mine', outsider)).body.data.length, 0);
+
+    rows = [
       { _id: 'mixed-grant', type: 'initial_grant', toUser: learner,
         amount: 100, createdAt: date('21') },
       payment('mixed-old', 2, '22'),

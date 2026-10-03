@@ -1,6 +1,7 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { sendVerificationEmail, verificationUrlFor } = require('../services/emailService');
+const { sendVerificationEmail, sendPasswordResetEmail, verificationUrlFor,
+  passwordResetUrlFor } = require('../services/emailService');
 
 test('verification email uses Brevo HTTPS without exposing credentials', async (t) => {
   const configKeys = ['FRONTEND_URL', 'BREVO_API_KEY', 'MAIL_FROM', 'NODE_ENV'];
@@ -44,6 +45,16 @@ test('verification email uses Brevo HTTPS without exposing credentials', async (
 
   await sendVerificationEmail({ recipient: 'student@example.test', name: 'A <Student>', token: 'sample-token' });
   assert.equal(requests.length, 1);
+  assert.equal(passwordResetUrlFor('sample-token'),
+    'https://acadova.example.test/reset-password?token=sample-token');
+  await sendPasswordResetEmail({ recipient: 'student@example.test',
+    name: 'A <Student>', token: 'sample-token' });
+  assert.equal(requests.length, 2);
+  const resetMail = JSON.parse(requests[1].options.body);
+  assert.equal(resetMail.subject, 'Reset your Acadova password');
+  assert.match(resetMail.textContent, /reset-password\?token=sample-token/);
+  assert.match(resetMail.htmlContent, /A &lt;Student&gt;/);
+  assert.match(resetMail.textContent, /30 minutes/);
   assert.equal(requests[0].url, 'https://api.brevo.com/v3/smtp/email');
   assert.equal(requests[0].options.method, 'POST');
   assert.equal(requests[0].options.headers['Content-Type'], 'application/json');

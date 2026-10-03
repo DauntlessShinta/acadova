@@ -19,7 +19,8 @@ export const AuthProvider = ({ children }) => {
   }, []);
 
   const refreshUser = useCallback(async () => {
-    if (!localStorage.getItem('acadova_token')) {
+    const requestedToken = localStorage.getItem('acadova_token');
+    if (!requestedToken) {
       setUser(null);
       setLoading(false);
       return null;
@@ -27,7 +28,8 @@ export const AuthProvider = ({ children }) => {
 
     try {
       const res = await userService.getMe();
-      if (res && res.success && res.data) {
+      if (requestedToken === localStorage.getItem('acadova_token')
+        && res && res.success && res.data) {
         setUser(res.data);
         localStorage.setItem('acadova_user', JSON.stringify(res.data));
         return res.data;
@@ -35,7 +37,7 @@ export const AuthProvider = ({ children }) => {
     } catch (err) {
       console.warn('Failed to refresh user session:', err.message);
       // If unauthorized, clear
-      if (err.status === 401) {
+      if (err.status === 401 && requestedToken === localStorage.getItem('acadova_token')) {
         logout();
       }
     } finally {
@@ -72,8 +74,7 @@ export const AuthProvider = ({ children }) => {
     };
   }, [refreshUser]);
 
-  const login = async (email, password) => {
-    const res = await authService.login(email, password);
+  const establishSession = useCallback(async (res) => {
     if (res && res.success && res.data) {
       const { token: newToken, user: userData } = res.data;
       localStorage.setItem('acadova_token', newToken);
@@ -83,7 +84,7 @@ export const AuthProvider = ({ children }) => {
       // Asynchronously load full profile (which includes skills arrays, etc.)
       try {
         const fullProfile = await userService.getMe();
-        if (fullProfile?.data) {
+        if (localStorage.getItem('acadova_token') === newToken && fullProfile?.data) {
           setUser(fullProfile.data);
           localStorage.setItem('acadova_user', JSON.stringify(fullProfile.data));
         }
@@ -93,7 +94,11 @@ export const AuthProvider = ({ children }) => {
       return res;
     }
     throw new Error(res?.message || 'Login failed');
-  };
+  }, []);
+  const login = useCallback(async (email, password) =>
+    establishSession(await authService.login(email, password)), [establishSession]);
+  const googleLogin = useCallback(async (credential) =>
+    establishSession(await authService.googleLogin(credential)), [establishSession]);
 
   const register = async (formData) => {
     // Registration creates an unverified account; only login can establish a session.
@@ -111,6 +116,7 @@ export const AuthProvider = ({ children }) => {
     isStudent: user?.role === 'student' || !user?.role,
     credits: user?.credits ?? 0,
     login,
+    googleLogin,
     register,
     logout,
     refreshUser,

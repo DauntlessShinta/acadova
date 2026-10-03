@@ -1,7 +1,8 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import authService from '../services/authService';
 import { verificationResultForError } from '../utils/authForm';
+import { useAuth } from '../context/AuthContext';
 
 const content = {
   loading: ['Verifying your email...', 'Please wait while we check your link.', null, null],
@@ -12,6 +13,8 @@ const content = {
 };
 
 export const VerifyEmailPage = () => {
+  const { isAuthenticated, user, logout } = useAuth();
+  const navigate = useNavigate();
   // The token remains only in component memory and is removed from browser history.
   const [token] = useState(() => new URLSearchParams(window.location.search).get('token'));
   const [result, setResult] = useState(token ? 'loading' : 'invalid');
@@ -42,7 +45,13 @@ export const VerifyEmailPage = () => {
     <span className="auth-form-eyebrow">Email verification</span>
     <h2 ref={headingRef} tabIndex={-1}>{title}</h2>
     <p className="auth-form-intro" role="status" aria-live="polite">{description}</p>
-    {route && <Link className="btn btn-primary auth-submit" to={route}>{action}</Link>}
+    {result === 'success' && isAuthenticated && <p role="status">
+      This browser is currently signed in as {user?.name}. To use the newly verified account, log out first.
+    </p>}
+    {route && (result === 'success' && isAuthenticated
+      ? <button type="button" className="btn btn-primary auth-submit"
+        onClick={() => { logout(); navigate('/login', { replace: true }); }}>Log out and go to login</button>
+      : <Link className="btn btn-primary auth-submit" to={route}>{action}</Link>)}
     {result === 'unavailable' && <button type="button" className="btn btn-primary auth-submit" onClick={() => { setResult('loading'); setRetry((count) => count + 1); }}>Try verification again</button>}
   </>;
 };

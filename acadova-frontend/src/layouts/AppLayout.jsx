@@ -5,6 +5,7 @@ import Navbar from '../components/common/Navbar';
 import Footer from '../components/common/Footer';
 import LoadingSpinner from '../components/common/LoadingSpinner';
 import { getRoleHomeRoute } from '../config/roleNavigation';
+import { needsProfileSetup } from '../utils/profileSetup';
 
 export const AppLayout = ({ allowedRoles = null }) => {
   const { user, isAuthenticated, loading } = useAuth();
@@ -23,6 +24,9 @@ export const AppLayout = ({ allowedRoles = null }) => {
 
   if (allowedRoles && !allowedRoles.includes(user?.role)) {
     return <Navigate to={getRoleHomeRoute(user?.role)} replace />;
+  }
+  if (needsProfileSetup(user) && window.location.pathname !== '/onboarding') {
+    return <Navigate to="/onboarding" replace />;
   }
 
   return (

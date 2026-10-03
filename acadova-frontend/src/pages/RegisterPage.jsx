@@ -4,6 +4,7 @@ import { ArrowRight, Check, Eye, EyeOff } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import Alert from '../components/common/Alert';
 import { passwordRequirements, pendingRegistrationNavigation, registrationErrorMessage, validateRegistration } from '../utils/authForm';
+import GoogleSignInButton from '../components/auth/GoogleSignInButton';
 
 export const RegisterPage = () => {
   const { register } = useAuth();
@@ -89,6 +90,7 @@ export const RegisterPage = () => {
       </div>
       <button type="submit" className="btn btn-primary auth-submit" disabled={submitting}>{submitting ? 'Creating account...' : <>Create Account <ArrowRight size={17} /></>}</button>
     </form>
+    <GoogleSignInButton />
     <div className="auth-switch"><span>Already have an account?</span><Link to="/login" className="btn btn-secondary">Log in</Link></div>
   </>;
 };

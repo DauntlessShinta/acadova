@@ -11,6 +11,9 @@ export const authService = {
 
   verifyEmail: async (token) => api.post('/api/auth/verify-email', { token }),
   resendVerification: async (email) => api.post('/api/auth/resend-verification', { email }),
+  forgotPassword: async (email) => api.post('/api/auth/forgot-password', { email }),
+  resetPassword: async (token, password) => api.post('/api/auth/reset-password', { token, password }),
+  googleLogin: async (credential) => api.post('/api/auth/google', { credential }),
 
   getHealth: async () => {
     return api.get('/api/health');

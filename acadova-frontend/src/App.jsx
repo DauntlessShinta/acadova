@@ -16,6 +16,9 @@ import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
 import VerificationPendingPage from './pages/VerificationPendingPage';
 import VerifyEmailPage from './pages/VerifyEmailPage';
+import ForgotPasswordPage from './pages/ForgotPasswordPage';
+import ResetPasswordPage from './pages/ResetPasswordPage';
+import OnboardingPage from './pages/OnboardingPage';
 
 // Authenticated Pages
 import DashboardPage from './pages/DashboardPage';
@@ -63,6 +66,8 @@ export const App = () => {
         <Route path="/register" element={<GuestOnly><RegisterPage /></GuestOnly>} />
         <Route path="/verify-email/pending" element={<VerificationPendingPage />} />
         <Route path="/verify-email" element={<VerifyEmailPage />} />
+        <Route path="/forgot-password" element={<GuestOnly><ForgotPasswordPage /></GuestOnly>} />
+        <Route path="/reset-password" element={<ResetPasswordPage />} />
       </Route>
 
       {/* Student peer-learning routes */}
@@ -76,6 +81,7 @@ export const App = () => {
         <Route path="/assessments" element={<AssessmentsPage />} />
         <Route path="/learning" element={<LearningPage />} />
         <Route path="/profile" element={<ProfilePage />} />
+        <Route path="/onboarding" element={<OnboardingPage />} />
       </Route>
 
       {/* Protected Moderator Routes */}

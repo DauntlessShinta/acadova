@@ -1,4 +1,4 @@
-function verificationUrlFor(token) {
+function frontendUrlFor(path, token) {
   const configuredUrl = typeof process.env.FRONTEND_URL === 'string'
     ? process.env.FRONTEND_URL.trim()
     : '';
@@ -19,7 +19,7 @@ function verificationUrlFor(token) {
     || ['localhost', '127.0.0.1'].includes(frontend.hostname))) {
     throw new Error('Invalid production frontend URL for verification email');
   }
-  frontend.pathname = '/verify-email';
+  frontend.pathname = path;
   frontend.search = '';
   frontend.hash = '';
   frontend.searchParams.set('token', token);
@@ -30,7 +30,7 @@ const escapeHtml = (value) => value.replace(/[&<>"']/g, (char) => ({
   '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
 })[char]);
 
-async function sendVerificationEmail({ recipient, name, token }) {
+async function sendEmail({ recipient, name, subject, plain, html }) {
   const { BREVO_API_KEY, MAIL_FROM } = process.env;
   const senderMatch = typeof MAIL_FROM === 'string'
     ? /^(?:(.+?)\s*<([^<>\s]+@[^<>\s]+)>|([^<>\s]+@[^<>\s]+))$/.exec(MAIL_FROM.trim())
@@ -41,12 +41,6 @@ async function sendVerificationEmail({ recipient, name, token }) {
   const sender = senderMatch[2]
     ? { email: senderMatch[2], name: senderMatch[1].trim() }
     : { email: senderMatch[3] };
-  const verificationUrl = verificationUrlFor(token);
-  const safeName = escapeHtml(name);
-  const safeUrl = escapeHtml(verificationUrl);
-  const plain = `Acadova\nVerify your email address\n\nHi ${name},\n\nThanks for creating an Acadova account. Please verify your email address to continue:\n${verificationUrl}\n\nThis link expires in 45 minutes. If you did not create this account, ignore this email.`;
-  const html = `<h1>Acadova</h1><h2>Verify your email address</h2><p>Hi ${safeName},</p><p>Thanks for creating an Acadova account. Please verify your email address to continue.</p><p><a href="${safeUrl}">Verify Email</a></p><p>This link expires in 45 minutes. If you did not create this account, ignore this email.</p>`;
-
   try {
     const response = await fetch('https://api.brevo.com/v3/smtp/email', {
       method: 'POST',
@@ -58,7 +52,7 @@ async function sendVerificationEmail({ recipient, name, token }) {
       body: JSON.stringify({
         sender,
         to: [{ email: recipient, name }],
-        subject: 'Verify your Acadova email address',
+        subject,
         textContent: plain,
         htmlContent: html,
       }),
@@ -71,4 +65,29 @@ async function sendVerificationEmail({ recipient, name, token }) {
   }
 }
 
-module.exports = { sendVerificationEmail, verificationUrlFor };
+const verificationUrlFor = (token) => frontendUrlFor('/verify-email', token);
+const passwordResetUrlFor = (token) => frontendUrlFor('/reset-password', token);
+
+async function sendVerificationEmail({ recipient, name, token }) {
+  const url = verificationUrlFor(token);
+  const plain = 'Acadova\nVerify your email address\n\nHi ' + name
+    + ',\n\nThanks for creating an Acadova account. Please verify your email address to continue:\n'
+    + url + '\n\nThis link expires in 45 minutes. If you did not create this account, ignore this email.';
+  const html = '<h1>Acadova</h1><h2>Verify your email address</h2><p>Hi ' + escapeHtml(name)
+    + ',</p><p>Thanks for creating an Acadova account. Please verify your email address to continue.</p><p><a href="'
+    + escapeHtml(url) + '">Verify Email</a></p><p>This link expires in 45 minutes. If you did not create this account, ignore this email.</p>';
+  await sendEmail({ recipient, name, subject: 'Verify your Acadova email address', plain, html });
+}
+
+async function sendPasswordResetEmail({ recipient, name, token }) {
+  const url = passwordResetUrlFor(token);
+  const plain = 'Acadova\nReset your password\n\nHi ' + name
+    + ',\n\nUse this link to choose a new Acadova password:\n' + url
+    + '\n\nThis link expires in 30 minutes. If you did not request this, ignore this email.';
+  const html = '<h1>Acadova</h1><h2>Reset your password</h2><p>Hi ' + escapeHtml(name)
+    + ',</p><p>Use this link to choose a new Acadova password.</p><p><a href="'
+    + escapeHtml(url) + '">Reset Password</a></p><p>This link expires in 30 minutes. If you did not request this, ignore this email.</p>';
+  await sendEmail({ recipient, name, subject: 'Reset your Acadova password', plain, html });
+}
+
+module.exports = { sendVerificationEmail, sendPasswordResetEmail, verificationUrlFor, passwordResetUrlFor };

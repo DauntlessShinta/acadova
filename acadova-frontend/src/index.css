@@ -3072,3 +3072,12 @@ textarea:focus-visible {
   .site-nav-actions { display: flex; }
   .site-nav-actions > :not(.notification-center) { display: none; }
 }
+.auth-help-link { text-align: right; margin: -4px 0 14px; font-size: 0.9rem; }
+.auth-google { margin-top: 18px; text-align: center; }
+.auth-google > div:nth-child(2) { display: flex; justify-content: center; }
+.auth-google-working { opacity: 0.6; pointer-events: none; }
+.auth-divider { display: flex; align-items: center; gap: 12px; color: var(--ink-500); margin-bottom: 14px; }
+.auth-divider::before, .auth-divider::after { content: ''; height: 1px; flex: 1; background: var(--border-subtle); }
+.onboarding { padding: 32px 0; }
+.onboarding .card { margin-top: 20px; }
+.onboarding-actions { display: flex; justify-content: flex-end; gap: 12px; margin-top: 16px; }

@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { register, login, verifyEmail, resendVerification } = require('../controllers/authController');
+const { register, login, verifyEmail, resendVerification, forgotPassword, resetPassword, googleLogin } = require('../controllers/authController');
 const { createRateLimiter } = require('../middleware/rateLimiter');
 const { validateBody, validateQuery, schemas } = require('../middleware/validation');
 
@@ -19,5 +19,10 @@ router.post('/verify-email', authLimiter, validateBody(schemas.verifyEmail), ver
 const resendLimiter = createRateLimiter({ windowMs: 15 * 60 * 1000, max: 5,
   message: 'Too many requests, please try again later' });
 router.post('/resend-verification', resendLimiter, validateBody(schemas.resendVerification), resendVerification);
+const recoveryLimiter = createRateLimiter({ windowMs: 15 * 60 * 1000, max: 5,
+  message: 'Too many requests, please try again later' });
+router.post('/forgot-password', recoveryLimiter, validateBody(schemas.forgotPassword), forgotPassword);
+router.post('/reset-password', recoveryLimiter, validateBody(schemas.resetPassword), resetPassword);
+router.post('/google', authLimiter, validateBody(schemas.googleLogin), googleLogin);
 
 module.exports = router;

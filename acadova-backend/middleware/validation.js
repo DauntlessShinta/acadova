@@ -304,6 +304,9 @@ const schemas = {
   login: { email: emailAddress, password: loginPassword },
   verifyEmail: { token: verificationToken },
   resendVerification: { email: emailAddress },
+  forgotPassword: { email: emailAddress },
+  resetPassword: { token: verificationToken, password: registrationPassword },
+  googleLogin: { credential: requiredText('Google credential', 10000, 20) },
   profile: {
     name: optional(requiredText('Name', 80, 2)),
     skillsToTeach: optional(skills('Teaching skills')),

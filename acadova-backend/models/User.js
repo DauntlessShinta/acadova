@@ -30,9 +30,13 @@ const UserSchema = new mongoose.Schema({
   emailVerificationTokenHash: { type: String, select: false },
   emailVerificationExpires: { type: Date, select: false },
   emailVerificationSentAt: { type: Date, select: false },
-}, { timestamps: true });
+  passwordResetTokenHash: { type: String, select: false },
+  passwordResetExpires: { type: Date, select: false },
+  googleSub: { type: String, select: false },
+}, { timestamps: true, autoIndex: process.env.NODE_ENV !== 'production' });
 
 UserSchema.index({ skillsToTeach: 1, rating: -1 });
 UserSchema.index({ emailVerificationTokenHash: 1 }, { unique: true, sparse: true });
+UserSchema.index({ googleSub: 1 }, { name: 'uniq_user_google_sub', unique: true, sparse: true });
 
 module.exports = mongoose.model('User', UserSchema);

@@ -39,8 +39,8 @@ export async function request(endpoint, options = {}) {
 
     if (!response.ok) {
       if (response.status === 401) {
-        // Exclude /api/auth/login and /api/auth/register from global logout intercept
-        const isAuthRoute = endpoint.includes('/auth/login') || endpoint.includes('/auth/register');
+        // Public auth failures must not clear a separate, legitimate browser session.
+        const isAuthRoute = endpoint.startsWith('/api/auth/');
         if (!isAuthRoute && onUnauthorizedCallback) {
           onUnauthorizedCallback();
         }
@@ -72,4 +72,3 @@ export const api = {
 };
 
 export default api;
-

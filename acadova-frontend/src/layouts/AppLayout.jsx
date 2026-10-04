@@ -1,5 +1,5 @@
 import React from 'react';
-import { Outlet, Navigate } from 'react-router-dom';
+import { Outlet, Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import Navbar from '../components/common/Navbar';
 import Footer from '../components/common/Footer';
@@ -9,6 +9,7 @@ import { needsProfileSetup } from '../utils/profileSetup';
 
 export const AppLayout = ({ allowedRoles = null }) => {
   const { user, isAuthenticated, loading } = useAuth();
+  const { pathname } = useLocation();
 
   if (loading) {
     return (
@@ -25,7 +26,7 @@ export const AppLayout = ({ allowedRoles = null }) => {
   if (allowedRoles && !allowedRoles.includes(user?.role)) {
     return <Navigate to={getRoleHomeRoute(user?.role)} replace />;
   }
-  if (needsProfileSetup(user) && window.location.pathname !== '/onboarding') {
+  if (needsProfileSetup(user) && pathname.replace(/\/$/, '') !== '/onboarding') {
     return <Navigate to="/onboarding" replace />;
   }
 

@@ -4,6 +4,8 @@ const UserSchema = new mongoose.Schema({
   name: { type: String, required: true, trim: true },
   email: { type: String, required: true, unique: true, lowercase: true, trim: true },
   password: { type: String, required: true, minlength: 6 },
+  // Absent on legacy accounts. Rotate atomically with recovery/identity changes.
+  authVersion: { type: String, select: false, match: /^[a-f0-9]{64}$/ },
   // Missing on historical accounts behaves as zero; never returned by profile APIs.
   failedLoginAttempts: { type: Number, default: 0, select: false, min: 0 },
   lastFailedLoginAt: { type: Date, select: false },

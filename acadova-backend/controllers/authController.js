@@ -15,6 +15,7 @@ const { randomBytes } = require('node:crypto');
 const googleIdentity = require('../services/googleIdentityService');
 const { isValidEmail } = require('../middleware/validation');
 const { policyVersion } = require('../config/policy');
+const { validAuthVersion } = require('../utils/authVersion');
 
 // Unknown accounts still perform a password comparison to avoid an obvious
 // fast path that reveals whether an email is registered.
@@ -36,7 +37,10 @@ function auditSuspendedLoginSafely(userId) {
 }
 
 function signToken(user) {
-  return jwt.sign({ id: user._id, role: user.role }, process.env.JWT_SECRET, { expiresIn: '7d' });
+  if (!validAuthVersion(user.authVersion)) throw new Error('Invalid authentication state');
+  return jwt.sign({ id: user._id, role: user.role,
+    ...(user.authVersion !== undefined ? { authVersion: user.authVersion } : {}) },
+  process.env.JWT_SECRET, { expiresIn: '7d' });
 }
 
 function publicUser(user) {
@@ -278,7 +282,8 @@ exports.resetPassword = async (req, res) => {
   try {
     const user = await User.findOneAndUpdate(
       { passwordResetTokenHash: hash, passwordResetExpires: { $gt: now } },
-      { $set: { password: await bcrypt.hash(req.body.password, 10) },
+      { $set: { password: await bcrypt.hash(req.body.password, 10),
+        authVersion: randomBytes(32).toString('hex') },
         $unset: { passwordResetTokenHash: 1, passwordResetExpires: 1 } },
       { new: true },
     );
@@ -321,9 +326,9 @@ exports.googleLogin = async (req, res) => {
     await dbSession.withTransaction(async () => {
       denied = null;
       const bySub = await User.findOne({ googleSub: identity.sub })
-        .select('+googleSub +loginCooldownUntil').session(dbSession);
+        .select('+googleSub +loginCooldownUntil').lean().session(dbSession);
       const byEmail = await User.findOne({ email })
-        .select('+googleSub +loginCooldownUntil +openingGrantEligible +openingGrantAmount').session(dbSession);
+        .select('+googleSub +loginCooldownUntil +openingGrantEligible +openingGrantAmount').lean().session(dbSession);
       if (bySub && byEmail && String(bySub._id) !== String(byEmail._id)) {
         denied = 'IDENTITY_CONFLICT'; return;
       }
@@ -343,9 +348,18 @@ exports.googleLogin = async (req, res) => {
           emailVerifiedAt: existing.emailVerifiedAt || now },
         $unset: { emailVerificationTokenHash: 1, emailVerificationExpires: 1,
           emailVerificationSentAt: 1, openingGrantEligible: 1, openingGrantAmount: 1 } };
+        if (existing.emailVerified === false) {
+          // Email ownership was never established for the preregistration password.
+          // The owner may choose a local password later through ordinary recovery.
+          update.$set.password = await bcrypt.hash(randomBytes(48).toString('hex'), 10);
+          update.$set.authVersion = randomBytes(32).toString('hex');
+          update.$unset.passwordResetTokenHash = 1;
+          update.$unset.passwordResetExpires = 1;
+        }
         if (grantAmount) update.$inc = { credits: grantAmount };
         account = await User.findOneAndUpdate(
-          { _id: existing._id, suspendedAt: null, emailVerified: existing.emailVerified,
+          { _id: existing._id, suspendedAt: null,
+            emailVerified: existing.emailVerified === undefined ? { $exists: false } : existing.emailVerified,
             googleSub: existing.googleSub || { $exists: false },
             ...loginSecurity.cooldownExpired(now) },
           update, { new: true, session: dbSession },

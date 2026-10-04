@@ -56,6 +56,7 @@ test('password recovery has generic responses and single-use, expiring hashed to
   assert.equal(await bcrypt.compare('NewPassword2!', user.password), true);
   assert.equal(await bcrypt.compare('OldPassword1!', user.password), false);
   assert.notEqual(user.password, oldHash);
+  assert.match(user.authVersion, /^[a-f0-9]{64}$/);
   assert.equal(user.passwordResetTokenHash, undefined);
   const reused = response();
   await auth.resetPassword(request({ token: sent[0].token, password: 'AnotherPass3!' }), reused);
@@ -98,12 +99,13 @@ test('Google identity links existing users and grants only new or pending verifi
   loginSecurity.resetAfterSuccess = async (account) => account.suspendedAt
     || account.loginCooldownUntil > new Date() ? null : account;
   User.findOne = (filter) => ({
-    select() { return this; }, session() { return Promise.resolve(users.find((user) =>
+    select() { return this; }, lean() { return this; }, session() { return Promise.resolve(users.find((user) =>
       filter.googleSub ? user.googleSub === filter.googleSub : user.email === filter.email) || null); },
   });
   User.findOneAndUpdate = async (filter, update) => {
     const user = users.find((candidate) => String(candidate._id) === String(filter._id));
-    if (!user || user.suspendedAt || user.emailVerified !== filter.emailVerified
+    if (!user || user.suspendedAt || (filter.emailVerified?.$exists === false
+      ? user.emailVerified !== undefined : user.emailVerified !== filter.emailVerified)
       || (user.googleSub || undefined) !== (typeof filter.googleSub === 'string' ? filter.googleSub : undefined)
       || user.loginCooldownUntil > new Date()) return null;
     Object.assign(user, update.$set);
@@ -175,13 +177,27 @@ test('Google identity links existing users and grants only new or pending verifi
 
   const pending = { _id: new mongoose.Types.ObjectId(), email: 'pending@example.test',
     role: 'student', emailVerified: false, openingGrantEligible: true,
-    openingGrantAmount: 30, credits: 0 };
+    openingGrantAmount: 30, credits: 0, password: await bcrypt.hash('UntrustedPassword1!', 10),
+    passwordResetTokenHash: 'untrusted-recovery-state', passwordResetExpires: new Date() };
   users.push(pending);
   identity = { sub: 'google-pending', email: pending.email, name: 'Pending Student' };
   assert.equal((await call()).statusCode, 200);
+  assert.equal(await bcrypt.compare('UntrustedPassword1!', pending.password), false);
+  assert.match(pending.authVersion, /^[a-f0-9]{64}$/);
+  assert.equal(pending.passwordResetTokenHash, undefined);
+  assert.equal(pending.passwordResetExpires, undefined);
   assert.equal(pending.credits, 30);
   assert.equal(grants.length, 2);
   assert.equal((await call()).statusCode, 200);
+  assert.equal(grants.length, 2);
+  const legacy = { _id: new mongoose.Types.ObjectId(), email: 'legacy-google@example.test',
+    role: 'student', credits: 12, password: await bcrypt.hash('LegacyPassword1!', 10) };
+  users.push(legacy);
+  identity = { sub: 'google-legacy', email: legacy.email, name: 'Legacy Student' };
+  assert.equal((await call()).statusCode, 200);
+  assert.equal(await bcrypt.compare('LegacyPassword1!', legacy.password), true);
+  assert.equal(legacy.authVersion, undefined);
+  assert.equal(legacy.credits, 12);
   assert.equal(grants.length, 2);
   googleIdentity.verifyGoogleCredential = async () => { throw new Error('secret credential'); };
   const invalid = await call();

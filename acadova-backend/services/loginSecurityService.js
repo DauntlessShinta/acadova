@@ -37,7 +37,7 @@ async function resetAfterSuccess(user, now = new Date()) {
   return User.findOneAndUpdate({ _id: user._id, password: user.password,
     suspendedAt: null, emailVerified: { $ne: false }, ...cooldownExpired(now) },
   { $set: { failedLoginAttempts: 0 },
-    $unset: { loginCooldownUntil: 1, lastFailedLoginAt: 1 } }, { new: true });
+    $unset: { loginCooldownUntil: 1, lastFailedLoginAt: 1 } }, { new: true, select: '+authVersion' });
 }
 
 module.exports = { recordFailedLogin, resetAfterSuccess, cooldownExpired };

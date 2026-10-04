@@ -38,7 +38,7 @@ mongoose.connect(process.env.MONGO_URI, {
   serverSelectionTimeoutMS: 5000,
   family: 4
 })
-  .then(() => console.log('Acadova DB Connected via MongoDB Atlas'))
+  .then(() => console.log('Acadova database connected'))
   .catch(() => {
     console.error('DB Connection Error');
   });

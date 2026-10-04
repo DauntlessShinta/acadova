@@ -1,5 +1,5 @@
-import React from 'react';
-import { Routes, Route, Navigate } from 'react-router-dom';
+import React, { useEffect } from 'react';
+import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import PublicLayout from './layouts/PublicLayout';
 import AppLayout from './layouts/AppLayout';
 import StaffLayout from './layouts/StaffLayout';
@@ -54,6 +54,11 @@ const GuestOnly = ({ children }) => {
 };
 
 export const App = () => {
+  const { pathname, hash } = useLocation();
+  useEffect(() => {
+    // Preserve page-specific hash navigation, such as the tutoring request form.
+    if (!hash) window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+  }, [pathname, hash]);
   return (
     <Routes>
       {/* Public Marketing & Auth Routes */}

@@ -14,6 +14,7 @@ const { ACTIONS, recordLoginSecurityAudit } = require('../services/auditService'
 const { randomBytes } = require('node:crypto');
 const googleIdentity = require('../services/googleIdentityService');
 const { isValidEmail } = require('../middleware/validation');
+const { policyVersion } = require('../config/policy');
 
 // Unknown accounts still perform a password comparison to avoid an obvious
 // fast path that reveals whether an email is registered.
@@ -22,6 +23,16 @@ const UNKNOWN_ACCOUNT_HASH = bcrypt.hashSync('acadova-unknown-account', 10);
 async function auditLoginSafely(event) {
   try { await recordLoginSecurityAudit(event); }
   catch { logSecurityEvent('auth.audit_unavailable', {}, { action: event.action }); }
+}
+
+const suspendedAuditAt = new Map();
+function auditSuspendedLoginSafely(userId) {
+  const key = String(userId);
+  const now = Date.now();
+  if (now - (suspendedAuditAt.get(key) || 0) < 15 * 60 * 1000) return;
+  if (suspendedAuditAt.size > 5000) suspendedAuditAt.clear();
+  suspendedAuditAt.set(key, now);
+  void auditLoginSafely({ userId, action: ACTIONS.suspendedLoginAttempt, failureCount: 0 });
 }
 
 function signToken(user) {
@@ -62,6 +73,7 @@ exports.register = async (req, res) => {
       emailVerificationTokenHash: verification.hash,
       emailVerificationExpires: verification.expires,
       emailVerificationSentAt: new Date(),
+      policyAcceptedAt: new Date(), policyVersion,
     });
     try {
       await emailService.sendVerificationEmail({ recipient: email, name, token: verification.token });
@@ -203,6 +215,7 @@ exports.login = async (req, res) => {
       return genericFailure();
     }
     if (user.suspendedAt) {
+      auditSuspendedLoginSafely(user._id);
       return res.status(403).json({ success: false, code: 'ACCOUNT_SUSPENDED', message: 'Account is suspended' });
     }
     if (user.emailVerified === false) {
@@ -304,6 +317,7 @@ exports.googleLogin = async (req, res) => {
     dbSession = await mongoose.startSession();
     let account;
     let denied;
+    let suspendedId;
     await dbSession.withTransaction(async () => {
       denied = null;
       const bySub = await User.findOne({ googleSub: identity.sub })
@@ -317,7 +331,7 @@ exports.googleLogin = async (req, res) => {
       if (existing?.googleSub && existing.googleSub !== identity.sub) {
         denied = 'IDENTITY_CONFLICT'; return;
       }
-      if (existing?.suspendedAt) { denied = 'ACCOUNT_SUSPENDED'; return; }
+      if (existing?.suspendedAt) { denied = 'ACCOUNT_SUSPENDED'; suspendedId = existing._id; return; }
       if (existing?.loginCooldownUntil && existing.loginCooldownUntil > now) {
         denied = 'LOGIN_COOLDOWN'; return;
       }
@@ -341,6 +355,7 @@ exports.googleLogin = async (req, res) => {
           type: 'initial_grant', toUser: account._id, amount: grantAmount,
         }], { session: dbSession });
       } else {
+        if (req.body.policyAccepted !== true) { denied = 'POLICY_ACCEPTANCE_REQUIRED'; return; }
         // Unknown local password is never disclosed; password recovery can set one later.
         const password = await bcrypt.hash(randomBytes(48).toString('hex'), 10);
         const rules = await getEffectiveCreditRules();
@@ -348,6 +363,7 @@ exports.googleLogin = async (req, res) => {
           name: safeGoogleName(identity.name), email, googleSub: identity.sub,
           password, role: 'student', emailVerified: true, emailVerifiedAt: now,
           credits: rules.startingCreditGrant,
+          policyAcceptedAt: now, policyVersion,
         }], { session: dbSession });
         await CreditTransaction.create([{
           type: 'initial_grant', toUser: created._id, amount: rules.startingCreditGrant,
@@ -355,8 +371,13 @@ exports.googleLogin = async (req, res) => {
         account = created;
       }
     });
-    if (denied === 'ACCOUNT_SUSPENDED') return res.status(403).json({ success: false,
+    if (denied === 'POLICY_ACCEPTANCE_REQUIRED') return res.status(409).json({ success: false,
+      code: denied, message: 'Please accept the account policies to create your account.' });
+    if (denied === 'ACCOUNT_SUSPENDED') {
+      if (suspendedId) auditSuspendedLoginSafely(suspendedId);
+      return res.status(403).json({ success: false,
       code: denied, message: 'Account is suspended' });
+    }
     if (denied === 'LOGIN_COOLDOWN') return res.status(429).json({ success: false,
       message: 'Too many login attempts. Please try again shortly.' });
     if (denied) return res.status(409).json({ success: false,

@@ -3,8 +3,10 @@ import learningService from '../../services/learningService';
 import assessmentService from '../../services/assessmentService';
 import Alert from '../../components/common/Alert';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
+import { useToast } from '../../context/toastAccess';
 
 export const ModeratorLearningPage = () => {
+  const toast = useToast();
   const [topics, setTopics] = useState([]);
   const [resources, setResources] = useState([]);
   const [modules, setModules] = useState([]);
@@ -21,7 +23,6 @@ export const ModeratorLearningPage = () => {
   const [loading, setLoading] = useState(true);
   const [working, setWorking] = useState(false);
   const [error, setError] = useState('');
-  const [success, setSuccess] = useState('');
 
   const load = async () => {
     try {
@@ -36,9 +37,9 @@ export const ModeratorLearningPage = () => {
   };
   useEffect(() => { Promise.resolve().then(load); }, []);
   const act = async (operation, message) => {
-    setWorking(true); setError(''); setSuccess('');
-    try { await operation(); setSuccess(message); await load(); return true; }
-    catch (err) { setError(err.message); return false; }
+    setWorking(true);
+    try { await operation(); toast('success', message); await load(); return true; }
+    catch (err) { toast('error', err.message || 'Learning content could not be updated.'); return false; }
     finally { setWorking(false); }
   };
   const priceFor = (id) => Number(prices[id] ?? 0);
@@ -60,7 +61,7 @@ export const ModeratorLearningPage = () => {
       <a href="#manage-topics">Topics</a><a href="#manage-resources">Resources</a>
       <a href="#manage-modules">Modules</a><a href="/moderator/assessments">Assessments</a>
     </nav>
-    <Alert type="danger" message={error} /><Alert type="success" message={success} />
+    <Alert type="danger" message={error} />
     {loading ? <LoadingSpinner text="Loading learning content..." /> : <>
       <section className="card" id="manage-topics"><h2>Topics</h2>{topics.map((item) => <div key={item.id} style={{ marginBottom: 14 }}>
         <strong>{item.name}</strong> · {item.status}<p>{item.description}</p>
@@ -102,9 +103,19 @@ export const ModeratorLearningPage = () => {
           {item.reviewStatus === 'submitted' && <><label className="form-label" htmlFor={`resource-price-${item.id}`}>Approved cost (0 = free)</label>
             <input id={`resource-price-${item.id}`} className="form-input" type="number" min="0" max="1000" step="1" value={prices[item.id] ?? 0} onChange={(event) => setPrices({ ...prices, [item.id]: event.target.value })} />
             <button type="button" className="btn btn-primary btn-sm" disabled={working} onClick={() => act(() => learningService.publishResource(item.id, priceFor(item.id)), 'Resource published.')}>Publish</button>
-            <label className="form-label" htmlFor={`reject-${item.id}`}>Rejection reason</label>
+            <label className="form-label" htmlFor={`reason-template-${item.id}`}>Optional review note template</label>
+            <select id={`reason-template-${item.id}`} className="form-select" defaultValue=""
+              onChange={(event) => setReasons({ ...reasons, [item.id]: event.target.value })}>
+              <option value="">Write a review note</option>
+              <option value="The external link is broken or inaccessible. Please submit a corrected resource.">Broken link</option>
+              <option value="This resource belongs under a different topic. Please submit a corrected resource.">Incorrect topic</option>
+              <option value="The explanation is incomplete. Please submit a more complete resource.">Incomplete explanation</option>
+              <option value="This content does not meet Acadova community guidelines.">Guidelines concern</option>
+            </select>
+            <label className="form-label" htmlFor={`reject-${item.id}`}>Feedback for creator</label>
             <input id={`reject-${item.id}`} className="form-input" maxLength={300} value={reasons[item.id] || ''} onChange={(event) => setReasons({ ...reasons, [item.id]: event.target.value })} />
-            <button type="button" className="btn btn-secondary btn-sm" disabled={working || (reasons[item.id] || '').trim().length < 3} onClick={() => act(() => learningService.rejectResource(item.id, reasons[item.id]), 'Resource rejected.')}>Reject</button></>}
+            <p className="form-hint">Rejecting closes this submission. The creator receives this note and may submit a corrected resource.</p>
+            <button type="button" className="btn btn-secondary btn-sm" disabled={working || (reasons[item.id] || '').trim().length < 3} onClick={() => act(() => learningService.rejectResource(item.id, reasons[item.id]), 'Resource rejected with feedback.')}>Reject with feedback</button></>}
           {item.reviewStatus === 'published' && <button type="button" className="btn btn-secondary btn-sm" disabled={working} onClick={() => act(() => learningService.archiveResource(item.id), 'Resource archived.')}>Archive</button>}
         </article>)}
         <form className="learning-staff-form" onSubmit={async (event) => {

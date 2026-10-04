@@ -33,6 +33,10 @@ const UserSchema = new mongoose.Schema({
   passwordResetTokenHash: { type: String, select: false },
   passwordResetExpires: { type: Date, select: false },
   googleSub: { type: String, select: false },
+  policyAcceptedAt: { type: Date },
+  policyVersion: { type: String },
+  // Set when introductory setup is completed or intentionally skipped.
+  onboardingFinishedAt: { type: Date },
 }, { timestamps: true, autoIndex: process.env.NODE_ENV !== 'production' });
 
 UserSchema.index({ skillsToTeach: 1, rating: -1 });

@@ -22,9 +22,6 @@ export default function OnboardingPage() {
   const finish = async (event) => {
     event.preventDefault();
     setError('');
-    if (!learn.length && !teach.length) {
-      setError('Add at least one skill you want to learn or can teach.'); return;
-    }
     const name = [firstName.trim(), lastName.trim()].filter(Boolean).join(' ');
     if (name.length < 2 || name.length > 80 || !firstName.trim() || !lastName.trim()) {
       setError('Enter your first and last name.'); return;
@@ -32,11 +29,21 @@ export default function OnboardingPage() {
     setSaving(true);
     try {
       await userService.updateMe({ name, skillsToLearn: learn, skillsToTeach: teach });
+      await userService.finishOnboarding();
       await refreshUser();
       navigate('/dashboard', { replace: true });
     } catch {
       setError('We could not save your profile. Please try again.');
     } finally { setSaving(false); }
+  };
+  const skip = async () => {
+    setSaving(true); setError('');
+    try {
+      await userService.finishOnboarding();
+      await refreshUser();
+      navigate('/dashboard', { replace: true });
+    } catch { setError('We could not save your choice. Please try again.'); }
+    finally { setSaving(false); }
   };
   return <div className="container-narrow onboarding">
     <span className="auth-form-eyebrow">Getting started · Step {step + 1} of 3</span>
@@ -44,14 +51,14 @@ export default function OnboardingPage() {
     <p>Tell us a little about your learning interests. You can edit everything later in your Profile.</p>
     <Alert type="danger" message={error} onClose={() => setError('')} />
     {step === 0 && <section className="card">
-      <h2>What do you want to learn?</h2>
-      <p>Add a skill or topic, then press Enter.</p>
+      <h2>What would you like to learn?</h2>
+      <p>We'll use this to help you find peers and learning content. Add a topic, then press Enter.</p>
       <label className="form-label" htmlFor="onboard-learn">Learning interests</label>
       <TagInput id="onboard-learn" tags={learn} onChange={setLearn} placeholder="e.g. Python, Calculus" />
     </section>}
     {step === 1 && <section className="card">
       <h2>What can you teach?</h2>
-      <p>Share a subject you know. You can leave this empty for now.</p>
+      <p>This helps other Students find you when they need help with a subject. You can leave this empty for now.</p>
       <label className="form-label" htmlFor="onboard-teach">Teaching skills</label>
       <TagInput id="onboard-teach" tags={teach} onChange={setTeach} placeholder="e.g. Java, Mathematics" />
     </section>}
@@ -71,6 +78,7 @@ export default function OnboardingPage() {
         onClick={() => { setError(''); setStep(step - 1); }}>Back</button>}
       {step < 2 && <button type="button" className="btn btn-primary"
         onClick={() => { setError(''); setStep(step + 1); }}>Continue</button>}
+      <button type="button" className="btn btn-secondary" disabled={saving} onClick={skip}>Skip for now</button>
     </div>
   </div>;
 }

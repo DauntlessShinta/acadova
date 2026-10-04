@@ -4,6 +4,7 @@ const bcrypt = require('bcryptjs');
 const mongoose = require('mongoose');
 const User = require('../models/User');
 const CreditTransaction = require('../models/CreditTransaction');
+const AuditLog = require('../models/AuditLog');
 const CreditConfig = require('../models/CreditConfig');
 const emailService = require('../services/emailService');
 const googleIdentity = require('../services/googleIdentityService');
@@ -77,17 +78,19 @@ test('Google identity links existing users and grants only new or pending verifi
     create: User.create, startSession: mongoose.startSession, transactionCreate: CreditTransaction.create,
     configFind: CreditConfig.findById, verify: googleIdentity.verifyGoogleCredential,
     resetLogin: loginSecurity.resetAfterSuccess,
-    jwtSecret: process.env.JWT_SECRET };
+    jwtSecret: process.env.JWT_SECRET, auditCreate: AuditLog.create };
   t.after(() => {
     User.findOne = original.findOne; User.findOneAndUpdate = original.findOneAndUpdate;
     User.create = original.create; mongoose.startSession = original.startSession;
     CreditTransaction.create = original.transactionCreate; CreditConfig.findById = original.configFind;
     googleIdentity.verifyGoogleCredential = original.verify;
+    AuditLog.create = original.auditCreate;
     loginSecurity.resetAfterSuccess = original.resetLogin;
     if (original.jwtSecret === undefined) delete process.env.JWT_SECRET;
     else process.env.JWT_SECRET = original.jwtSecret;
   });
   process.env.JWT_SECRET = 'test-secret-with-enough-random-looking-characters';
+  AuditLog.create = async ([entry]) => [entry];
   const users = [];
   const grants = [];
   let identity = { sub: 'google-student-1', email: 'new@example.test', name: 'Google Student' };
@@ -123,17 +126,23 @@ test('Google identity links existing users and grants only new or pending verifi
     grants.push(row);
   };
   CreditConfig.findById = () => ({ lean: async () => null });
-  const call = async () => {
+  const call = async (policyAccepted) => {
     const res = response();
-    await auth.googleLogin(request({ credential: 'credential-is-never-logged' }), res);
+    await auth.googleLogin(request({ credential: 'credential-is-never-logged',
+      ...(policyAccepted ? { policyAccepted: true } : {}) }), res);
     return res;
   };
-  const first = await call();
+  const missingPolicy = await call();
+  assert.equal(missingPolicy.statusCode, 409);
+  assert.equal(missingPolicy.body.code, 'POLICY_ACCEPTANCE_REQUIRED');
+  assert.equal(users.length, 0);
+  const first = await call(true);
   assert.equal(first.statusCode, 200);
   assert.equal(users.length, 1);
   assert.equal(users[0].role, 'student');
   assert.equal(users[0].emailVerified, true);
   assert.equal(users[0].credits, 100);
+  assert.ok(users[0].policyAcceptedAt instanceof Date);
   assert.equal(grants.length, 1);
   assert.equal(grants[0].type, 'initial_grant');
   const repeat = await call();

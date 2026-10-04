@@ -7,6 +7,7 @@ export const moderationService = {
     api.patch(`/api/moderator/ratings/${id}/visibility`, { hidden })
   ),
   getDisputedSessions: async () => api.get('/api/moderator/sessions/disputed'),
+  getResolvedSessions: async () => api.get('/api/moderator/sessions/resolved'),
   resolveSession: async (id, resolution, resolutionNote) => (
     api.post(`/api/moderator/sessions/${id}/resolve`, { resolution, resolutionNote })
   ),

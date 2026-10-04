@@ -9,7 +9,7 @@ export const passwordRequirements = (password) => [
   ['A special character', /[^A-Za-z0-9\s]/.test(password)],
 ];
 
-export const validateRegistration = ({ name, email, password, confirmPassword }) => {
+export const validateRegistration = ({ name, email, password, confirmPassword, policyAccepted }) => {
   const cleanName = normalizeName(name);
   const cleanEmail = normalizeEmail(email);
   const fields = {};
@@ -27,7 +27,8 @@ export const validateRegistration = ({ name, email, password, confirmPassword })
     fields.password = 'Password does not meet the requirements (maximum 64 characters and 72 UTF-8 bytes).';
   }
   if (confirmPassword !== password) fields.confirmPassword = 'Passwords do not match.';
-  return { fields, account: { name: cleanName, email: cleanEmail, password } };
+  if (policyAccepted !== true) fields.policyAccepted = 'Accept the Terms and acknowledge the Privacy Policy.';
+  return { fields, account: { name: cleanName, email: cleanEmail, password, policyAccepted: true } };
 };
 
 export const isVerificationRequired = (error) => error?.data?.code === 'EMAIL_VERIFICATION_REQUIRED';

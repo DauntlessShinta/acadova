@@ -3121,3 +3121,50 @@ textarea:focus-visible {
 @media (max-width: 600px) {
   .toast-viewport { right: 12px; bottom: max(12px, env(safe-area-inset-bottom)); left: 12px; width: auto; }
 }
+.policy-page { padding: 32px 16px 64px; }
+.policy-page section { margin: 24px 0; }
+.policy-page h1 { margin: 20px 0 10px; }
+.policy-page h2 { margin-bottom: 8px; }
+.policy-related, .auth-policy-links { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 24px; font-size: .86rem; }
+.policy-acknowledgment { margin: 18px 0; }
+.policy-acknowledgment p { margin: 8px 0; font-size: .87rem; }
+.policy-review-status { color: var(--acadova-muted); }
+.policy-review-status.is-accepted { color: var(--acadova-success); font-weight: 600; }
+.policy-review-backdrop { padding: 12px; }
+.policy-review-dialog { max-width: 720px; max-height: calc(100dvh - 24px); display: flex; flex-direction: column; }
+.policy-review-dialog .modal-header { flex: 0 0 auto; gap: 12px; }
+.policy-review-dialog .modal-header h2 { margin: 0; font-size: 1.3rem; }
+.policy-review-instruction { margin: 0; padding: 14px 24px; color: var(--acadova-muted); }
+.policy-review-scroll { flex: 1 1 auto; min-height: 80px; max-height: min(48dvh, 450px); overflow-y: auto; overscroll-behavior: contain; padding: 4px 24px 20px; }
+.policy-review-scroll:focus-visible { outline: 2px solid var(--acadova-primary); outline-offset: -2px; }
+.policy-review-content { overflow-wrap: anywhere; }
+.policy-review-content h3 { margin: 20px 0 12px; color: var(--acadova-primary); }
+.policy-review-content h4 { margin: 16px 0 6px; }
+.policy-review-content p { margin: 0 0 12px; line-height: 1.6; }
+.policy-review-actions { flex: 0 0 auto; flex-direction: column; align-items: stretch; }
+.policy-review-actions label { display: flex; align-items: flex-start; gap: 10px; line-height: 1.45; cursor: pointer; }
+.policy-review-actions input[type="checkbox"] { width: 20px; height: 20px; flex: 0 0 auto; margin: 2px 0 0; }
+.policy-review-actions .policy-review-disabled { opacity: .55; cursor: not-allowed; }
+.policy-review-actions p { margin: 0; color: var(--acadova-success); }
+.policy-review-buttons { display: flex; justify-content: flex-end; flex-wrap: wrap; gap: 10px; }
+.policy-review-buttons .btn { min-height: 44px; }
+@media (max-width: 480px) {
+  .policy-review-dialog .modal-header, .policy-review-actions { padding: 12px 16px; }
+  .policy-review-instruction { padding: 10px 16px; }
+  .policy-review-scroll { padding: 4px 16px 12px; max-height: 42dvh; }
+  .policy-review-buttons .btn { flex: 1 1 140px; }
+}
+.profile-reminders { margin-bottom: 24px; }
+.profile-reminders h2 { margin-top: 0; }
+.staff-queue-summary, .staff-queue-filters { display: flex; flex-wrap: wrap; align-items: end; gap: 14px; margin-bottom: 18px; }
+.staff-queue-summary strong { padding: 9px 13px; border-radius: 8px; background: #eff5fd; }
+.staff-queue-filters label { display: grid; gap: 5px; min-width: 150px; }
+.staff-queue-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 280px), 1fr)); gap: 15px; }
+.staff-queue-list article { min-width: 0; overflow-wrap: anywhere; }
+.staff-queue-list h2, .staff-queue-list h3 { font-size: 1.1rem; }
+.staff-inline-search { display: flex; flex-wrap: wrap; gap: 6px; }
+.staff-inline-search input { min-width: 0; flex: 1; }
+@media (max-width: 600px) {
+  .staff-queue-filters label, .staff-queue-filters form, .staff-queue-filters button { width: 100%; }
+  .staff-queue-list { grid-template-columns: 1fr; }
+}

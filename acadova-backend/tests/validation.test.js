@@ -21,7 +21,7 @@ const validSession = {
   creditAmount: 1,
 };
 const validRegistration = {
-  name: 'User A', email: 'user@example.test', password: 'Example1!',
+  name: 'User A', email: 'user@example.test', password: 'Example1!', policyAccepted: true,
 };
 
 const invalidPasswords = [
@@ -136,6 +136,13 @@ test('valid values are normalized and reach downstream work', () => {
   const subject = inspect(validateQuery(schemas.search), 'query', { subject: ' C++ ' });
   assert.equal(subject.downstreamCalls, 1);
   assert.equal(escapeRegExp(subject.req.validatedQuery.subject), 'C\\+\\+');
+});
+
+test('new registration without policy acknowledgment never reaches account creation', () => {
+  const result = inspect(validateBody(schemas.register), 'body',
+    { ...validRegistration, policyAccepted: false });
+  assert.equal(result.res.statusCode, 400);
+  assert.equal(result.downstreamCalls, 0);
 });
 
 test('session status validation accepts canonical request decisions and legacy actions only', () => {

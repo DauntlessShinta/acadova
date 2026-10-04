@@ -94,6 +94,19 @@ exports.getUserById = async (req, res) => {
   }
 };
 
+exports.finishOnboarding = async (req, res) => {
+  try {
+    const updated = await User.findOneAndUpdate(
+      { _id: req.user.id, role: 'student', onboardingFinishedAt: null },
+      { $set: { onboardingFinishedAt: new Date() } }, { new: true, runValidators: true })
+      .select('-password -failedLoginAttempts -lastFailedLoginAt -loginCooldownUntil');
+    const user = updated || await User.findOne({ _id: req.user.id, role: 'student' })
+      .select('-password -failedLoginAttempts -lastFailedLoginAt -loginCooldownUntil');
+    return user ? res.json({ success: true, data: user })
+      : res.status(404).json({ success: false, message: 'Student account not found.' });
+  } catch { return res.status(500).json({ success: false, message: 'Setup could not be saved.' }); }
+};
+
 exports.getUserReviews = async (req, res) => {
   try {
     const peer = await User.exists({ _id: req.params.id, role: 'student' });

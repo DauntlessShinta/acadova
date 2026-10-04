@@ -125,6 +125,13 @@ export const DashboardPage = () => {
 
       <Alert type="danger" message={error} onClose={() => setError('')} />
 
+      {(!user?.skillsToLearn?.length || !user?.skillsToTeach?.length) &&
+        <section className="card profile-reminders" aria-label="Profile suggestions">
+          <h2>Make Acadova yours</h2>
+          {!user?.skillsToLearn?.length && <p>Add subjects you'd like to learn so you can find relevant peers and learning content. <Link to="/profile">Add learning interests</Link></p>}
+          {!user?.skillsToTeach?.length && <p>Share what you know so other Students can find you. <Link to="/profile">Add teaching skills</Link></p>}
+        </section>}
+
       <section className="student-home-next" aria-labelledby="next-session-heading">
         <div className="student-section-heading"><div><span>Coming up</span>
           <h2 id="next-session-heading">Next session</h2></div><Link to="/sessions">All sessions</Link></div>

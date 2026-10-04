@@ -5,6 +5,7 @@ import { useAuth } from '../context/AuthContext';
 import Alert from '../components/common/Alert';
 import { passwordRequirements, pendingRegistrationNavigation, registrationErrorMessage, validateRegistration } from '../utils/authForm';
 import GoogleSignInButton from '../components/auth/GoogleSignInButton';
+import PolicyReviewDialog from '../components/auth/PolicyReviewDialog';
 
 export const RegisterPage = () => {
   const { register } = useAuth();
@@ -13,6 +14,8 @@ export const RegisterPage = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [policyAccepted, setPolicyAccepted] = useState(false);
+  const [reviewOpen, setReviewOpen] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [error, setError] = useState('');
@@ -24,7 +27,7 @@ export const RegisterPage = () => {
   const handleSubmit = async (event) => {
     event.preventDefault();
     if (submittingRef.current) return;
-    const { fields: next, account } = validateRegistration({ name, email, password, confirmPassword });
+    const { fields: next, account } = validateRegistration({ name, email, password, confirmPassword, policyAccepted });
     setFields(next);
     setError(Object.keys(next).length ? 'Check the highlighted fields.' : '');
     if (Object.keys(next).length) return;
@@ -88,8 +91,24 @@ export const RegisterPage = () => {
         </div>
         {fields.confirmPassword && <span className="form-error" id="register-confirm-password-error">{fields.confirmPassword}</span>}
       </div>
+      <div className="form-group policy-acknowledgment">
+        <p>I agree to the <Link to="/terms" target="_blank" rel="noopener noreferrer">Terms of Use</Link> and acknowledge the <Link to="/privacy" target="_blank" rel="noopener noreferrer">Privacy Policy</Link>.</p>
+        <button type="button" className="btn btn-secondary btn-sm" onClick={() => setReviewOpen(true)}
+          aria-describedby={fields.policyAccepted ? 'register-policy-error' : undefined}>
+          {policyAccepted ? 'Review Terms & Privacy again' : 'Review Terms & Privacy'}
+        </button>
+        <p className={policyAccepted ? 'policy-review-status is-accepted' : 'policy-review-status'} role="status">
+          {policyAccepted ? 'Terms and Privacy acknowledgment completed for this registration.' : 'Review and agree before creating your account.'}
+        </p>
+        {fields.policyAccepted && <span className="form-error" id="register-policy-error">{fields.policyAccepted}</span>}
+        <p>See also our <Link to="/community-guidelines" target="_blank" rel="noopener noreferrer">Community Guidelines</Link>.</p>
+      </div>
       <button type="submit" className="btn btn-primary auth-submit" disabled={submitting}>{submitting ? 'Creating account...' : <>Create Account <ArrowRight size={17} /></>}</button>
     </form>
+    {reviewOpen && <PolicyReviewDialog accepted={policyAccepted} onClose={() => setReviewOpen(false)}
+      onAgree={() => { setPolicyAccepted(true); setFields((current) => Object.fromEntries(
+        Object.entries(current).filter(([key]) => key !== 'policyAccepted'),
+      )); setReviewOpen(false); }} />}
     <GoogleSignInButton />
     <div className="auth-switch"><span>Already have an account?</span><Link to="/login" className="btn btn-secondary">Log in</Link></div>
   </>;

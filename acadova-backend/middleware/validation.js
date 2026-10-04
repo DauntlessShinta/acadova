@@ -301,13 +301,21 @@ function isValidObjectId(id) {
 const schemas = {
   register: {
     name: fullName, email: emailAddress, password: registrationPassword,
+    policyAccepted: (value) => {
+      if (value !== true) throw new InvalidInput('Accept the Terms of Use and acknowledge the Privacy Policy.');
+      return true;
+    },
   },
   login: { email: emailAddress, password: loginPassword },
   verifyEmail: { token: verificationToken },
   resendVerification: { email: emailAddress },
   forgotPassword: { email: emailAddress },
   resetPassword: { token: verificationToken, password: registrationPassword },
-  googleLogin: { credential: requiredText('Google credential', 10000, 20) },
+  googleLogin: { credential: requiredText('Google credential', 10000, 20),
+    policyAccepted: optional((value) => {
+      if (value !== true) throw new InvalidInput('Invalid policy acknowledgment.');
+      return true;
+    }) },
   profile: {
     name: optional(requiredText('Name', 80, 2)),
     skillsToTeach: optional(skills('Teaching skills')),

@@ -17,13 +17,14 @@ const ACTIONS = Object.freeze({
   loginCooldownStarted: 'security.login_cooldown_started',
   loginCooldownExtended: 'security.login_cooldown_extended',
   loginSuccessAfterFailures: 'security.login_success_after_failures',
+  suspendedLoginAttempt: 'security.suspended_account_login_attempt',
 });
 
 // Only known non-secret scalar fields may enter persistent metadata. Never accept a request body.
 const SAFE_FIELDS = new Set(['resolution', 'direction', 'amount', 'reference', 'beforeVersion',
   'afterVersion', 'previousRole', 'newRole', 'hidden', 'previousStatus', 'newStatus', 'creditCost']);
 const LOGIN_SECURITY_ACTIONS = new Set([ACTIONS.loginCooldownStarted,
-  ACTIONS.loginCooldownExtended, ACTIONS.loginSuccessAfterFailures]);
+  ACTIONS.loginCooldownExtended, ACTIONS.loginSuccessAfterFailures, ACTIONS.suspendedLoginAttempt]);
 
 async function recordAudit({ actor, action, targetType, targetId, summary, metadata = {}, session }) {
   if (!actor?.id || !['moderator', 'admin'].includes(actor.role)
@@ -57,17 +58,20 @@ const SECURITY_SUMMARIES = Object.freeze({
   [ACTIONS.loginCooldownStarted]: 'Account login cooldown started',
   [ACTIONS.loginCooldownExtended]: 'Account login cooldown extended',
   [ACTIONS.loginSuccessAfterFailures]: 'Successful login after failed attempts',
+  [ACTIONS.suspendedLoginAttempt]: 'Suspended account attempted login',
 });
 
 async function recordLoginSecurityAudit({ userId, action, failureCount, cooldownSeconds = 0 }) {
   if (!mongoose.isValidObjectId(userId) || !SECURITY_SUMMARIES[action]
-    || !Number.isSafeInteger(failureCount) || failureCount < 1
+    || !Number.isSafeInteger(failureCount)
+    || failureCount < (action === ACTIONS.suspendedLoginAttempt ? 0 : 1)
     || !Number.isSafeInteger(cooldownSeconds) || cooldownSeconds < 0 || cooldownSeconds > 300) {
     throw new Error('Invalid login security audit event');
   }
+  const metadata = action === ACTIONS.suspendedLoginAttempt ? {} : { failureCount, cooldownSeconds };
   const [entry] = await AuditLog.create([{ actorRole: 'system', action,
     targetType: 'User', targetId: String(userId), summary: SECURITY_SUMMARIES[action],
-    metadata: { failureCount, cooldownSeconds } }]);
+    metadata }]);
   return entry;
 }
 

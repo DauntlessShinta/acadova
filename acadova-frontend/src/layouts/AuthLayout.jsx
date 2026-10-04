@@ -18,7 +18,9 @@ export const AuthLayout = () => (
       </div>
       <small className="auth-brand-foot">Learn · Teach · Exchange · Grow</small>
     </section>
-    <section className="auth-form-panel" aria-label="Account access"><div className="auth-form-inner"><Outlet /></div></section>
+    <section className="auth-form-panel" aria-label="Account access"><div className="auth-form-inner"><Outlet />
+      <p className="auth-policy-links"><Link to="/terms">Terms of Use</Link> · <Link to="/privacy">Privacy Policy</Link> · <Link to="/community-guidelines">Community Guidelines</Link></p>
+    </div></section>
   </main>
 );
 

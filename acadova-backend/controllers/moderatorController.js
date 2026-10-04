@@ -95,6 +95,16 @@ exports.listDisputedSessions = async (req, res) => {
   }
 };
 
+exports.listResolvedSessions = async (req, res) => {
+  try {
+    const rows = await Session.find({ status: 'resolved' })
+      .select('subject learner tutor scheduledAt disputedAt resolvedAt resolution resolutionNote creditsSettledAt')
+      .populate([{ path: 'learner', select: 'name' }, { path: 'tutor', select: 'name' }])
+      .sort({ resolvedAt: -1 }).limit(100).lean();
+    return res.json({ success: true, data: rows });
+  } catch { return res.status(503).json({ success: false, message: 'Resolved sessions unavailable.' }); }
+};
+
 exports.resolveSessionDispute = async (req, res) => {
   if (!isValidObjectId(req.params.id)) {
     return res.status(400).json({ success: false, message: 'Invalid session id.' });

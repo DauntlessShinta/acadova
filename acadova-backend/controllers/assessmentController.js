@@ -114,7 +114,7 @@ exports.listStaffAssessments = async (req, res) => {
     const rows = await Assessment.find().sort({ createdAt: -1 }).limit(100).lean();
     return res.json({ success: true, data: rows.map((row) => ({
       id: String(row._id), title: row.title, topic: row.topic, status: row.status,
-      questionCount: row.questions.length,
+      questionCount: row.questions.length, createdAt: row.createdAt,
     })) });
   } catch { return res.status(500).json({ success: false, message: 'Assessments could not be loaded.' }); }
 };

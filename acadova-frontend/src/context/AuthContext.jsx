@@ -97,8 +97,8 @@ export const AuthProvider = ({ children }) => {
   }, []);
   const login = useCallback(async (email, password) =>
     establishSession(await authService.login(email, password)), [establishSession]);
-  const googleLogin = useCallback(async (credential) =>
-    establishSession(await authService.googleLogin(credential)), [establishSession]);
+  const googleLogin = useCallback(async (credential, policyAccepted) =>
+    establishSession(await authService.googleLogin(credential, policyAccepted)), [establishSession]);
 
   const register = async (formData) => {
     // Registration creates an unverified account; only login can establish a session.

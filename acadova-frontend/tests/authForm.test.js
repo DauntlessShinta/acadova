@@ -10,13 +10,14 @@ import { getRoleHomeRoute } from '../src/config/roleNavigation.js';
 const valid = {
   name: '  María O’Neil   Smith  ', email: ' USER@EXAMPLE.TEST ',
   password: 'ValidSecret1!', confirmPassword: 'ValidSecret1!',
+  policyAccepted: true,
 };
 
 test('registration accepts international names and sends only normalized account fields', () => {
   const result = validateRegistration(valid);
   assert.deepEqual(result.fields, {});
   assert.deepEqual(result.account, {
-    name: 'María O’Neil Smith', email: 'user@example.test', password: valid.password,
+    name: 'María O’Neil Smith', email: 'user@example.test', password: valid.password, policyAccepted: true,
   });
   assert.equal(Object.hasOwn(result.account, 'confirmPassword'), false);
 });
@@ -27,6 +28,7 @@ test('name, email, and confirmation mistakes receive specific errors', () => {
   assert.equal(validateRegistration({ ...valid, name: 'x'.repeat(101) }).fields.name, 'Name must be 100 characters or fewer.');
   assert.equal(validateRegistration({ ...valid, email: 'wrong-address' }).fields.email, 'Enter a valid email address.');
   assert.equal(validateRegistration({ ...valid, confirmPassword: 'different' }).fields.confirmPassword, 'Passwords do not match.');
+  assert.ok(validateRegistration({ ...valid, policyAccepted: false }).fields.policyAccepted);
 });
 
 test('password checklist and submission policy agree with backend bounds', () => {

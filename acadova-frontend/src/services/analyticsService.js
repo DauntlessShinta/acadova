@@ -29,6 +29,7 @@ export const analyticsService = {
   updateUserStatus: async (id, status, reason) => api.patch(`/api/admin/users/${id}/status`,
     { status, ...(reason ? { reason } : {}) }),
   getAuditLogs: async (params = {}) => api.get(`/api/admin/audit-logs?${new URLSearchParams(params)}`),
+  getSecurityOverview: async (params = {}) => api.get(`/api/admin/security?${new URLSearchParams(params)}`),
 };
 
 export default analyticsService;

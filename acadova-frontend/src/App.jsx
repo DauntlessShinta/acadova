@@ -18,6 +18,7 @@ import VerificationPendingPage from './pages/VerificationPendingPage';
 import VerifyEmailPage from './pages/VerifyEmailPage';
 import ForgotPasswordPage from './pages/ForgotPasswordPage';
 import ResetPasswordPage from './pages/ResetPasswordPage';
+import { TermsPage, PrivacyPage, GuidelinesPage } from './pages/PolicyPages';
 import OnboardingPage from './pages/OnboardingPage';
 
 // Authenticated Pages
@@ -35,6 +36,7 @@ import ProfilePage from './pages/ProfilePage';
 import AdminOverviewPage from './pages/admin/AdminOverviewPage';
 import AdminUsersPage from './pages/admin/AdminUsersPage';
 import AdminAuditLogsPage from './pages/admin/AdminAuditLogsPage';
+import AdminSecurityPage from './pages/admin/AdminSecurityPage';
 import AdminSessionsPage from './pages/admin/AdminSessionsPage';
 import AdminAnalyticsPage from './pages/admin/AdminAnalyticsPage';
 import AdminCreditsPage from './pages/admin/AdminCreditsPage';
@@ -59,6 +61,9 @@ export const App = () => {
         <Route path="/" element={<LandingPage />} />
         <Route path="/about" element={<AboutPage />} />
         <Route path="/features" element={<FeaturesPage />} />
+        <Route path="/terms" element={<TermsPage />} />
+        <Route path="/privacy" element={<PrivacyPage />} />
+        <Route path="/community-guidelines" element={<GuidelinesPage />} />
       </Route>
 
       <Route element={<AuthLayout />}>
@@ -98,6 +103,7 @@ export const App = () => {
         <Route index element={<AdminOverviewPage />} />
         <Route path="users" element={<AdminUsersPage />} />
         <Route path="audit-logs" element={<AdminAuditLogsPage />} />
+        <Route path="security" element={<AdminSecurityPage />} />
         <Route path="sessions" element={<AdminSessionsPage />} />
         <Route path="analytics" element={<AdminAnalyticsPage />} />
         <Route path="credits" element={<AdminCreditsPage />} />

@@ -6,9 +6,11 @@ const { listAuditLogs } = require('../controllers/adminAuditController');
 const { validateBody, validateParams, validateQuery, schemas } = require('../middleware/validation');
 const { staffActionLimiter } = require('../middleware/writeLimiters');
 const { getCreditRules, updateCreditRules, adjustCredits, getRecentCreditActivity } = require('../controllers/adminCreditController');
+const { getSecurityOverview } = require('../controllers/adminSecurityController');
 
 router.use(authenticateToken, requireRole('admin'));
 router.get('/audit-logs', listAuditLogs);
+router.get('/security', getSecurityOverview);
 router.use(validateQuery());
 
 router.get('/users', listUsers);

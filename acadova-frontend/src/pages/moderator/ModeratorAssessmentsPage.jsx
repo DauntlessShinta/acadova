@@ -3,12 +3,14 @@ import assessmentService from '../../services/assessmentService';
 import learningService from '../../services/learningService';
 import Alert from '../../components/common/Alert';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
+import { useToast } from '../../context/toastAccess';
 
 const emptyQuestion = () => ({ prompt: '', options: ['', '', ''], correctIndex: 0 });
 const initialDraft = () => ({ title: '', topic: '', passingScore: 60,
   questions: [emptyQuestion(), emptyQuestion(), emptyQuestion()] });
 
 export const ModeratorAssessmentsPage = () => {
+  const toast = useToast();
   const [draft, setDraft] = useState(initialDraft);
   const [assessments, setAssessments] = useState([]);
   const [learningTopics, setLearningTopics] = useState([]);
@@ -17,7 +19,6 @@ export const ModeratorAssessmentsPage = () => {
   const [loading, setLoading] = useState(true);
   const [working, setWorking] = useState(false);
   const [error, setError] = useState('');
-  const [success, setSuccess] = useState('');
 
   const load = async () => {
     try { const response = await assessmentService.staffList(); setAssessments(response.data || []); setError(''); }
@@ -34,23 +35,23 @@ export const ModeratorAssessmentsPage = () => {
     ...current, questions: current.questions.map((question, i) => i === index ? { ...question, ...changes } : question),
   }));
   const create = async (event) => {
-    event.preventDefault(); setWorking(true); setError(''); setSuccess('');
+    event.preventDefault(); setWorking(true); setError('');
     try {
       if (editingId) await assessmentService.update(editingId, draft);
       else await assessmentService.create(draft);
       setDraft(initialDraft()); setEditingId(null);
-      setSuccess(editingId ? 'Draft updated. Review it before publishing.'
+      toast('success', editingId ? 'Draft updated. Review it before publishing.'
         : 'Draft created. Review it before publishing.'); await load();
-    } catch { setError('Check each question, option, correct answer, and topic, then try again.'); }
+    } catch { toast('error', 'Check each question, option, correct answer, and topic, then try again.'); }
     finally { setWorking(false); }
   };
   const publish = async (id) => {
     if (!window.confirm('Publish this assessment for Students? Questions and answers cannot be changed afterward.')) return;
-    setWorking(true); setError(''); setSuccess('');
-    try { await assessmentService.publish(id); setSuccess('Assessment published.');
+    setWorking(true); setError('');
+    try { await assessmentService.publish(id); toast('success', 'Assessment published.');
       setReview((current) => current?.id === id ? { ...current, status: 'published' } : current);
       await load(); }
-    catch (err) { setError(err.message); }
+    catch (err) { toast('error', err.message || 'Assessment could not be published.'); }
     finally { setWorking(false); }
   };
   const reviewAssessment = async (id) => {
@@ -63,7 +64,7 @@ export const ModeratorAssessmentsPage = () => {
   return <div className="staff-page">
     <header className="staff-page-header"><div><span className="staff-eyebrow">Moderator / Learning</span>
       <h1>Assessments</h1><p>Create a short multiple-choice assessment, then publish it for Students.</p></div></header>
-    <Alert type="danger" message={error} /><Alert type="success" message={success} />
+    <Alert type="danger" message={error} />
     <div className="card"><h2>Assessment drafts</h2>
       {loading ? <LoadingSpinner text="Loading assessments..." /> : assessments.length === 0
         ? <p>No assessments yet.</p> : assessments.map((item) => <div key={item.id}

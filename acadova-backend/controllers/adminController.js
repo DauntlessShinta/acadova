@@ -14,7 +14,7 @@ const MANAGEABLE_ROLES = new Set(['student', 'moderator']);
 exports.listUsers = async (req, res) => {
   try {
     const users = await User.find()
-      .select('name email role credits rating skillsToTeach skillsToLearn emailVerified suspendedAt suspensionReason createdAt')
+      .select('name email role credits rating skillsToTeach skillsToLearn emailVerified suspendedAt suspensionReason createdAt +failedLoginAttempts +loginCooldownUntil')
       .sort({ createdAt: -1 });
 
     res.json({ success: true, message: 'Users retrieved', data: users });
@@ -83,7 +83,7 @@ exports.updateUserRole = async (req, res) => {
       if (target.role === role) throw Object.assign(new Error('Role is already set'), { status: 409 });
       updatedUser = await User.findOneAndUpdate({ _id: id, role: target.role }, { $set: { role } },
         { new: true, runValidators: true, session: dbSession })
-        .select('name email role credits rating skillsToTeach skillsToLearn emailVerified suspendedAt suspensionReason createdAt');
+        .select('name email role credits rating skillsToTeach skillsToLearn emailVerified suspendedAt suspensionReason createdAt +failedLoginAttempts +loginCooldownUntil');
       if (!updatedUser) throw Object.assign(new Error('Role changed. Reload and try again.'), { status: 409 });
       await recordAudit({ actor: req.user, action: ACTIONS.role, targetType: 'User', targetId: id,
         summary: role === 'moderator' ? 'Moderator access granted' : 'Moderator access revoked',
@@ -122,7 +122,7 @@ exports.updateUserStatus = async (req, res) => {
         : { suspendedAt: null, suspendedBy: null, suspensionReason: null };
       updatedUser = await User.findOneAndUpdate(filter, { $set: changes },
         { new: true, runValidators: true, session: dbSession })
-        .select('name email role credits rating skillsToTeach skillsToLearn emailVerified suspendedAt suspensionReason createdAt');
+        .select('name email role credits rating skillsToTeach skillsToLearn emailVerified suspendedAt suspensionReason createdAt +failedLoginAttempts +loginCooldownUntil');
       if (!updatedUser) throw Object.assign(new Error('Account changed. Reload and try again.'), { status: 409 });
       await recordAudit({ actor: req.user, action: suspend ? ACTIONS.suspended : ACTIONS.reactivated,
         targetType: 'User', targetId: id, summary: suspend ? 'Account suspended' : 'Account reactivated',

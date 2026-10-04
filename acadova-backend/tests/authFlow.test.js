@@ -116,10 +116,12 @@ test('email verification account flow without MongoDB or Gmail', async (t) => {
   });
   const base = `http://127.0.0.1:${server.address().port}/api`;
   const call = async (path, body, headers = {}) => {
+    const payload = path === '/auth/register' && body && body.policyAccepted === undefined
+      ? { ...body, policyAccepted: true } : body;
     const response = await fetch(`${base}${path}`, {
       method: body === undefined ? 'GET' : 'POST',
       headers: { 'content-type': 'application/json', ...headers },
-      ...(body === undefined ? {} : { body: JSON.stringify(body) }),
+      ...(body === undefined ? {} : { body: JSON.stringify(payload) }),
     });
     return { status: response.status, data: await response.json() };
   };
@@ -152,6 +154,8 @@ test('email verification account flow without MongoDB or Gmail', async (t) => {
       assert.equal(user.credits, 0);
       assert.equal(user.openingGrantEligible, true);
       assert.equal(user.openingGrantAmount, 100);
+      assert.ok(user.policyAcceptedAt instanceof Date);
+      assert.equal(user.policyVersion, '2026-10');
       assert.equal(user.skillsToTeach.length, 0);
       assert.equal(sent.length, 1);
       assert.equal(sent[0].recipient, email);

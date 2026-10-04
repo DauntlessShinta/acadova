@@ -65,13 +65,14 @@ export const Footer = () => {
               <li><Link to="/#sdg-section">SDG 4 Quality Education</Link></li>
               <li><span>Credit-based exchange</span></li>
               <li><span>Peer accountability</span></li>
+              <li><Link to="/community-guidelines">Community Guidelines</Link></li>
             </ul>
           </div>
         </div>
 
         <div className="site-footer-bottom">
           <span>© {new Date().getFullYear()} Acadova. Built for collaborative student learning.</span>
-          <span>Learn. Teach. Exchange. Grow.</span>
+          <span><Link to="/terms">Terms of Use</Link> · <Link to="/privacy">Privacy Policy</Link></span>
         </div>
       </div>
     </footer>

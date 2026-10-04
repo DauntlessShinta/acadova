@@ -52,6 +52,7 @@ export const AdminOverviewPage = () => {
             <Link className="card" to="/admin/users"><Users size={19} /> Manage users <span aria-hidden="true">→</span></Link>
             <Link className="card" to="/admin/sessions"><Activity size={19} /> View sessions <span aria-hidden="true">→</span></Link>
             <Link className="card" to="/admin/analytics"><BookOpen size={19} /> View analytics <span aria-hidden="true">→</span></Link>
+            <Link className="card" to="/admin/security"><ShieldCheck size={19} /> Security Center <span aria-hidden="true">→</span></Link>
           </div>
           {error && <button type="button" className="btn btn-secondary btn-sm" onClick={load}>Retry unavailable data</button>}
         </>

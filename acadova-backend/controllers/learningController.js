@@ -9,9 +9,10 @@ const notifications = require('../services/notificationService');
 
 const id = (value) => String(value);
 const topicView = (row) => ({ id: id(row._id), name: row.name, slug: row.slug,
-  description: row.description, status: row.status });
+  description: row.description, status: row.status, createdAt: row.createdAt });
 const resourceView = (row, staff = false, entitled = false) => ({
   id: id(row._id), topic: id(row.topic), title: row.title, description: row.description,
+  createdAt: row.createdAt,
   resourceType: row.resourceType, creditCost: row.creditCost, locked: row.creditCost > 0 && !entitled,
   ...(entitled ? { unlocked: true } : {}),
   ...(staff ? { reviewStatus: row.reviewStatus, submittedBy: id(row.submittedBy),
@@ -28,6 +29,7 @@ const resourcePreview = (row, entitled = false) => {
 };
 const moduleView = (row, staff = false, entitled = false) => ({
   id: id(row._id), topic: id(row.topic), title: row.title, description: row.description,
+  createdAt: row.createdAt,
   creditCost: row.creditCost, locked: row.creditCost > 0 && !entitled,
   ...(entitled ? { unlocked: true } : {}),
   ...(staff ? { status: row.status, resources: row.resources.map(id),

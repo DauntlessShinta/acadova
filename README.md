@@ -40,17 +40,21 @@ P5 adds persistent own-user in-app notifications for Session transitions, messag
 
 P6 retains the existing per-IP login rate limit and adds per-account consecutive-failure tracking. After 3 failures within 24 hours, temporary cooldowns start at 15 seconds and double after subsequent failures, capped at 5 minutes. A successful eligible login resets the counters; there is no permanent account lock. Threshold and recovery events enter the existing Admin-only AuditLog without credentials, tokens, or request bodies. Historical users need no backfill or new index. A targeted attacker may still inconvenience a known account for up to the capped cooldown; the IP limiter reduces but cannot eliminate that risk.
 
+Batch A adds password recovery, optional Google identity sign-in/linking, and introductory Student profile setup. Batch B adds an action-focused Student Home, structured Topic → Module → Resource → Assessment UI, staff content editing and assessment building, same-browser Continue Learning, clearer Session presentation, global toast feedback, and silent message polling. Manual HTTPS meeting links are the reliable current meeting path. Automatic Google Meet generation is optional and appears only when the existing Google OAuth client and Calendar access are configured; it has not been production-verified in this repository.
+
+Batch C adds a Moderator Needs Attention view composed from existing dispute and learning-content records, evidence-oriented dispute presentation, and a read-only resolved-case view. The existing transactional dispute resolution still performs the Session, credit, AuditLog, and notification actions. The Admin Security Center filters the existing AuditLog's meaningful login cooldown/recovery events and a throttled suspended-account-login event. Unknown-account and rate-limit events are not persisted as a separate security log. Public Terms, Privacy, and Community Guidelines pages are available; new registrations record acknowledgment, and introductory Student onboarding may be completed or intentionally skipped. Historical accounts are not forced through retroactive acceptance or backfilled.
+
 ## Locked final scope — planned, not yet implemented
 
 The following are part of the final project scope but must not be represented as complete until implemented and verified:
 
 - Broader post-completion report intake beyond Session disputes.
 - Complex progress tracking is not included in the learning-content foundation.
-- Broader report intake and deterministic suspicious-activity dashboards, and system configuration beyond credit rules.
+- Broader report intake and system configuration beyond credit rules.
 
 ## Future enhancements outside the locked final scope
 
-Automatic Google Meet creation or attendance API, custom video conferencing, AI recommendations or fraud detection, real-money payments, a mobile application, advanced LMS features, video hosting, certificates, large gamification systems, and leaderboards.
+Google Meet attendance API, custom video conferencing, AI recommendations or fraud detection, real-money payments, a mobile application, advanced LMS features, video hosting, certificates, large gamification systems, and leaderboards.
 
 ## Development instructions
 

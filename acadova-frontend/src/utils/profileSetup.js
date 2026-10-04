@@ -2,6 +2,7 @@
 // name/bio/availability fields. Either learning or teaching interest is enough
 // to mark the lightweight setup complete.
 export const needsProfileSetup = (user) => user?.role === 'student'
+  && !user.onboardingFinishedAt
   && !(user.skillsToLearn?.length || user.skillsToTeach?.length);
 
 export const splitDisplayName = (name = '') => {

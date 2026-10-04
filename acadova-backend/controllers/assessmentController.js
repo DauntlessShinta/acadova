@@ -126,6 +126,7 @@ exports.getStaffAssessment = async (req, res) => {
     return res.json({ success: true, data: {
       id: String(assessment._id), title: assessment.title, topic: assessment.topic,
       status: assessment.status, passingScore: assessment.passingScore,
+      learningTopic: assessment.learningTopic ? String(assessment.learningTopic) : null,
       questions: assessment.questions.map((question) => ({ prompt: question.prompt,
         options: question.options, correctIndex: question.correctIndex })),
     } });
@@ -146,6 +147,27 @@ exports.createAssessment = async (req, res) => {
     logSecurityEvent('moderation.assessment_created', req, { assessmentId: String(assessment._id) });
     return res.status(201).json({ success: true, data: { id: String(assessment._id), status: 'draft' } });
   } catch { return res.status(500).json({ success: false, message: 'Assessment could not be created.' }); }
+};
+
+exports.updateAssessment = async (req, res) => {
+  try {
+    let body = req.body;
+    if (body.learningTopic) {
+      const topic = await LearningTopic.findOne({ _id: body.learningTopic, status: 'published' }).lean();
+      if (!topic) return res.status(400).json({ success: false, message: 'Select a published learning topic.' });
+      body = { ...body, topic: topic.name };
+    }
+    const assessment = await auditedContentChange(req, ACTIONS.assessmentUpdated, 'Assessment',
+      'Assessment draft updated',
+      (session) => Assessment.findOneAndUpdate({ _id: req.params.id, status: 'draft' },
+        { $set: { title: body.title, topic: body.topic, passingScore: body.passingScore,
+          questions: body.questions, ...(body.learningTopic ? { learningTopic: body.learningTopic } : {}) },
+        ...(body.learningTopic ? {} : { $unset: { learningTopic: 1 } }) },
+        { new: true, runValidators: true, session }));
+    if (!assessment) return res.status(409).json({ success: false,
+      message: 'Only a draft assessment can be edited.' });
+    return res.json({ success: true, data: { id: String(assessment._id), status: 'draft' } });
+  } catch { return res.status(500).json({ success: false, message: 'Assessment could not be updated.' }); }
 };
 
 exports.publishAssessment = async (req, res) => {

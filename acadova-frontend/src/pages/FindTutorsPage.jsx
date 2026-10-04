@@ -8,6 +8,8 @@ import Alert from '../components/common/Alert';
 import LoadingSpinner from '../components/common/LoadingSpinner';
 import EmptyState from '../components/common/EmptyState';
 import PeerCard from '../components/student/PeerCard';
+import creditService from '../services/creditService';
+import { Link } from 'react-router-dom';
 import {
   Search,
   GraduationCap,
@@ -48,6 +50,12 @@ export const FindTutorsPage = () => {
   const [modalError, setModalError] = useState('');
   const [fieldErrors, setFieldErrors] = useState({});
   const [successMessage, setSuccessMessage] = useState('');
+  const [sessionCost, setSessionCost] = useState(null);
+
+  useEffect(() => {
+    creditService.getCurrentRules().then((response) => setSessionCost(response.data.tutoringSessionCost))
+      .catch(() => setSessionCost(null));
+  }, []);
 
   const fetchTutors = useCallback(async (subject = '') => {
     try {
@@ -119,8 +127,8 @@ export const FindTutorsPage = () => {
       return;
     }
 
-    if (credits < 20) {
-      setModalError(`You have ${credits} credits, but a tutoring session requires 20. Please earn credits by teaching first.`);
+    if (sessionCost !== null && credits < sessionCost) {
+      setModalError('You need more Acadova Credits for this session. Pass a qualifying assessment or teach a verified session to earn credits.');
       return;
     }
 
@@ -166,8 +174,10 @@ export const FindTutorsPage = () => {
       <div className="card" style={{ marginBottom: '32px', padding: '20px 24px' }}>
         <form onSubmit={handleSearchSubmit} style={{ display: 'flex', gap: '12px', marginBottom: '18px', flexWrap: 'wrap' }}>
           <div style={{ position: 'relative', flex: 1, minWidth: '240px' }}>
+            <label className="sr-only" htmlFor="tutor-search">Search by skill or subject</label>
             <Search size={18} style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)', color: 'var(--ink-400)' }} />
             <input
+              id="tutor-search"
               type="text"
               className="form-input"
               style={{ paddingLeft: '40px' }}
@@ -321,10 +331,12 @@ export const FindTutorsPage = () => {
           </div>
 
           <div className="form-group">
-            <span className="form-label">Tutoring Session Cost: 20 credits</span>
+            <span className="form-label">Tutoring Session Cost: {sessionCost ?? 'Shown when available'} credits</span>
             <span className="form-hint">
               Credits remain in your wallet until you confirm the completed session.
             </span>
+            {sessionCost !== null && credits < sessionCost
+              && <p><Link to="/assessments">Explore qualifying assessments</Link> to earn credits.</p>}
           </div>
 
           <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '24px' }}>

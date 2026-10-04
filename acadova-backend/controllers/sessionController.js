@@ -10,6 +10,7 @@ const { transferSessionCredits } = require('../services/sessionSettlement');
 const { getEffectiveCreditRules } = require('../services/creditRuleService');
 const { isValidObjectId } = require('../middleware/validation');
 const notifications = require('../services/notificationService');
+const googleMeet = require('../services/googleMeetService');
 
 const ALLOWED_TRANSITIONS = {
   // Legacy inputs stay stored as-is so deployed React clients retain their
@@ -71,7 +72,8 @@ const findParticipantSession = async (req, res) => {
 
 const isHttpsUrl = (value) => {
   try {
-    return new URL(value).protocol === 'https:';
+    const url = new URL(value);
+    return url.protocol === 'https:' && Boolean(url.hostname) && !url.username && !url.password;
   } catch {
     return false;
   }
@@ -267,6 +269,50 @@ exports.updateCoordination = async (req, res) => {
     });
   } catch (error) {
     res.status(500).json({ success: false, message: 'Meeting details could not be saved.' });
+  }
+};
+
+exports.generateGoogleMeet = async (req, res) => {
+  try {
+    const result = await findParticipantSession(req, res);
+    if (!result) return;
+    const { session, isTutor } = result;
+    if (!isTutor) return res.status(403).json({ success: false,
+      message: 'Only the Tutor can set up the online meeting.' });
+    if (!reschedulableStatuses.includes(session.status) || session.meetingMethod !== 'online'
+      || !session.scheduledAt) {
+      return res.status(400).json({ success: false,
+        message: 'Google Meet is available for scheduled online sessions.' });
+    }
+    if (session.meetingLink) return res.status(409).json({ success: false,
+      message: 'This session already has a meeting link.' });
+    const account = await User.findById(req.user.id).select('email +googleSub').lean();
+    if (!account || !await googleMeet.verifyCalendarIdentity(req.body.accessToken, account)) {
+      return res.status(403).json({ success: false,
+        message: 'Use the Google account linked to your Acadova email.' });
+    }
+    let meetingLink;
+    try {
+      meetingLink = await googleMeet.createGoogleMeet({
+        accessToken: req.body.accessToken, subject: session.subject,
+        scheduledAt: session.scheduledAt,
+      });
+    } catch {
+      return res.status(502).json({ success: false,
+        message: 'Could not create a Google Meet link. You can paste a meeting link manually.' });
+    }
+    const updated = await Session.findOneAndUpdate(
+      { _id: session._id, status: session.status, meetingMethod: 'online',
+        scheduledAt: session.scheduledAt, meetingLink: { $exists: false } },
+      { $set: { meetingLink }, $unset: { location: 1 } },
+      { new: true, runValidators: true },
+    );
+    if (!updated) return res.status(409).json({ success: false, message: changedSessionMessage });
+    await updated.populate(SESSION_POPULATE);
+    return res.json({ success: true, message: 'Google Meet link saved.', data: updated });
+  } catch {
+    return res.status(502).json({ success: false,
+      message: 'Could not create a Google Meet link. You can paste a meeting link manually.' });
   }
 };
 

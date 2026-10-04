@@ -52,10 +52,10 @@ export const SessionCard = ({
         <Link className="btn btn-secondary btn-sm" to={`/sessions/${session._id}`}>View Session</Link>
         {onStatusChange && isTeaching && session.status === 'pending' && session.canonicalStatus == null && (
             <>
-              <button type="button" className="btn btn-primary btn-sm" disabled={actionLoading} onClick={() => onStatusChange(session._id, 'accepted')}>
+              <button type="button" className="btn btn-primary btn-sm" disabled={actionLoading} onClick={() => onStatusChange(session._id, 'scheduled')}>
                 <Check size={14} /> Accept
               </button>
-              <button type="button" className="btn btn-danger btn-sm" disabled={actionLoading} onClick={() => onStatusChange(session._id, 'rejected')}>
+              <button type="button" className="btn btn-danger btn-sm" disabled={actionLoading} onClick={() => onStatusChange(session._id, 'declined')}>
                 <X size={14} /> Decline
               </button>
             </>

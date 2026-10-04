@@ -7,6 +7,7 @@ const {
   getSessionById,
   updateSessionStatus,
   updateCoordination,
+  generateGoogleMeet,
   proposeReschedule,
   acceptReschedule,
   declineReschedule,
@@ -30,6 +31,8 @@ router.get('/', getMySessions);
 router.get('/:id', validateParams(schemas.sessionId), getSessionById);
 router.patch('/:id/status', sessionActionLimiter, validateParams(schemas.sessionId), validateBody(schemas.sessionStatus), updateSessionStatus);
 router.patch('/:id/coordination', sessionActionLimiter, validateParams(schemas.sessionId), validateBody(schemas.coordination, { exactlyOne: true }), updateCoordination);
+router.post('/:id/google-meet', sessionActionLimiter, validateParams(schemas.sessionId),
+  validateBody(schemas.googleMeet), generateGoogleMeet);
 router.post('/:id/reschedule', sessionActionLimiter, validateParams(schemas.sessionId), validateBody(schemas.reschedule), proposeReschedule);
 router.post('/:id/reschedule/accept', sessionActionLimiter, validateParams(schemas.sessionId), validateBody(schemas.rescheduleDecision), acceptReschedule);
 router.post('/:id/reschedule/decline', sessionActionLimiter, validateParams(schemas.sessionId), validateBody(schemas.rescheduleDecision), declineReschedule);

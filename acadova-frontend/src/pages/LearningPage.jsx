@@ -4,14 +4,18 @@ import learningService from '../services/learningService';
 import Alert from '../components/common/Alert';
 import LoadingSpinner from '../components/common/LoadingSpinner';
 import { useAuth } from '../context/AuthContext';
+import { readLearningResume, saveLearningResume } from '../utils/learningResume';
 
 const emptySubmission = { topic: '', title: '', description: '', resourceType: 'text', textContent: '', externalUrl: '' };
 
 export const LearningPage = () => {
-  const { refreshUser } = useAuth();
+  const { user, refreshUser } = useAuth();
+  const userId = user?._id || user?.id;
   const [topics, setTopics] = useState([]);
   const [topic, setTopic] = useState(null);
   const [content, setContent] = useState(null);
+  const [lessonIndex, setLessonIndex] = useState(0);
+  const [resume] = useState(() => readLearningResume(userId));
   const [submission, setSubmission] = useState(emptySubmission);
   const [loading, setLoading] = useState(true);
   const [working, setWorking] = useState(false);
@@ -22,9 +26,21 @@ export const LearningPage = () => {
     learningService.topics().then((response) => setTopics(response.data || []))
       .catch((err) => setError(err.message)).finally(() => setLoading(false));
   }, []);
+  useEffect(() => {
+    if (!new URLSearchParams(window.location.search).has('continue') || !resume) return;
+    let active = true;
+    Promise.all([learningService.topic(resume.topicId), learningService.module(resume.moduleId)])
+      .then(([topicResult, moduleResult]) => {
+        if (!active) return;
+        setTopic(topicResult.data);
+        setContent(moduleResult.data);
+        setLessonIndex(Math.min(resume.lessonIndex, Math.max(0, (moduleResult.data.resources || []).length - 1)));
+      }).catch(() => { if (active) setError('Your saved module is unavailable. Browse current learning topics instead.'); });
+    return () => { active = false; };
+  }, [resume]);
   const load = async (request) => {
     setWorking(true); setError(''); setContent(null);
-    try { const response = await request(); setContent(response.data); }
+    try { const response = await request(); setContent(response.data); return response.data; }
     catch (err) { setError(err.message); }
     finally { setWorking(false); }
   };
@@ -33,6 +49,18 @@ export const LearningPage = () => {
     try { const response = await learningService.topic(id); setTopic(response.data); }
     catch (err) { setError(err.message); }
     finally { setWorking(false); }
+  };
+  const openModule = async (item) => {
+    const module = await load(() => learningService.module(item.id));
+    if (!module) return;
+    setLessonIndex(0);
+    saveLearningResume(userId, { topicId: topic.id, moduleId: item.id,
+      lessonIndex: 0, moduleTitle: item.title });
+  };
+  const selectLesson = (index) => {
+    setLessonIndex(index);
+    saveLearningResume(userId, { topicId: topic.id, moduleId: content.id,
+      lessonIndex: index, moduleTitle: content.title });
   };
   const submit = async (event) => {
     event.preventDefault(); setWorking(true); setError(''); setSuccess('');
@@ -57,7 +85,9 @@ export const LearningPage = () => {
         learningService.topic(topic.id),
       ]);
       setContent(detail.data); setTopic(updatedTopic.data);
-    } catch (err) { setError(err.message); }
+    } catch (err) { setError(err.message?.includes('credits')
+      ? 'You need more Acadova Credits. Pass a qualifying assessment or teach a verified session to earn credits.'
+      : 'Content could not be unlocked right now. Please try again.'); }
     finally { setWorking(false); }
   };
   const resourceBody = (item) => item.resourceType === 'text'
@@ -79,20 +109,45 @@ export const LearningPage = () => {
           {content.locked ? <><p>{content.creditCost} credits</p>
             <button type="button" className="btn btn-primary btn-sm" disabled={working} onClick={unlock}>Unlock</button></>
             : content.resourceType ? <>{content.unlocked && <p>Unlocked</p>}{resourceBody(content)}</>
-              : <>{content.unlocked && <p>Unlocked module</p>}
-                  {(content.resources || []).map((item, index) => <div className="card" key={item.id}>
-                    <h4>{index + 1}. {item.title}</h4><p>{item.description}</p>
-                    {item.locked ? <button type="button" className="btn btn-secondary btn-sm" onClick={() => load(() => learningService.resource(item.id))}>{item.creditCost} credits · Unlock resource</button>
-                      : resourceBody(item)}
-                  </div>)}
-                  {content.assessment && <Link to={`/assessments?open=${content.assessment}`}>Take linked assessment</Link>}</>}
+              : <><p>{content.unlocked ? 'Unlocked module' : 'Free module'} · {content.resources?.length || 0} lessons
+                {content.assessment ? ' · 1 assessment' : ''}</p>
+                  {(content.resources || []).length === 0 ? <p>This module doesn't have learning materials yet.</p>
+                    : <div className="learning-lesson-layout">
+                      <ol className="learning-lesson-list" aria-label="Lessons">
+                        {content.resources.map((item, index) => <li key={item.id}>
+                          <button type="button" className={lessonIndex === index ? 'is-current' : ''}
+                            aria-current={lessonIndex === index ? 'step' : undefined}
+                            onClick={() => selectLesson(index)}>{index + 1}. {item.title}</button>
+                        </li>)}
+                      </ol>
+                      <section className="learning-lesson card" aria-label="Current lesson">
+                        <h4>{content.resources[lessonIndex]?.title}</h4>
+                        <p>{content.resources[lessonIndex]?.description}</p>
+                        {content.resources[lessonIndex]?.locked
+                          ? <><p>This lesson requires {content.resources[lessonIndex].creditCost} credits.</p>
+                            <button type="button" className="btn btn-secondary btn-sm"
+                              onClick={() => load(() => learningService.resource(content.resources[lessonIndex].id))}>
+                              View unlock options</button></>
+                          : resourceBody(content.resources[lessonIndex])}
+                        <div className="learning-lesson-actions">
+                          <button type="button" className="btn btn-secondary btn-sm" disabled={lessonIndex === 0}
+                            onClick={() => selectLesson(lessonIndex - 1)}>Previous lesson</button>
+                          <button type="button" className="btn btn-primary btn-sm"
+                            disabled={lessonIndex >= content.resources.length - 1}
+                            onClick={() => selectLesson(lessonIndex + 1)}>Next lesson</button>
+                        </div>
+                      </section>
+                    </div>}
+                  {content.assessment && <Link className="btn btn-primary btn-sm"
+                    to={'/assessments?open=' + content.assessment}>Take final assessment</Link>}</>}
         </article>}
         {!content && <><h3>Resources</h3><div className="assessment-list">{topic.resources.map((item) => <article className="card" key={item.id}>
           <h4>{item.title}</h4><p>{item.description}</p><p>{item.unlocked ? 'Unlocked' : item.locked ? `${item.creditCost} credits` : 'Free'}</p>
           <button type="button" className="btn btn-secondary btn-sm" disabled={working} onClick={() => load(() => learningService.resource(item.id))}>View resource</button>
         </article>)}</div><h3>Modules</h3><div className="assessment-list">{topic.modules.map((item) => <article className="card" key={item.id}>
           <h4>{item.title}</h4><p>{item.description}</p><p>{item.unlocked ? 'Unlocked' : item.locked ? `${item.creditCost} credits` : 'Free'}</p>
-          <button type="button" className="btn btn-secondary btn-sm" disabled={working} onClick={() => load(() => learningService.module(item.id))}>Open module</button>
+          <button type="button" className="btn btn-secondary btn-sm" disabled={working}
+            onClick={() => openModule(item)}>Open module</button>
         </article>)}</div><h3>Assessments</h3>{topic.assessments.length ? topic.assessments.map((item) => <p key={item.id}>
           <Link to={`/assessments?open=${item.id}`}>{item.title}</Link> · {item.questionCount} questions</p>) : <p>No linked assessments yet.</p>}</>}
       </>}

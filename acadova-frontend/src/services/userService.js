@@ -9,6 +9,8 @@ export const userService = {
     return api.patch('/api/users/me', { name, skillsToTeach, skillsToLearn });
   },
 
+  getUserReviews: async (id) => api.get('/api/users/' + id + '/reviews'),
+
   searchTutors: async (subject = '') => {
     const query = subject ? `?subject=${encodeURIComponent(subject)}` : '';
     return api.get(`/api/users/tutors${query}`);
@@ -20,4 +22,3 @@ export const userService = {
 };
 
 export default userService;
-

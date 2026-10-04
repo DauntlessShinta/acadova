@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { BookOpen, Coins, GraduationCap, Inbox, Search, Users } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import sessionService from '../services/sessionService';
@@ -7,19 +7,23 @@ import userService from '../services/userService';
 import Alert from '../components/common/Alert';
 import EmptyState from '../components/common/EmptyState';
 import LoadingSpinner from '../components/common/LoadingSpinner';
-import StatCard from '../components/common/StatCard';
 import PeerCard from '../components/student/PeerCard';
 import SessionCard from '../components/student/SessionCard';
 import { getSessionPerspective, getSessionStatus } from '../utils/sessionPresentation';
+import { readLearningResume } from '../utils/learningResume';
+import { useToast } from '../context/toastAccess';
 
 export const DashboardPage = () => {
   const { user, credits, refreshUser } = useAuth();
+  const navigate = useNavigate();
+  const toast = useToast();
+  const [search, setSearch] = useState('');
+  const resume = readLearningResume(user?._id || user?.id);
   const [sessions, setSessions] = useState([]);
   const [recommendedPeers, setRecommendedPeers] = useState([]);
   const [availability, setAvailability] = useState({ sessions: false, peers: false });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [actionSuccess, setActionSuccess] = useState('');
   const [actionLoading, setActionLoading] = useState(false);
 
   const loadDashboardData = useCallback(async ({ showLoading = true } = {}) => {
@@ -74,17 +78,16 @@ export const DashboardPage = () => {
   ));
 
   const handleUpdateStatus = async (sessionId, nextStatus) => {
-    if (nextStatus === 'rejected' && !window.confirm('Decline this session request? The learner will need to find another peer.')) return;
+    if (nextStatus === 'declined' && !window.confirm('Decline this session request? The learner will need to find another peer.')) return;
     try {
       setActionLoading(true);
       setError('');
-      setActionSuccess('');
       await sessionService.updateSessionStatus(sessionId, nextStatus);
-      setActionSuccess(nextStatus === 'accepted' ? 'Session accepted.' : 'Session declined.');
+      toast('success', nextStatus === 'scheduled' ? 'Session accepted and scheduled.' : 'Session declined.');
       await refreshUser();
       await loadDashboardData({ showLoading: false });
     } catch (err) {
-      setError(err.message || `The session could not be updated to ${nextStatus}.`);
+      toast('error', err.message || `The session could not be updated to ${nextStatus}.`);
     } finally {
       setActionLoading(false);
     }
@@ -96,28 +99,50 @@ export const DashboardPage = () => {
 
   return (
     <div className="student-dashboard">
-      <header className="student-page-header">
+      <header className="student-home-hero">
         <div>
-          <span className="student-eyebrow">Student workspace</span>
-          <h1>Welcome back, {user?.name || 'Student'}</h1>
-          <p>Learn from peers, share what you know, and keep your sessions moving.</p>
+          <span className="student-eyebrow">Learn · Teach · Grow</span>
+          <h1>Hello, {user?.name?.split(' ')[0] || 'Student'}</h1>
+          <p>What would you like to learn today?</p>
+          <form className="student-home-search" onSubmit={(event) => {
+            event.preventDefault();
+            navigate(search.trim() ? '/tutors?subject=' + encodeURIComponent(search.trim()) : '/tutors');
+          }}>
+            <label className="sr-only" htmlFor="home-skill-search">Search skills or subjects</label>
+            <input id="home-skill-search" className="form-input" value={search}
+              onChange={(event) => setSearch(event.target.value)} placeholder="Search a skill or subject" />
+            <button className="btn btn-primary" type="submit"><Search size={16} /> Search tutors</button>
+          </form>
+          <div className="student-home-hero-actions">
+            <Link to="/tutors" className="btn btn-secondary">Find a Tutor</Link>
+            <Link to="/learning" className="btn btn-secondary">Explore Learning</Link>
+          </div>
         </div>
-        <Link to="/tutors" className="btn btn-primary">
-          <Search size={16} /> Find Peers
+        <Link to="/credits" className="student-home-wallet">
+          <Coins size={22} /><strong>{credits} Acadova Credits</strong><span>View credit activity</span>
         </Link>
       </header>
 
       <Alert type="danger" message={error} onClose={() => setError('')} />
-      <Alert type="success" message={actionSuccess} onClose={() => setActionSuccess('')} />
 
-      <section aria-labelledby="student-summary-heading">
-        <h2 id="student-summary-heading" className="sr-only">Student summary</h2>
-        <div className="stat-grid student-summary-grid">
-          <StatCard title="Credit Balance" value={credits} subtitle="Available learning credits" icon={Coins} color="var(--acadova-action)" />
-          <StatCard title="Active Sessions" value={availability.sessions ? upcomingSessions.length : '—'} subtitle={availability.sessions ? 'Scheduled, in progress, or awaiting a next step' : 'Data unavailable'} icon={BookOpen} color="var(--acadova-success)" />
-          <StatCard title="Pending Requests" value={availability.sessions ? pendingSessions.length : '—'} subtitle={availability.sessions ? `${pendingTeachingRequests.length} awaiting your response` : 'Data unavailable'} icon={Inbox} color="var(--acadova-warning)" />
-          <StatCard title="Recommended Peers" value={availability.peers ? recommendedPeers.length : '—'} subtitle={availability.peers ? 'Available student peers' : 'Data unavailable'} icon={Users} color="var(--acadova-primary)" />
-        </div>
+      <section className="student-home-next" aria-labelledby="next-session-heading">
+        <div className="student-section-heading"><div><span>Coming up</span>
+          <h2 id="next-session-heading">Next session</h2></div><Link to="/sessions">All sessions</Link></div>
+        {!availability.sessions ? <p>Sessions are unavailable right now.</p>
+          : upcomingSessions.length ? <SessionCard session={upcomingSessions[0]} currentUser={user} compact />
+            : <div className="card"><p>You don't have any tutoring sessions yet.</p>
+              <Link to="/tutors" className="btn btn-primary btn-sm">Find a Tutor</Link></div>}
+      </section>
+
+      <section className="student-home-learning" aria-labelledby="continue-learning-heading">
+        <div className="student-section-heading"><div><span>At your pace</span>
+          <h2 id="continue-learning-heading">Continue Learning</h2></div><Link to="/learning">Explore Learning</Link></div>
+        <div className="card">{resume
+          ? <><h3>{resume.moduleTitle || 'Your last module'}</h3>
+            <p>Pick up at lesson {resume.lessonIndex + 1} on this browser.</p>
+            <Link to="/learning?continue=1" className="btn btn-primary btn-sm">Continue</Link></>
+          : <><p>Ready to learn at your own pace?</p>
+            <Link to="/learning" className="btn btn-primary btn-sm">Explore Learning</Link></>}</div>
       </section>
 
       <div className="student-dashboard-grid">

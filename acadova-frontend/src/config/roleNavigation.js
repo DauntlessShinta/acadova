@@ -6,12 +6,11 @@ export const ROLE_HOME_ROUTES = {
 
 const authenticatedNavigation = {
   student: [
-    { to: '/dashboard', label: 'Dashboard' },
-    { to: '/tutors', label: 'Find Peers' },
+    { to: '/dashboard', label: 'Home' },
+    { to: '/tutors', label: 'Find Tutors' },
+    { to: '/learning', label: 'Learning' },
     { to: '/sessions', label: 'Sessions' },
     { to: '/credits', label: 'Credits' },
-    { to: '/assessments', label: 'Assessments' },
-    { to: '/learning', label: 'Learning' },
     { to: '/profile', label: 'Profile' },
   ],
   moderator: [

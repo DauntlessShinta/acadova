@@ -8,6 +8,7 @@ import EmptyState from '../components/common/EmptyState';
 import LoadingSpinner from '../components/common/LoadingSpinner';
 import SessionCard from '../components/student/SessionCard';
 import { getSessionPerspective, getSessionStatus, SESSION_STATUS_FILTERS } from '../utils/sessionPresentation';
+import { useToast } from '../context/toastAccess';
 
 const roleFilters = [
   { value: 'all', label: 'All' },
@@ -18,11 +19,11 @@ const roleFilters = [
 export const SessionsPage = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const toast = useToast();
   const [sessions, setSessions] = useState([]);
   const [sessionsAvailable, setSessionsAvailable] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [successMessage, setSuccessMessage] = useState('');
   const [roleFilter, setRoleFilter] = useState('all');
   const [statusFilter, setStatusFilter] = useState('all');
   const [actionLoading, setActionLoading] = useState(false);
@@ -62,15 +63,15 @@ export const SessionsPage = () => {
   }, { learning: 0, teaching: 0 }), [sessions, user]);
 
   const handleUpdateStatus = async (sessionId, nextStatus) => {
-    if (nextStatus === 'rejected' && !window.confirm('Decline this session request? The learner will need to find another peer.')) return;
+    if (nextStatus === 'declined' && !window.confirm('Decline this session request? The learner will need to find another peer.')) return;
     try {
       setActionLoading(true);
       setError('');
       const response = await sessionService.updateSessionStatus(sessionId, nextStatus);
-      setSuccessMessage(response.message);
+      toast('success', response.message);
       await fetchSessions({ showLoading: false });
     } catch (err) {
-      setError(err.message || 'The session could not be updated.');
+      toast('error', err.message || 'The session could not be updated.');
     } finally {
       setActionLoading(false);
     }
@@ -90,7 +91,6 @@ export const SessionsPage = () => {
       </header>
 
       <Alert type="danger" message={error} onClose={() => setError('')} />
-      <Alert type="success" message={successMessage} onClose={() => setSuccessMessage('')} />
 
       <div className="card student-session-filters">
         <div className="session-filter-group" aria-label="Filter by your role in the session">

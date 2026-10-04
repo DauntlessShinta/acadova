@@ -1,7 +1,7 @@
 import api from './api';
 import { toSessionInstant } from '../utils/sessionPresentation';
 
-const legacyStatusActions = new Set(['accepted', 'rejected', 'completed', 'cancelled']);
+const legacyStatusActions = new Set(['accepted', 'scheduled', 'rejected', 'declined', 'completed', 'cancelled']);
 
 export const sessionService = {
   createSession: async ({ tutorId, subject, scheduledAt, meetingMethod, requestMessage }) => {
@@ -27,6 +27,10 @@ export const sessionService = {
 
   updateCoordination: async (sessionId, details) => (
     api.patch(`/api/sessions/${sessionId}/coordination`, details)
+  ),
+
+  generateGoogleMeet: async (sessionId, accessToken) => (
+    api.post('/api/sessions/' + sessionId + '/google-meet', { accessToken })
   ),
 
   proposeReschedule: async (sessionId, scheduledAt) => (

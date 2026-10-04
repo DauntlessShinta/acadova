@@ -22,16 +22,24 @@ router.post('/sessions/:id/resolve', staffActionLimiter, validateParams(schemas.
 router.get('/assessments', assessmentController.listStaffAssessments);
 router.get('/assessments/:id', validateParams(schemas.assessmentId), assessmentController.getStaffAssessment);
 router.post('/assessments', staffActionLimiter, validateBody(schemas.assessmentCreate), assessmentController.createAssessment);
+router.patch('/assessments/:id', staffActionLimiter, validateParams(schemas.assessmentId),
+  validateBody(schemas.assessmentCreate), assessmentController.updateAssessment);
 router.post('/assessments/:id/publish', staffActionLimiter, validateParams(schemas.assessmentId),
   validateBody({}), assessmentController.publishAssessment);
 router.get('/learning/topics', learningController.listStaffTopics);
 router.post('/learning/topics', staffActionLimiter, validateBody(schemas.learningTopic), learningController.createTopic);
+router.patch('/learning/topics/:id', staffActionLimiter, validateParams(schemas.learningId),
+  validateBody(schemas.learningTopic), learningController.updateTopic);
 router.post('/learning/topics/:id/publish', staffActionLimiter, validateParams(schemas.learningId),
   validateBody({}), learningController.publishTopic);
 router.post('/learning/topics/:id/archive', staffActionLimiter, validateParams(schemas.learningId),
   validateBody({}), learningController.archiveTopic);
 router.get('/learning/resources', learningController.listStaffResources);
 router.get('/learning/resources/:id', validateParams(schemas.learningId), learningController.getStaffResource);
+router.post('/learning/resources', staffActionLimiter, validateBody(schemas.learningResource),
+  learningController.createStaffResource);
+router.patch('/learning/resources/:id', staffActionLimiter, validateParams(schemas.learningId),
+  validateBody(schemas.learningResource), learningController.updateStaffResource);
 router.post('/learning/resources/:id/publish', staffActionLimiter, validateParams(schemas.learningId),
   validateBody(schemas.learningReview), learningController.publishResource);
 router.post('/learning/resources/:id/reject', staffActionLimiter, validateParams(schemas.learningId),
@@ -40,6 +48,8 @@ router.post('/learning/resources/:id/archive', staffActionLimiter, validateParam
   validateBody({}), learningController.archiveResource);
 router.get('/learning/modules', learningController.listStaffModules);
 router.post('/learning/modules', staffActionLimiter, validateBody(schemas.learningModule), learningController.createModule);
+router.patch('/learning/modules/:id', staffActionLimiter, validateParams(schemas.learningId),
+  validateBody(schemas.learningModule), learningController.updateModule);
 router.post('/learning/modules/:id/publish', staffActionLimiter, validateParams(schemas.learningId),
   validateBody(schemas.learningModulePublish), learningController.publishModule);
 router.post('/learning/modules/:id/archive', staffActionLimiter, validateParams(schemas.learningId),

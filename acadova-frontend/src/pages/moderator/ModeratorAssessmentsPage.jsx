@@ -13,6 +13,7 @@ export const ModeratorAssessmentsPage = () => {
   const [assessments, setAssessments] = useState([]);
   const [learningTopics, setLearningTopics] = useState([]);
   const [review, setReview] = useState(null);
+  const [editingId, setEditingId] = useState(null);
   const [loading, setLoading] = useState(true);
   const [working, setWorking] = useState(false);
   const [error, setError] = useState('');
@@ -35,9 +36,12 @@ export const ModeratorAssessmentsPage = () => {
   const create = async (event) => {
     event.preventDefault(); setWorking(true); setError(''); setSuccess('');
     try {
-      await assessmentService.create(draft);
-      setDraft(initialDraft()); setSuccess('Draft created. Review it before publishing.'); await load();
-    } catch (err) { setError(err.message); }
+      if (editingId) await assessmentService.update(editingId, draft);
+      else await assessmentService.create(draft);
+      setDraft(initialDraft()); setEditingId(null);
+      setSuccess(editingId ? 'Draft updated. Review it before publishing.'
+        : 'Draft created. Review it before publishing.'); await load();
+    } catch { setError('Check each question, option, correct answer, and topic, then try again.'); }
     finally { setWorking(false); }
   };
   const publish = async (id) => {
@@ -78,9 +82,20 @@ export const ModeratorAssessmentsPage = () => {
       </div>)}
       {review.status === 'draft' && <button type="button" className="btn btn-primary btn-sm"
         disabled={working} onClick={() => publish(review.id)}>Publish reviewed draft</button>}
+      {review.status === 'draft' && <button type="button" className="btn btn-secondary btn-sm"
+        disabled={working} onClick={() => {
+          setDraft({ title: review.title, topic: review.topic, passingScore: review.passingScore,
+            ...(review.learningTopic ? { learningTopic: review.learningTopic } : {}),
+            questions: review.questions.map((question) => ({ ...question, options: [...question.options] })) });
+          setEditingId(review.id);
+          setReview(null);
+        }}>Edit draft</button>}
     </div>}
     <form className="card" onSubmit={create} style={{ marginTop: 24 }}>
-      <h2>Create a three-question draft</h2>
+      <h2>{editingId ? 'Edit assessment draft' : 'Create assessment draft'}</h2>
+      <p>Use 3–10 questions, 2–5 options per question, and select one correct answer.</p>
+      {editingId && <button type="button" className="btn btn-secondary btn-sm"
+        onClick={() => { setDraft(initialDraft()); setEditingId(null); }}>Cancel edit</button>}
       <label className="form-label" htmlFor="assessment-title">Title</label>
       <input id="assessment-title" className="form-input" value={draft.title} required minLength={3} maxLength={120}
         onChange={(event) => setDraft((current) => ({ ...current, title: event.target.value }))} />
@@ -118,8 +133,28 @@ export const ModeratorAssessmentsPage = () => {
           onChange={(event) => updateQuestion(index, { correctIndex: Number(event.target.value) })}>
           {question.options.map((_, optionIndex) => <option key={optionIndex} value={optionIndex}>Option {optionIndex + 1}</option>)}
         </select>
+        <div className="learning-builder-actions">
+          <button type="button" className="btn btn-secondary btn-sm"
+            disabled={question.options.length >= 5} onClick={() =>
+              updateQuestion(index, { options: [...question.options, ''] })}>Add option</button>
+          <button type="button" className="btn btn-secondary btn-sm"
+            disabled={question.options.length <= 2} onClick={() =>
+              updateQuestion(index, { options: question.options.slice(0, -1),
+                correctIndex: Math.min(question.correctIndex, question.options.length - 2) })}>Remove last option</button>
+          <button type="button" className="btn btn-danger btn-sm"
+            disabled={draft.questions.length <= 3} onClick={() =>
+              setDraft((current) => ({ ...current,
+                questions: current.questions.filter((_, i) => i !== index) }))}>Remove question</button>
+        </div>
       </fieldset>)}
-      <button type="submit" className="btn btn-primary" disabled={working}>{working ? 'Saving...' : 'Create draft'}</button>
+      <div className="learning-builder-actions">
+        <button type="button" className="btn btn-secondary"
+          disabled={draft.questions.length >= 10} onClick={() =>
+            setDraft((current) => ({ ...current, questions: [...current.questions, emptyQuestion()] }))}>
+          Add question</button>
+        <button type="submit" className="btn btn-primary" disabled={working}>
+          {working ? 'Saving...' : editingId ? 'Save draft' : 'Create draft'}</button>
+      </div>
     </form>
   </div>;
 };

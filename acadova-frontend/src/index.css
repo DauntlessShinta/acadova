@@ -3081,3 +3081,43 @@ textarea:focus-visible {
 .onboarding { padding: 32px 0; }
 .onboarding .card { margin-top: 20px; }
 .onboarding-actions { display: flex; justify-content: flex-end; gap: 12px; margin-top: 16px; }
+.student-home-hero { display: flex; justify-content: space-between; align-items: center; gap: 28px; padding: 32px; margin-bottom: 28px; border-radius: 18px; background: linear-gradient(120deg, #eaf3ff, #f8fbff); border: 1px solid #d9e8fb; }
+.student-home-hero h1 { margin: 7px 0; color: var(--navy-900); }
+.student-home-hero p { margin: 0 0 18px; }
+.student-home-search { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }
+.student-home-search .form-input { flex: 1; min-width: 180px; }
+.student-home-hero-actions { display: flex; flex-wrap: wrap; gap: 10px; }
+.student-home-wallet { display: grid; gap: 5px; min-width: 190px; padding: 20px; border-radius: 14px; color: #fff; background: var(--navy-900); text-decoration: none; }
+.student-home-wallet strong { font-size: 1.15rem; }
+.student-home-wallet span { font-size: .85rem; text-decoration: underline; }
+.student-home-next, .student-home-learning { margin-bottom: 28px; }
+.student-home-learning > .card { padding: 24px; }
+.learning-lesson-layout { display: grid; grid-template-columns: minmax(180px, 240px) minmax(0, 1fr); gap: 20px; margin: 20px 0; }
+.learning-lesson-list { padding-left: 22px; }
+.learning-lesson-list li { margin: 0 0 8px; }
+.learning-lesson-list button { width: 100%; padding: 10px; text-align: left; border: 1px solid var(--border-subtle); border-radius: 8px; background: white; cursor: pointer; }
+.learning-lesson-list button.is-current { border-color: var(--acadova-action); background: #edf5ff; font-weight: 700; }
+.learning-lesson { overflow-wrap: anywhere; }
+.learning-lesson-actions, .learning-builder-actions, .learning-management-nav { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 18px; }
+.learning-management-nav { margin: 0 0 18px; }
+.learning-management-nav a { padding: 9px 13px; border-radius: 8px; background: #eef4fd; }
+.learning-staff-form { margin-top: 22px; padding-top: 18px; border-top: 1px solid var(--border-subtle); }
+.peer-reviews { margin-top: 24px; }
+.peer-reviews article { border-top: 1px solid var(--border-subtle); padding: 12px 0; }
+.session-meet-choice { margin: 20px 0; }
+.toast-viewport { position: fixed; z-index: 2000; right: 20px; bottom: 20px; display: grid; gap: 10px; width: min(390px, calc(100vw - 32px)); pointer-events: none; }
+.app-toast { display: flex; align-items: flex-start; gap: 11px; padding: 13px 14px; border: 1px solid #bfd4ed; border-left: 4px solid #2870bd; border-radius: 10px; background: #fff; color: #18304b; box-shadow: 0 10px 30px #122d5340; pointer-events: auto; }
+.app-toast-success { border-left-color: #25805a; }
+.app-toast-error { border-left-color: #bd3d3d; }
+.app-toast-warning { border-left-color: #b67a17; }
+.app-toast p { flex: 1; margin: 0; overflow-wrap: anywhere; }
+.app-toast button { flex: 0 0 auto; display: inline-flex; align-items: center; justify-content: center; border: 0; padding: 2px; color: inherit; background: transparent; cursor: pointer; }
+.app-toast button:focus-visible { outline: 2px solid #2870bd; outline-offset: 3px; }
+@media (max-width: 700px) {
+  .student-home-hero { flex-direction: column; align-items: stretch; padding: 22px; }
+  .student-home-wallet { min-width: 0; }
+  .learning-lesson-layout { grid-template-columns: 1fr; }
+}
+@media (max-width: 600px) {
+  .toast-viewport { right: 12px; bottom: max(12px, env(safe-area-inset-bottom)); left: 12px; width: auto; }
+}

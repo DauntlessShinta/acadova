@@ -120,7 +120,8 @@ const proposalId = (value) => {
 const httpsLink = (value) => {
   const clean = requiredText('Meeting link', 500)(value);
   try {
-    if (new URL(clean).protocol === 'https:') return clean;
+    const url = new URL(clean);
+    if (url.protocol === 'https:' && url.hostname && !url.username && !url.password) return clean;
   } catch { /* Return a client validation error below. */ }
   throw new InvalidInput('Meeting link must be a valid HTTPS URL.');
 };
@@ -328,6 +329,7 @@ const schemas = {
     resolutionNote: requiredText('Resolution note', 500, 10),
   },
   coordination: { meetingLink: optional(httpsLink), location: optional(requiredText('Location', 300)) },
+  googleMeet: { accessToken: requiredText('Google authorization', 8192, 20) },
   message: { body: requiredText('Message', 1000) },
   rating: { sessionId: objectId('session id'), rating, comment: optional(requiredText('Review comment', 500, 0)) },
   role: { role: oneOf('role', ['student', 'moderator']) },

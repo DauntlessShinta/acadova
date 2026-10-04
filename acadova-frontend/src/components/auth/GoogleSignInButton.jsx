@@ -2,8 +2,10 @@ import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { getRoleHomeRoute } from '../../config/roleNavigation';
+import { isGoogleClientConfigured } from '../../utils/googleConfig';
 
 const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
+const configured = isGoogleClientConfigured(clientId);
 
 export default function GoogleSignInButton() {
   const container = useRef(null);
@@ -13,7 +15,7 @@ export default function GoogleSignInButton() {
   const [working, setWorking] = useState(false);
 
   useEffect(() => {
-    if (!clientId) return undefined;
+    if (!configured) return undefined;
     let active = true;
     const render = () => {
       if (!active || !container.current || !window.google?.accounts?.id) return;
@@ -57,7 +59,7 @@ export default function GoogleSignInButton() {
     return () => { active = false; };
   }, [googleLogin, navigate]);
 
-  if (!clientId) return null;
+  if (!configured) return null;
   return <div className="auth-google">
     <div className="auth-divider"><span>or</span></div>
     <div ref={container} className={working ? 'auth-google-working' : ''} aria-label="Continue with Google" />

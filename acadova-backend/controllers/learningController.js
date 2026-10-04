@@ -142,6 +142,19 @@ exports.createTopic = async (req, res) => {
     return failure(res);
   }
 };
+exports.updateTopic = async (req, res) => {
+  try {
+    const slug = slugOf(req.body.name);
+    if (!slug) return res.status(400).json({ success: false, message: 'Topic name needs letters or numbers.' });
+    const row = await auditedContentChange(req, ACTIONS.topicUpdated, 'LearningTopic', 'Learning topic draft updated',
+      (session) => LearningTopic.findOneAndUpdate({ _id: req.params.id, status: 'draft' },
+        { $set: { ...req.body, slug } }, { new: true, runValidators: true, session }));
+    return row ? res.json({ success: true, data: topicView(row) }) : unavailable(res);
+  } catch (error) {
+    if (error.code === 11000) return res.status(409).json({ success: false, message: 'Topic already exists.' });
+    return failure(res);
+  }
+};
 exports.publishTopic = async (req, res) => {
   try {
     const row = await auditedContentChange(req, ACTIONS.topicPublished, 'LearningTopic', 'Learning topic published',
@@ -172,6 +185,38 @@ exports.listStaffResources = async (req, res) => {
 exports.getStaffResource = async (req, res) => {
   try {
     const row = await LearningResource.findById(req.params.id).lean();
+    return row ? res.json({ success: true, data: resourceView(row, true) }) : unavailable(res);
+  } catch { return failure(res); }
+};
+exports.createStaffResource = async (req, res) => {
+  try {
+    const body = req.body;
+    if (!await LearningTopic.exists({ _id: body.topic, status: 'published' })) return unavailable(res);
+    if ((body.resourceType === 'text' && (!body.textContent || body.externalUrl))
+      || (body.resourceType === 'url' && (!body.externalUrl || body.textContent))) {
+      return res.status(400).json({ success: false, message: 'Provide only the selected resource content.' });
+    }
+    const row = await auditedContentChange(req, ACTIONS.resourceCreated, 'LearningResource',
+      'Learning resource draft created', async (session) => (await LearningResource.create([{
+        ...body, submittedBy: req.user.id, reviewStatus: 'submitted', creditCost: 0,
+      }], { session }))[0]);
+    return res.status(201).json({ success: true, data: resourceView(row, true) });
+  } catch { return failure(res); }
+};
+exports.updateStaffResource = async (req, res) => {
+  try {
+    const body = req.body;
+    if (!await LearningTopic.exists({ _id: body.topic, status: 'published' })) return unavailable(res);
+    if ((body.resourceType === 'text' && (!body.textContent || body.externalUrl))
+      || (body.resourceType === 'url' && (!body.externalUrl || body.textContent))) {
+      return res.status(400).json({ success: false, message: 'Provide only the selected resource content.' });
+    }
+    const row = await auditedContentChange(req, ACTIONS.resourceUpdated, 'LearningResource',
+      'Learning resource submission updated',
+      (session) => LearningResource.findOneAndUpdate({ _id: req.params.id, reviewStatus: 'submitted' },
+        { $set: body, $unset: body.resourceType === 'text'
+          ? { externalUrl: 1 } : { textContent: 1 } },
+        { new: true, runValidators: true, session }));
     return row ? res.json({ success: true, data: resourceView(row, true) }) : unavailable(res);
   } catch { return failure(res); }
 };
@@ -243,6 +288,20 @@ exports.createModule = async (req, res) => {
         createdBy: req.user.id }], { session }))[0]);
     logSecurityEvent('moderation.module_created', req, { moduleId: id(row._id) });
     return res.status(201).json({ success: true, data: moduleView(row, true) });
+  } catch { return failure(res); }
+};
+exports.updateModule = async (req, res) => {
+  try {
+    if (!await moduleReferencesValid(req.body)) return res.status(400).json({ success: false,
+      message: 'Module resources and assessment must be published within the same topic.' });
+    const row = await auditedContentChange(req, ACTIONS.moduleUpdated, 'LearningModule',
+      'Learning module draft updated',
+      (session) => LearningModule.findOneAndUpdate({ _id: req.params.id, status: 'draft' },
+        { $set: { topic: req.body.topic, title: req.body.title, description: req.body.description,
+          resources: req.body.resources, ...(req.body.assessment ? { assessment: req.body.assessment } : {}) },
+        ...(req.body.assessment ? {} : { $unset: { assessment: 1 } }) },
+        { new: true, runValidators: true, session }));
+    return row ? res.json({ success: true, data: moduleView(row, true) }) : unavailable(res);
   } catch { return failure(res); }
 };
 exports.publishModule = async (req, res) => {

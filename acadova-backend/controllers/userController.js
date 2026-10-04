@@ -1,4 +1,5 @@
 const User = require('../models/User');
+const Rating = require('../models/Rating');
 const { isValidObjectId, escapeRegExp } = require('../middleware/validation');
 
 // GET /api/users/me - the logged-in user's own profile.
@@ -90,5 +91,21 @@ exports.getUserById = async (req, res) => {
     res.json({ success: true, message: 'User profile retrieved', data: user });
   } catch (error) {
     res.status(500).json({ success: false, message: 'Server error while retrieving user profile' });
+  }
+};
+
+exports.getUserReviews = async (req, res) => {
+  try {
+    const peer = await User.exists({ _id: req.params.id, role: 'student' });
+    if (!peer) return res.status(404).json({ success: false, message: 'Peer profile not found' });
+    const rows = await Rating.find({ toUser: req.params.id, isHidden: false })
+      .select('rating comment fromUser createdAt').populate('fromUser', 'name')
+      .sort({ createdAt: -1 }).limit(20).lean();
+    return res.json({ success: true, data: rows.map((row) => ({
+      id: String(row._id), rating: row.rating, comment: row.comment || '',
+      reviewerName: row.fromUser?.name || 'Acadova Student', createdAt: row.createdAt,
+    })) });
+  } catch {
+    return res.status(500).json({ success: false, message: 'Reviews could not be loaded.' });
   }
 };

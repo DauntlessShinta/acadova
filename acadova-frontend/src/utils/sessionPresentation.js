@@ -39,7 +39,7 @@ const statusDetails = {
   accepted: { label: 'Scheduled', key: 'scheduled' },
   scheduled: { label: 'Scheduled', key: 'scheduled' },
   in_progress: { label: 'In progress', key: 'in_progress' },
-  awaiting_validation: { label: 'Awaiting validation', key: 'awaiting_validation' },
+  awaiting_validation: { label: 'Confirm session', key: 'awaiting_validation' },
   completed: { label: 'Completed', key: 'completed' },
   rejected: { label: 'Declined', key: 'declined' },
   declined: { label: 'Declined', key: 'declined' },
@@ -81,6 +81,29 @@ export const getSessionStatus = (session) => {
   };
 };
 
+export const getSessionTimeline = (session) => {
+  const status = session?.status;
+  const accepted = ['accepted', 'scheduled', 'in_progress', 'awaiting_validation',
+    'completed', 'no_show', 'disputed', 'resolved'].includes(status);
+  const bothCheckedIn = Boolean(session?.learnerCheckedInAt && session?.tutorCheckedInAt);
+  const bothConfirmed = Boolean(session?.learnerConfirmedAt && session?.tutorConfirmedAt)
+    || Boolean(session?.confirmedAt && !session?.awaitingValidationAt);
+  const completed = Boolean(session?.creditsSettledAt
+    && (status === 'completed' || session?.resolution === 'confirm_session'));
+  return [
+    { label: 'Request sent', state: 'done' },
+    { label: 'Tutor accepted', state: accepted ? 'done' : status === 'pending' ? 'current' : 'stopped' },
+    { label: 'Schedule agreed', state: accepted && session?.scheduledAt ? 'done' : 'waiting' },
+    { label: 'Check in', state: bothCheckedIn ? 'done'
+      : session?.learnerCheckedInAt || session?.tutorCheckedInAt ? 'current' : 'waiting' },
+    { label: 'Session in progress', state: session?.startedAt ? 'done'
+      : status === 'in_progress' ? 'current' : 'waiting' },
+    { label: 'Confirm session', state: bothConfirmed ? 'done'
+      : status === 'awaiting_validation' ? 'current' : 'waiting' },
+    { label: 'Completed', state: completed ? 'done' : 'waiting' },
+  ];
+};
+
 export const getSessionNextStep = (session, isTeaching, counterpartName = 'your peer') => {
   if (session?.status === 'resolved' || session?.canonicalStatus === 'resolved') {
     return session.resolution === 'confirm_session'
@@ -118,9 +141,14 @@ export const getSessionNextStep = (session, isTeaching, counterpartName = 'your 
     if (isTeaching && session.meetingMethod === 'in-person' && !session.location) return 'Add the meeting location so your learner knows where to go.';
     return `Coordinate with ${counterpartName} and meet at the scheduled time.`;
   }
-  if (session?.status === 'scheduled') return `Your session with ${counterpartName} is scheduled.`;
+  if (session?.status === 'scheduled') {
+    if (isTeaching && session.meetingMethod === 'online' && !session.meetingLink) {
+      return 'Add a meeting link so your learner can join.';
+    }
+    return `Your session with ${counterpartName} is scheduled.`;
+  }
   if (session?.status === 'in_progress') return 'This session is in progress.';
-  if (session?.status === 'awaiting_validation') return 'This session is awaiting validation.';
+  if (session?.status === 'awaiting_validation') return 'The session ended. Both participants must confirm what happened.';
   if (session?.status === 'completed' && session.ratingEligible) {
     return 'This settled session is complete. You can now review your peer.';
   }

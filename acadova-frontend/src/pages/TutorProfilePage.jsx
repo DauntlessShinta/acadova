@@ -17,6 +17,7 @@ export const TutorProfilePage = () => {
   const { credits, refreshUser } = useAuth();
 
   const [tutor, setTutor] = useState(null);
+  const [reviews, setReviews] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
@@ -38,6 +39,8 @@ export const TutorProfilePage = () => {
         const res = await userService.getUserById(id);
         if (res?.data?.role === 'student') {
           setTutor(res.data);
+          userService.getUserReviews(id).then((reviewResult) => setReviews(reviewResult.data || []))
+            .catch(() => setReviews([]));
           if (res.data.skillsToTeach?.length > 0) {
             setSessionSubject(res.data.skillsToTeach[0]);
           }
@@ -80,7 +83,7 @@ export const TutorProfilePage = () => {
     }
 
     if (sessionCost !== null && credits < sessionCost) {
-      setError(`Insufficient credits. You have ${credits} credits, but this session requires ${sessionCost}.`);
+      setError('You need more Acadova Credits for this session. Pass a qualifying assessment or teach a verified session to earn credits.');
       return;
     }
 
@@ -155,7 +158,7 @@ export const TutorProfilePage = () => {
           </div>
 
           <div style={{ borderTop: '1px solid var(--border-subtle)', paddingTop: '20px', marginBottom: '20px' }}>
-            <h4 style={{ fontSize: '0.95rem', color: 'var(--ink-800)', marginBottom: '10px' }}>Specialties & Teaching Subjects</h4>
+            <h3 style={{ fontSize: '0.95rem', color: 'var(--ink-800)', marginBottom: '10px' }}>What can this person teach me?</h3>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
               {(tutor.skillsToTeach || []).map((skill, idx) => (
                 <span key={idx} className="badge badge-brass" style={{ textTransform: 'none', fontSize: '0.82rem' }}>
@@ -169,7 +172,7 @@ export const TutorProfilePage = () => {
           </div>
 
           <div style={{ borderTop: '1px solid var(--border-subtle)', paddingTop: '20px' }}>
-            <h4 style={{ fontSize: '0.95rem', color: 'var(--ink-800)', marginBottom: '10px' }}>Learning Interests</h4>
+            <h3 style={{ fontSize: '0.95rem', color: 'var(--ink-800)', marginBottom: '10px' }}>Also learning</h3>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
               {(tutor.skillsToLearn || []).map((skill, idx) => (
                 <span key={idx} className="badge badge-navy" style={{ textTransform: 'none', fontSize: '0.82rem' }}>
@@ -277,6 +280,14 @@ export const TutorProfilePage = () => {
           </form>
         </div>
       </div>
+      <section className="card peer-reviews" aria-labelledby="peer-reviews-heading">
+        <h2 id="peer-reviews-heading">Peer reviews</h2>
+        {reviews.length === 0 ? <p>No visible reviews yet.</p>
+          : reviews.map((review) => <article key={review.id}>
+            <strong>{review.reviewerName}</strong> · {review.rating} out of 5
+            {review.comment && <p>{review.comment}</p>}
+          </article>)}
+      </section>
     </div>
   );
 };

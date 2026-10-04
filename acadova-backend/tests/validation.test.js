@@ -101,6 +101,7 @@ const invalidCases = [
   ['overlong message', 'body', validateBody(schemas.message), { body: 'x'.repeat(1001) }],
   ['blank message', 'body', validateBody(schemas.message), { body: '   ' }],
   ['invalid coordination link', 'body', validateBody(schemas.coordination, { exactlyOne: true }), { meetingLink: 'http://example.com' }],
+  ['coordination link with embedded credentials', 'body', validateBody(schemas.coordination, { exactlyOne: true }), { meetingLink: 'https://user:pass@example.com/room' }],
   ['conflicting coordination fields', 'body', validateBody(schemas.coordination, { exactlyOne: true }), { meetingLink: 'https://example.com', location: 'Room 1' }],
   ['invalid moderation boolean', 'body', validateBody(schemas.visibility), { hidden: 'true' }],
   ['invalid confirmation payload', 'body', validateBody({}), { credits: 100 }],

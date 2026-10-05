@@ -1,12 +1,18 @@
 // Uses installed Chrome/Edge and Vite; no extra dependencies or live API/DB.
-// Run from acadova-frontend: node tests/browser-demo.mjs [browser-executable]
+// Run: node tests/browser-demo.mjs [browser-executable] [browser-demo.jsx|browser-p71.jsx|browser-correction.jsx] [width] [screenshot.png] [height] [capture-route]
 import { spawn } from 'node:child_process';
-import { mkdtemp, readFile, rm } from 'node:fs/promises';
+import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { createServer } from 'vite';
 
 const browser = process.argv[2] || 'C:/Program Files/Google/Chrome/Application/chrome.exe';
+const fixture = process.argv[3] || 'browser-demo.jsx';
+if (!/^browser-(demo|p71|correction)\.jsx$/.test(fixture)) throw new Error('Unknown browser fixture');
+const width = Number(process.argv[4] || 1366);
+if (!Number.isInteger(width) || width < 320 || width > 3840) throw new Error('Width must be 320–3840 pixels');
+const height = Number(process.argv[6] || (width < 700 ? 844 : 900));
+if (!Number.isInteger(height) || height < 480 || height > 2160) throw new Error('Invalid viewport height');
 const profile = await mkdtemp(path.join(tmpdir(), 'acadova-browser-test-'));
 let server;
 let child;
@@ -19,7 +25,7 @@ server = await createServer({
   plugins: [{ name: 'demo-test-page', configureServer(vite) {
     vite.middlewares.use('/__demo-test', async (_req, res, next) => {
       try {
-        const html = await vite.transformIndexHtml('/__demo-test', '<!doctype html><html><body><div id="root"></div><pre id="result">RUNNING</pre><script type="module" src="/tests/browser-demo.jsx"></script></body></html>');
+        const html = await vite.transformIndexHtml('/__demo-test', `<!doctype html><html><head><meta name="viewport" content="width=device-width, initial-scale=1"><style>#result{white-space:pre-wrap;overflow-wrap:anywhere}</style></head><body><div id="root"></div><pre id="result">RUNNING</pre><script type="module" src="/tests/${fixture}"></script></body></html>`);
         res.setHeader('Content-Type', 'text/html');
         res.end(html);
       } catch (error) { next(error); }
@@ -41,7 +47,7 @@ server = await createServer({
     try { port = (await readFile(path.join(profile, 'DevToolsActivePort'), 'utf8')).split('\n')[0]; break; } catch { await pause(100); }
   }
   if (!port) throw new Error('Browser debugging port did not start');
-  const page = await (await fetch(`http://127.0.0.1:${port}/json/new?http://127.0.0.1:${address.port}/__demo-test`, { method: 'PUT' })).json();
+  const page = await (await fetch(`http://127.0.0.1:${port}/json/new?about:blank`, { method: 'PUT' })).json();
   socket = new WebSocket(page.webSocketDebuggerUrl);
   await new Promise((resolve, reject) => { socket.addEventListener('open', resolve, { once: true }); socket.addEventListener('error', reject, { once: true }); });
   let id = 0;
@@ -50,16 +56,25 @@ server = await createServer({
     const response = JSON.parse(event.data);
     if (pending.has(response.id)) { pending.get(response.id)(response); pending.delete(response.id); }
   });
-  const evaluate = (expression) => new Promise((resolve) => {
+  const command = (method, params) => new Promise((resolve, reject) => {
     const requestId = ++id;
-    pending.set(requestId, resolve);
-    socket.send(JSON.stringify({ id: requestId, method: 'Runtime.evaluate', params: { expression, returnByValue: true } }));
+    const timeout = setTimeout(() => { pending.delete(requestId); reject(new Error(`Browser command timed out: ${method}`)); }, 10_000);
+    pending.set(requestId, (response) => { clearTimeout(timeout); resolve(response); });
+    socket.send(JSON.stringify({ id: requestId, method, params }));
   });
+  const evaluate = (expression) => command('Runtime.evaluate', { expression, returnByValue: true });
+  await command('Emulation.setDeviceMetricsOverride', { width, height, deviceScaleFactor: 1, mobile: false });
+  await command('Emulation.setFocusEmulationEnabled', { enabled: true });
+  await command('Page.navigate', { url: `http://127.0.0.1:${address.port}/__demo-test?capture=${encodeURIComponent(process.argv[7] || '/dashboard')}` });
   let result;
   for (let i = 0; i < 300; i += 1) {
     result = (await evaluate('document.getElementById("result")?.textContent')).result?.result?.value;
     if (result?.startsWith('PASS:') || result?.startsWith('FAIL:')) break;
     await pause(100);
+  }
+  if (process.argv[5]) {
+    const screenshot = await command('Page.captureScreenshot', { format: 'png', captureBeyondViewport: false });
+    await writeFile(process.argv[5], Buffer.from(screenshot.result.data, 'base64'));
   }
   console.log(result || 'FAIL: browser did not return test results');
   if (!result?.startsWith('PASS:')) process.exitCode = 1;

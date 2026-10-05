@@ -1,11 +1,14 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
+import { useToast } from '../context/toastAccess';
 import Alert from '../components/common/Alert';
 import authService from '../services/authService';
 import { maskEmail, normalizeEmail } from '../utils/authForm';
 
 export const VerificationPendingPage = () => {
   const location = useLocation();
+  const toast = useToast();
+  const [emailError, setEmailError] = useState('');
   const initialEmail = location.state?.email || sessionStorage.getItem('acadova_pending_email') || '';
   const [knownEmail, setKnownEmail] = useState(initialEmail);
   const [draftEmail, setDraftEmail] = useState(initialEmail);
@@ -14,7 +17,7 @@ export const VerificationPendingPage = () => {
   const sendingRef = useRef(false);
   const [message, setMessage] = useState(location.state?.deliveryFailed
     ? "We couldn't send the verification email right now. You can try again." : '');
-  const [messageType, setMessageType] = useState(location.state?.deliveryFailed ? 'danger' : 'info');
+  const messageType = location.state?.deliveryFailed ? 'danger' : 'info';
 
   useEffect(() => {
     if (cooldown <= 0) return undefined;
@@ -26,10 +29,11 @@ export const VerificationPendingPage = () => {
     if (sendingRef.current || cooldown > 0) return;
     const email = normalizeEmail(draftEmail);
     if (email.length > 254 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-      setMessage('Enter a valid email address to request a new link.');
-      setMessageType('danger');
+      setEmailError('Enter a valid email address to request a new link.');
+      document.getElementById('pending-email')?.focus();
       return;
     }
+    setEmailError('');
     sendingRef.current = true;
     setSending(true);
     try {
@@ -37,14 +41,13 @@ export const VerificationPendingPage = () => {
       sessionStorage.setItem('acadova_pending_email', email);
       setKnownEmail(email);
       setDraftEmail(email);
-      setMessage('If the account is eligible, a new verification email has been sent.');
-      setMessageType('info');
+      setMessage('');
+      toast('info', 'If the account is eligible, a new verification email has been sent.');
       setCooldown(60);
     } catch (error) {
-      setMessage(error.status === 429 ? 'Too many requests. Please try again later.'
+      toast('error', error.status === 429 ? 'Too many requests. Please try again later.'
         : !error.status ? 'Unable to reach Acadova. Check your connection and try again.'
           : 'Unable to request a new email right now. Please try again later.');
-      setMessageType('danger');
     } finally {
       sendingRef.current = false;
       setSending(false);
@@ -59,7 +62,7 @@ export const VerificationPendingPage = () => {
       : 'Enter your email address to request a verification link before logging in to Acadova.'}</p>
     <Alert type={messageType} message={message} />
     {knownEmail ? <button type="button" className="auth-inline-button" onClick={() => { setKnownEmail(''); setMessage(''); }}>Use another email address</button>
-      : <div className="form-group"><label className="form-label" htmlFor="pending-email">Email address</label><input id="pending-email" className="form-input" type="email" autoComplete="email" inputMode="email" value={draftEmail} onChange={(event) => setDraftEmail(event.target.value)} /></div>}
+      : <div className="form-group"><label className="form-label" htmlFor="pending-email">Email address</label><input id="pending-email" className="form-input" type="email" autoComplete="email" inputMode="email" aria-invalid={Boolean(emailError)} aria-describedby={emailError ? 'pending-email-error' : undefined} value={draftEmail} onChange={(event) => setDraftEmail(event.target.value)} />{emailError && <span className="form-error" id="pending-email-error">{emailError}</span>}</div>}
     <button type="button" className="btn btn-primary auth-submit" onClick={resend} disabled={sending || cooldown > 0}>
       {sending ? 'Sending...' : cooldown > 0 ? `Resend available in ${cooldown}s` : 'Resend verification email'}
     </button>

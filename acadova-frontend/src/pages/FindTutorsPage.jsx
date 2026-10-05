@@ -1,3 +1,4 @@
+import { useToast } from '../context/toastAccess';
 import React, { useCallback, useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
@@ -29,6 +30,7 @@ const POPULAR_SUBJECTS = [
 ];
 
 export const FindTutorsPage = () => {
+  const toast = useToast();
   const { user, credits, refreshUser } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
   const currentSubjectQuery = searchParams.get('subject') || '';
@@ -49,7 +51,6 @@ export const FindTutorsPage = () => {
   const [modalSubmitting, setModalSubmitting] = useState(false);
   const [modalError, setModalError] = useState('');
   const [fieldErrors, setFieldErrors] = useState({});
-  const [successMessage, setSuccessMessage] = useState('');
   const [sessionCost, setSessionCost] = useState(null);
 
   useEffect(() => {
@@ -123,7 +124,7 @@ export const FindTutorsPage = () => {
     if (requestMessage.trim().length > 500) errors.requestMessage = 'Your message must be 500 characters or fewer.';
     setFieldErrors(errors);
     if (Object.keys(errors).length > 0) {
-      setModalError('Check the highlighted session details.');
+      requestAnimationFrame(() => document.getElementById(Object.keys(errors)[0])?.focus());
       return;
     }
 
@@ -143,10 +144,10 @@ export const FindTutorsPage = () => {
       });
 
       setIsModalOpen(false);
-      setSuccessMessage(`Session request sent to ${selectedTutor.name}. You can track it in Sessions.`);
+      toast('success', `Session request sent to ${selectedTutor.name}. You can track it in Sessions.`);
       refreshUser();
     } catch (err) {
-      setModalError(err.message || 'Failed to request session.');
+      toast('error', err.message || 'Failed to request session.');
     } finally {
       setModalSubmitting(false);
     }
@@ -168,10 +169,9 @@ export const FindTutorsPage = () => {
       </div>
 
       <Alert type="danger" message={error} onClose={() => setError('')} />
-      <Alert type="success" message={successMessage} onClose={() => setSuccessMessage('')} />
 
       {/* Search & Subject Chips Bar */}
-      <div className="card" style={{ marginBottom: '32px', padding: '20px 24px' }}>
+      <div className="card" style={{ marginBottom: '16px', padding: '16px' }}>
         <form onSubmit={handleSearchSubmit} style={{ display: 'flex', gap: '12px', marginBottom: '18px', flexWrap: 'wrap' }}>
           <div style={{ position: 'relative', flex: 1, minWidth: '240px' }}>
             <label className="sr-only" htmlFor="tutor-search">Search by skill or subject</label>

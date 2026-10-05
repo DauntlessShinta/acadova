@@ -10,6 +10,7 @@ const authenticatedNavigation = {
     { to: '/tutors', label: 'Find Tutors' },
     { to: '/learning', label: 'Learning' },
     { to: '/sessions', label: 'Sessions' },
+    { to: '/sessions?view=messages', label: 'Messages' },
     { to: '/credits', label: 'Credits' },
     { to: '/profile', label: 'Profile' },
   ],

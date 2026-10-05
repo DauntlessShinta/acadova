@@ -1,5 +1,6 @@
+import { useConfirm } from '../context/confirmAccess';
 import React, { useEffect, useMemo, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { BookOpen, Clock, Filter } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import sessionService from '../services/sessionService';
@@ -17,8 +18,11 @@ const roleFilters = [
 ];
 
 export const SessionsPage = () => {
+  const confirm = useConfirm();
   const { user } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
+  const messagesView = new URLSearchParams(location.search).get('view') === 'messages';
   const toast = useToast();
   const [sessions, setSessions] = useState([]);
   const [sessionsAvailable, setSessionsAvailable] = useState(false);
@@ -63,7 +67,7 @@ export const SessionsPage = () => {
   }, { learning: 0, teaching: 0 }), [sessions, user]);
 
   const handleUpdateStatus = async (sessionId, nextStatus) => {
-    if (nextStatus === 'declined' && !window.confirm('Decline this session request? The learner will need to find another peer.')) return;
+    if (nextStatus === 'declined' && !await confirm('Decline this session request? The learner will need to find another peer.', { title: 'Decline request', label: 'Decline request' })) return;
     try {
       setActionLoading(true);
       setError('');
@@ -86,7 +90,7 @@ export const SessionsPage = () => {
   return (
     <div className="student-sessions-page">
       <header className="student-page-header">
-        <div><span className="student-eyebrow">Peer sessions</span><h1>Sessions</h1><p>See whether you are learning or teaching, who you are meeting, and what happens next.</p></div>
+        <div><span className="student-eyebrow">Peer sessions</span><h1>{messagesView ? 'Messages' : 'Sessions'}</h1><p>{messagesView ? 'Choose a Session below to open its conversation. Messages stay with the Session so both peers have the same context.' : 'See whether you are learning or teaching, who you are meeting, and what happens next.'}</p></div>
         <Link to="/tutors" className="btn btn-primary"><BookOpen size={15} /> Request Session</Link>
       </header>
 
@@ -100,8 +104,8 @@ export const SessionsPage = () => {
           })}
         </div>
         <div className="session-filter-group" aria-label="Filter by session status">
-          <span><Filter size={14} /> Status</span>
-          {SESSION_STATUS_FILTERS.map((item) => <button key={item.value} type="button" className={`session-filter-chip ${statusFilter === item.value ? 'is-active' : ''}`} aria-pressed={statusFilter === item.value} onClick={() => setStatusFilter(item.value)}>{item.label}</button>)}
+          <label htmlFor="session-status"><Filter size={14} /> Status</label>
+          <select id="session-status" className="form-select" value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)}>{SESSION_STATUS_FILTERS.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}</select>
         </div>
       </div>
 
@@ -113,7 +117,9 @@ export const SessionsPage = () => {
         <EmptyState icon={Clock} title="No sessions in this view" description={emptyDescription} actionText={roleFilter !== 'teaching' ? 'Find Peers' : undefined} onAction={roleFilter !== 'teaching' ? () => navigate('/tutors') : undefined} />
       ) : (
         <div className="student-session-list">
-          {filteredSessions.map((session) => <SessionCard key={session._id} session={session} currentUser={user} actionLoading={actionLoading} onStatusChange={handleUpdateStatus} />)}
+          {filteredSessions.map((session) => messagesView
+            ? <article className="card" key={session._id}><h2>{session.subject}</h2><p>With {getSessionPerspective(session, user).counterpart?.name || 'your peer'}</p><Link className="btn btn-primary" to={`/sessions/${session._id}#session-messages`}>Open conversation</Link></article>
+            : <SessionCard key={session._id} session={session} currentUser={user} actionLoading={actionLoading} onStatusChange={handleUpdateStatus} />)}
         </div>
       )}
     </div>

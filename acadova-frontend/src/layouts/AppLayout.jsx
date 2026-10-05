@@ -1,13 +1,13 @@
 import React from 'react';
 import { Outlet, Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import Navbar from '../components/common/Navbar';
+import StudentNavigation from '../components/common/StudentNavigation';
 import Footer from '../components/common/Footer';
 import LoadingSpinner from '../components/common/LoadingSpinner';
 import { getRoleHomeRoute } from '../config/roleNavigation';
 import { needsProfileSetup } from '../utils/profileSetup';
 
-export const AppLayout = ({ allowedRoles = null }) => {
+export const AppLayout = ({ allowedRoles = null, requireProfileSetup = true }) => {
   const { user, isAuthenticated, loading } = useAuth();
   const { pathname } = useLocation();
 
@@ -26,14 +26,14 @@ export const AppLayout = ({ allowedRoles = null }) => {
   if (allowedRoles && !allowedRoles.includes(user?.role)) {
     return <Navigate to={getRoleHomeRoute(user?.role)} replace />;
   }
-  if (needsProfileSetup(user) && pathname.replace(/\/$/, '') !== '/onboarding') {
+  if (requireProfileSetup && needsProfileSetup(user) && pathname.replace(/\/$/, '') !== '/onboarding') {
     return <Navigate to="/onboarding" replace />;
   }
 
   return (
     <div className={`app-shell app-shell-${user?.role || 'student'}`}>
-      <Navbar />
-      <main className="app-main">
+      <StudentNavigation />
+      <main className="app-main" id="main-content" tabIndex={-1}>
         <div className="container">
           <Outlet />
         </div>

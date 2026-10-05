@@ -1,5 +1,7 @@
 // Real React components, isolated in-memory API. No application login or DB writes.
 import React from 'react';
+import { ConfirmProvider } from '../src/context/ConfirmContext';
+import { ToastProvider } from '../src/context/ToastContext';
 import { createRoot } from 'react-dom/client';
 import { MemoryRouter, Routes, Route } from 'react-router-dom';
 import AuthContext from '../src/context/AuthContext';
@@ -13,8 +15,8 @@ const until = async (condition, message) => {
   for (let i = 0; i < 100; i += 1) { if (condition()) return; await pause(); }
   throw new Error(message);
 };
-const text = () => document.getElementById('root').textContent;
-const button = (label) => [...document.querySelectorAll('button')].find((item) => item.textContent.trim() === label);
+const text = () => document.getElementById('root').textContent + (document.querySelector('.toast-viewport')?.textContent || '');
+const button = (label) => [...document.querySelectorAll('button')].find((item) => item.textContent.trim() === label || item.getAttribute('aria-label') === label);
 const fill = (selector, value) => {
   const input = document.querySelector(selector);
   assert(input, `Missing input ${selector}`);
@@ -30,7 +32,11 @@ const intervals = new Map();
 let intervalNumber = 0;
 window.setInterval = (callback, delay) => { const id = ++intervalNumber; intervals.set(id, { callback, delay }); return id; };
 window.clearInterval = (id) => intervals.delete(id);
-window.confirm = () => true;
+const acceptDecisions = new MutationObserver(() => {
+  const decision = [...document.querySelectorAll('.modal-footer button')].find((item) => item.textContent !== 'Cancel');
+  decision?.click();
+});
+acceptDecisions.observe(document.body, { childList: true, subtree: true });
 const tick = () => { for (const timer of intervals.values()) timer.callback(); };
 const learner = { _id: 'learner', name: 'User A', role: 'student', credits: 2, skillsToTeach: ['Java'], skillsToLearn: ['React'] };
 const tutor = { _id: 'tutor', name: 'User B', role: 'student', credits: 2, skillsToTeach: ['React'], skillsToLearn: ['Java'] };
@@ -51,7 +57,7 @@ window.fetch = async (url, options = {}) => {
   if (method !== 'GET') writes += 1;
   if (url === '/api/sessions/demo' && method === 'GET') {
     reads += 1;
-    data = { ...clone(session), myReview: reviews.has(actor._id) };
+    data = { ...clone(session), myReview: reviews.has(actor._id), ratingEligible: session.status === 'completed' && Boolean(session.creditsSettledAt) };
     if (holdRead) { holdRead = false; await new Promise((resolve) => { releaseRead = resolve; }); }
   } else if (url === '/api/sessions/demo/messages') {
     if (method === 'POST') {
@@ -76,11 +82,11 @@ let root;
 const refreshUser = async () => { walletRefreshes += 1; return actor; };
 const render = (page = 'room', reset = true) => {
   if (reset) { root?.unmount(); root = createRoot(document.getElementById('root')); }
-  root.render(<AuthContext.Provider value={{ user: actor, credits: actor.credits, refreshUser }}>
+  root.render(<AuthContext.Provider value={{ user: actor, credits: actor.credits, refreshUser }}><ToastProvider><ConfirmProvider>
     <MemoryRouter initialEntries={['/sessions/demo']}>
       {page === 'profile' ? <ProfilePage /> : <Routes><Route path="/sessions/:id" element={<SessionRoomPage />} /></Routes>}
     </MemoryRouter>
-  </AuthContext.Provider>);
+  </ConfirmProvider></ToastProvider></AuthContext.Provider>);
 };
 const idle = async () => {
   await pause();
@@ -117,8 +123,10 @@ try {
   assert(session.meetingLink === 'https://example.com/unsaved', 'Meeting details did not save');
   checks.push('unsaved meeting draft survives polling/focus and saves');
 
+  button('Messages').click(); await pause();
   fill('#session-message', 'Message from B'); await pause(); submit('.message-composer'); await idle();
   actor = learner; render(); await idle(); assert(text().includes('Message from B'), 'A cannot see B message');
+  button('Messages').click(); await pause();
   fill('#session-message', 'Message from A'); await pause(); submit('.message-composer'); await idle();
   actor = tutor; render(); await idle(); assert(text().includes('Message from A'), 'B cannot see A message');
   checks.push('both participants send and receive messages');
@@ -128,6 +136,7 @@ try {
   releaseRead(); await pause();
   assert(!button('Complete session'), 'Stale read restored accepted status');
   assert(text().includes('Awaiting confirmation'), 'Completion state disappeared');
+  assert(!document.querySelector('#review-heading'), 'Review appeared before settlement evidence');
   checks.push('slow pre-mutation response cannot restore old status');
 
   actor = learner; render(); await idle();
@@ -157,7 +166,7 @@ try {
   render('profile', false); await pause();
   assert(document.querySelector('#name').value === 'Unsaved A', 'Account refresh erased name draft');
   assert(text().includes('DraftSkill') && !text().includes('ServerSkill'), 'Account refresh erased skill draft');
-  submit('form'); await until(() => text().includes('successfully updated'), 'Profile save failed');
+  submit('form'); await until(() => text().includes('Profile and academic skills updated.'), 'Profile save failed');
   assert(actor.name === 'Unsaved A' && actor.skillsToTeach.includes('DraftSkill'), 'Saved profile differs from draft');
   actor = clone(tutor); render('profile', false); await pause();
   assert(document.querySelector('#name').value === tutor.name, 'Switching account retained prior draft');

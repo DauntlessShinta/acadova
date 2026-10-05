@@ -1,0 +1,7 @@
+[
+  { "name": "Programming Fundamentals", "slug": "programming-fundamentals", "description": "Start with variables, decisions, loops, and problem solving." },
+  { "name": "Web Development", "slug": "web-development", "description": "Explore HTML, CSS, JavaScript, and how web applications work." },
+  { "name": "Database Systems", "slug": "database-systems", "description": "Learn how to organize, query, and protect structured data." },
+  { "name": "Computer Networks", "slug": "computer-networks", "description": "Understand devices, protocols, addressing, and network communication." },
+  { "name": "Cybersecurity Fundamentals", "slug": "cybersecurity-fundamentals", "description": "Build foundational knowledge of security, safe practices, and common threats." }
+]

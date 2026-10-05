@@ -1,5 +1,6 @@
+import { useConfirm } from '../context/confirmAccess';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { Link, useLocation, useParams } from 'react-router-dom';
 import {
   ArrowLeft,
   Calendar,
@@ -16,6 +17,7 @@ import {
 import { useAuth } from '../context/AuthContext';
 import sessionService from '../services/sessionService';
 import ratingService from '../services/ratingService';
+import WorkflowTabs from '../components/common/WorkflowTabs';
 import Alert from '../components/common/Alert';
 import Badge from '../components/common/Badge';
 import LoadingSpinner from '../components/common/LoadingSpinner';
@@ -41,12 +43,18 @@ export const SessionRoomPage = () => {
 };
 
 const SessionRoom = ({ id }) => {
+  const { hash } = useLocation();
+  const [activeSection, setActiveSection] = useState(hash === '#session-messages' ? 'messages' : 'overview');
+  const confirm = useConfirm();
   const { user, refreshUser } = useAuth();
   const toast = useToast();
   const [session, setSession] = useState(null);
   const [messages, setMessages] = useState([]);
   const [messagesLoaded, setMessagesLoaded] = useState(false);
   const [loading, setLoading] = useState(true);
+  useEffect(() => {
+    if (!loading && hash === '#session-messages') { Promise.resolve().then(() => setActiveSection('messages')); document.getElementById('session-messages')?.scrollIntoView({ block: 'start' }); }
+  }, [loading, hash]);
   const [refreshing, setRefreshing] = useState(false);
   const [refreshError, setRefreshError] = useState('');
   const [actionLoading, setActionLoading] = useState(false);
@@ -70,7 +78,7 @@ const SessionRoom = ({ id }) => {
   const followMessages = useRef(true);
   const googleConfigured = isGoogleClientConfigured(import.meta.env.VITE_GOOGLE_CLIENT_ID);
 
-  const refreshRoom = useCallback(async ({ showLoading = false } = {}) => {
+  const refreshRoom = useCallback(async ({ showLoading = false, notify = false } = {}) => {
     if (actionInProgress.current) return;
     const ticket = gate.current.start();
     if (ticket === null) return;
@@ -101,8 +109,10 @@ const SessionRoom = ({ id }) => {
         setMessagesLoaded(true);
       }
       setRefreshError('');
+      if (notify) toast('info', 'Session refreshed.');
     } catch {
       if (gate.current.isCurrent(ticket)) {
+        if (notify) toast('error', 'Session updates are temporarily unavailable. Try again.');
         setRefreshError('Session updates are temporarily unavailable. Try Refresh.');
         if (roomLoaded.current) setMessagesLoaded(true);
       }
@@ -113,7 +123,7 @@ const SessionRoom = ({ id }) => {
         setLoading(false);
       }
     }
-  }, [id, refreshUser]);
+  }, [id, refreshUser, toast]);
 
   useEffect(() => {
     let active = true;
@@ -182,7 +192,7 @@ const SessionRoom = ({ id }) => {
       cancelled: 'Cancel this session? Both participants will lose access to active coordination.',
       completed: `Mark this ${session.subject} session as finished?\n\n${session.learner?.name || 'The learner'} will be asked to confirm before credits are transferred.`,
     };
-    if (prompts[status] && !window.confirm(prompts[status])) return;
+    if (prompts[status] && !await confirm(prompts[status], { title: status === 'cancelled' ? 'Cancel Session' : status === 'declined' ? 'Decline request' : 'Finish Session', label: status === 'cancelled' ? 'Cancel Session' : status === 'declined' ? 'Decline request' : 'Finish Session' })) return;
     if (!beginAction()) return;
     try {
       const response = await sessionService.updateSessionStatus(id, status);
@@ -199,6 +209,8 @@ const SessionRoom = ({ id }) => {
 
   const handleCoordinationSave = async (event) => {
     event.preventDefault();
+    if (session.meetingMethod === 'online' && session.meetingLink && meetingValue.trim() !== session.meetingLink
+      && !await confirm('Replace the existing meeting link? Both participants will need to use the new link.', { title: 'Replace meeting link', label: 'Replace link' })) return;
     if (!beginAction()) return;
     try {
       const field = session.meetingMethod === 'online' ? 'meetingLink' : 'location';
@@ -272,7 +284,7 @@ const SessionRoom = ({ id }) => {
   };
 
   const handleFinishSession = async () => {
-    if (!window.confirm('Finish the live session? Both participants must then confirm before credits transfer.')) return;
+    if (!await confirm('Finish the live session? Both participants must then confirm before credits transfer.', { title: 'Finish Session', label: 'Finish Session', destructive: false })) return;
     if (!beginAction()) return;
     try {
       const response = await sessionService.finishSession(id);
@@ -286,7 +298,7 @@ const SessionRoom = ({ id }) => {
   };
 
   const handleNoShow = async () => {
-    if (!window.confirm('Record this session as a no-show? Check-in evidence determines who was absent. No credits will transfer.')) return;
+    if (!await confirm('Record this session as a no-show? Check-in evidence determines who was absent. No credits will transfer.', { title: 'Record no-show', label: 'Record no-show' })) return;
     if (!beginAction()) return;
     try {
       const response = await sessionService.reportNoShow(id);
@@ -319,7 +331,7 @@ const SessionRoom = ({ id }) => {
     const prompt = session.status === 'awaiting_validation'
       ? `Confirm that the tutoring interaction happened? ${credits} transfer only after both participants confirm.`
       : `Confirm that this session was completed and transfer ${credits} to ${session.tutor?.name || 'the Tutor'}?`;
-    if (!window.confirm(prompt)) return;
+    if (!await confirm(prompt, { title: 'Confirm Session', label: 'Confirm Session', destructive: false })) return;
     if (!beginAction()) return;
     try {
       const response = await sessionService.confirmSession(id);
@@ -431,6 +443,9 @@ const SessionRoom = ({ id }) => {
           </span>
           <span>with <strong>{counterpart?.name || 'Peer student'}</strong></span>
         </div>
+              <button type="button" className="btn btn-ghost btn-sm" aria-label="Refresh session" onClick={() => refreshRoom({ notify: true })} disabled={refreshing || actionLoading}>
+                <RefreshCw size={14} /> Refresh
+              </button>
         <ul className="session-room-summary" aria-label="Session summary">
           <li><Calendar size={16} aria-hidden="true" /><time dateTime={session.scheduledAt}>{scheduledLabel || 'Not scheduled'}</time></li>
           <li><MapPin size={16} aria-hidden="true" /><span>{meetingMethodLabel}</span></li>
@@ -452,24 +467,25 @@ const SessionRoom = ({ id }) => {
         {session.status === 'awaiting_validation' && !myValidation && <button className="btn btn-primary btn-sm" type="button" disabled={actionLoading} onClick={handleConfirm}>Confirm session</button>}
         {canReportNoShow && <button className="btn btn-secondary btn-sm" type="button" disabled={actionLoading} onClick={handleNoShow}>Report no-show</button>}
         {usesLegacyActions && !isTeaching && session.status === 'completed' && !session.confirmedAt && <button className="btn btn-primary btn-sm" type="button" disabled={actionLoading} onClick={handleConfirm}>Confirm completion and transfer {creditLabel}</button>}
+        {canCheckIn && <button type="button" className="btn btn-primary btn-sm" disabled={actionLoading} onClick={handleCheckIn}>Check in</button>}
+        {session.meetingMethod === 'online' && session.meetingLink && <a className="btn btn-primary btn-sm" href={session.meetingLink} target="_blank" rel="noopener noreferrer">Join Meeting <ExternalLink size={14} aria-hidden="true" /><span className="sr-only"> (opens in a new tab)</span></a>}
+        {hasRescheduleProposal && <button className="btn btn-secondary btn-sm" onClick={() => setActiveSection('reschedule')}>Review proposed time</button>}
       </section>
 
-      <div className="session-room-layout">
-        <main className="session-room-main">
-          <section className="card session-room-section session-details-panel" aria-labelledby="details-heading">
-            <h2 id="details-heading">Session details</h2>
-            <dl className="session-details-grid">
-              <div><dt><UserRound size={16} /> Other participant</dt><dd>{counterpart?.name || 'Peer student'}</dd></div>
-              <div><dt><Calendar size={16} /> Date and time</dt><dd>{scheduledLabel || 'Not scheduled'}</dd></div>
-              <div><dt><MapPin size={16} /> Method</dt><dd>{meetingMethodLabel}</dd></div>
-              <div><dt><Coins size={16} /> Credits</dt><dd>{usesLegacyActions ? `${creditLabel} transferred after confirmation` : creditLabel}</dd></div>
-            </dl>
-
-            <div className="session-request-message">
-              <h3>Request message</h3>
-              <blockquote>{session.requestMessage || 'No request message was recorded for this older session.'}</blockquote>
-            </div>
-
+      <details className="session-secondary-actions" hidden={!hasSecondaryActions || isClosed}><summary>More session actions</summary>          {hasSecondaryActions && !isClosed && (
+            <section className="card session-room-section session-actions-panel" aria-labelledby="actions-heading">
+              <h2 id="actions-heading">Actions</h2>
+              {isTeaching && session.status === 'pending' && <button className="btn btn-ghost session-destructive-action" type="button" disabled={actionLoading} onClick={() => runStatusAction('declined')}>Decline request</button>}
+              {isTeaching && session.status === 'completed' && <p>Waiting for learner confirmation. No credits have transferred yet.</p>}
+              {(session.status === 'pending' || session.status === 'accepted') && <button className="btn btn-ghost session-cancel-action" type="button" disabled={actionLoading} onClick={() => runStatusAction('cancelled')}>Cancel session</button>}
+            </section>
+          )}</details>
+      <Alert type="danger" message={refreshError} />
+      <WorkflowTabs id="room" tabs={[['overview', 'Overview'], ['messages', 'Messages'], ['reschedule', 'Reschedule'], ['details', 'Details'], ['progress', 'Progress']]} active={activeSection} onChange={setActiveSection} />
+      <div className={`session-room-layout section-${activeSection}`}>
+        <div className="session-room-main">
+          <section id="room-panel-overview" role="tabpanel" tabIndex={0} aria-labelledby="room-tab-overview" hidden={activeSection !== 'overview'} className="card session-room-section session-details-panel">
+            <h2 id="overview-heading">Overview</h2><p>{nextStep}</p>
             {checkInStateVisible && (
               <div className="session-check-in">
                 <h3>Session check-in</h3>
@@ -485,7 +501,7 @@ const SessionRoom = ({ id }) => {
                 ) : !checkInOpen ? (
                   <p>Check-in is not available at this time.</p>
                 ) : null}
-                {canCheckIn && <button type="button" className="btn btn-primary btn-sm" disabled={actionLoading} onClick={handleCheckIn}>Check in</button>}
+
               </div>
             )}
 
@@ -532,39 +548,10 @@ const SessionRoom = ({ id }) => {
               </div>
             )}
 
-            {canReschedule && (
-              <div className="session-reschedule">
-                <h3>Reschedule</h3>
-                <p className="session-muted-copy">Current agreed time: {scheduledLabel || 'Not recorded'}. A new time takes effect only when your peer accepts it.</p>
-                {hasRescheduleProposal ? (
-                  <div className="session-reschedule-proposal">
-                    <p><strong>Proposed time:</strong> {proposedScheduleLabel || 'Unavailable'}</p>
-                    <p><strong>Proposed by:</strong> {proposedByMe ? 'You' : counterpart?.name || 'Your peer'}</p>
-                    <p>{proposedByMe ? 'Waiting for your peer to respond.' : `${counterpart?.name || 'Your peer'} proposed this time. The current time remains in place until you accept.`}</p>
-                    {!proposedByMe && (
-                      <div className="session-reschedule-actions">
-                        <button type="button" className="btn btn-primary btn-sm" disabled={actionLoading} onClick={() => handleRescheduleDecision(true)}>Accept new time</button>
-                        <button type="button" className="btn btn-secondary btn-sm" disabled={actionLoading} onClick={() => handleRescheduleDecision(false)}>Decline new time</button>
-                      </div>
-                    )}
-                  </div>
-                ) : (
-                  <form onSubmit={handleRescheduleProposal}>
-                    <label className="form-label" htmlFor="reschedule-time">Propose a new date and time</label>
-                    <div className="session-reschedule-actions">
-                      <input id="reschedule-time" className="form-input" type="datetime-local" value={proposedTime} onChange={(event) => setProposedTime(event.target.value)} required disabled={actionLoading} />
-                      <button type="submit" className="btn btn-secondary btn-sm" disabled={actionLoading}>Propose time</button>
-                    </div>
-                  </form>
-                )}
-              </div>
-            )}
-
             {session.meetingMethod === 'online' && session.meetingLink && (
               <div className="session-meeting-result">
                 <span>Online meeting</span>
-                <a className="btn btn-primary btn-sm" href={session.meetingLink}
-                  target="_blank" rel="noopener noreferrer">Join Meeting <ExternalLink size={14} /></a>
+                <span>Use Join Meeting above to open the agreed link.</span>
               </div>
             )}
             {session.meetingMethod === 'in-person' && session.location && (
@@ -585,7 +572,7 @@ const SessionRoom = ({ id }) => {
                     disabled={actionLoading || Boolean(session.meetingLink)}
                     onClick={handleGenerateMeet}>Generate Google Meet</button>}
                   <a className="btn btn-secondary btn-sm" href={googleMeetHome}
-                    target="_blank" rel="noopener noreferrer">Open Google Meet <ExternalLink size={14} /></a>
+                    target="_blank" rel="noopener noreferrer">Open Google Meet <ExternalLink size={14} aria-hidden="true" /><span className="sr-only"> (opens in a new tab)</span></a>
                 </div>
                 <p className="form-hint">Create a meeting there, copy its link, then paste it below. You can also use another meeting service.</p>
               </div>}
@@ -613,16 +600,14 @@ const SessionRoom = ({ id }) => {
             )}
           </section>
 
-          <section className={`card session-room-section session-messages-panel ${messagesAvailable ? '' : 'is-unavailable'}`} aria-labelledby="messages-heading">
-            <Alert type="danger" message={refreshError} />
+          <section id="room-panel-messages" role="tabpanel" tabIndex={0} aria-labelledby="room-tab-messages" hidden={activeSection !== 'messages'} className={`card session-room-section session-messages-panel ${messagesAvailable ? '' : 'is-unavailable'}`}>
+
             <div className="session-section-heading">
               <div>
                 <MessageSquare size={18} aria-hidden="true" />
-                <div><h2 id="messages-heading">Messages</h2>{messagesAvailable && <p>Coordinate the details of your session.</p>}</div>
+                <div><h2 id="session-messages">Messages</h2>{messagesAvailable && <p>Coordinate the details of your session.</p>}</div>
               </div>
-              <button type="button" className="btn btn-ghost btn-sm" aria-label="Refresh session" onClick={() => refreshRoom()} disabled={refreshing || actionLoading}>
-                <RefreshCw size={14} /> Refresh
-              </button>
+
             </div>
             <p className="session-refresh-note">Updates automatically every 5 seconds while this page is visible.</p>
             {!messagesAvailable ? (
@@ -667,6 +652,50 @@ const SessionRoom = ({ id }) => {
             )}
           </section>
 
+          <section id="room-panel-reschedule" role="tabpanel" tabIndex={0} aria-labelledby="room-tab-reschedule" hidden={activeSection !== 'reschedule'} className="card session-room-section">            {canReschedule && (
+              <div className="session-reschedule">
+                <h3>Reschedule</h3>
+                <p className="session-muted-copy">Current agreed time: {scheduledLabel || 'Not recorded'}. A new time takes effect only when your peer accepts it.</p>
+                {hasRescheduleProposal ? (
+                  <div className="session-reschedule-proposal">
+                    <p><strong>Proposed time:</strong> {proposedScheduleLabel || 'Unavailable'}</p>
+                    <p><strong>Proposed by:</strong> {proposedByMe ? 'You' : counterpart?.name || 'Your peer'}</p>
+                    <p>{proposedByMe ? 'Waiting for your peer to respond.' : `${counterpart?.name || 'Your peer'} proposed this time. The current time remains in place until you accept.`}</p>
+                    {!proposedByMe && (
+                      <div className="session-reschedule-actions">
+                        <button type="button" className="btn btn-primary btn-sm" disabled={actionLoading} onClick={() => handleRescheduleDecision(true)}>Accept new time</button>
+                        <button type="button" className="btn btn-secondary btn-sm" disabled={actionLoading} onClick={() => handleRescheduleDecision(false)}>Decline new time</button>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <form onSubmit={handleRescheduleProposal}>
+                    <label className="form-label" htmlFor="reschedule-time">Propose a new date and time</label>
+                    <div className="session-reschedule-actions">
+                      <input id="reschedule-time" className="form-input" type="datetime-local" value={proposedTime} onChange={(event) => setProposedTime(event.target.value)} required disabled={actionLoading} />
+                      <button type="submit" className="btn btn-secondary btn-sm" disabled={actionLoading}>Propose time</button>
+                    </div>
+                  </form>
+                )}
+              </div>
+            )}
+
+{!canReschedule && <p>A new time cannot be proposed in this session state.</p>}</section>
+          <section id="room-panel-details" role="tabpanel" tabIndex={0} aria-labelledby="room-tab-details" hidden={activeSection !== 'details'} className="card session-room-section">            <h2 id="details-heading">Session details</h2>
+            <dl className="session-details-grid">
+              <div><dt><UserRound size={16} /> Other participant</dt><dd>{counterpart?.name || 'Peer student'}</dd></div>
+              <div><dt><Calendar size={16} /> Date and time</dt><dd>{scheduledLabel || 'Not scheduled'}</dd></div>
+              <div><dt><MapPin size={16} /> Method</dt><dd>{meetingMethodLabel}</dd></div>
+              <div><dt><Coins size={16} /> Credits</dt><dd>{usesLegacyActions ? `${creditLabel} transferred after confirmation` : creditLabel}</dd></div>
+            </dl>
+
+            <div className="session-request-message">
+              <h3>Request message</h3>
+              <blockquote>{session.requestMessage || 'No request message was recorded for this older session.'}</blockquote>
+            </div>
+
+</section>
+          <div hidden={activeSection !== 'overview'}>
           {ratingSubmitted && <Alert type="success" message="Your review for this session has been submitted." />}
           {session.ratingEligible && ['completed', 'resolved'].includes(session.status) && !ratingSubmitted && (
             <section className="card session-room-section session-review-panel" aria-labelledby="review-heading">
@@ -678,9 +707,10 @@ const SessionRoom = ({ id }) => {
               </form>
             </section>
           )}
-        </main>
+          </div>
+        </div>
 
-        <aside className="session-room-sidebar">
+        <aside id="room-panel-progress" role={activeSection === 'progress' ? 'tabpanel' : undefined} aria-labelledby={activeSection === 'progress' ? 'room-tab-progress' : 'progress-heading'} className="session-room-sidebar" data-selected={activeSection === 'progress'}>
           <section className="card session-room-section session-progress-panel" aria-labelledby="progress-heading">
             <h2 id="progress-heading">Session progress</h2>
             <ol className="session-progress">
@@ -696,14 +726,7 @@ const SessionRoom = ({ id }) => {
             </ol>
           </section>
 
-          {hasSecondaryActions && !isClosed && (
-            <section className="card session-room-section session-actions-panel" aria-labelledby="actions-heading">
-              <h2 id="actions-heading">Actions</h2>
-              {isTeaching && session.status === 'pending' && <button className="btn btn-ghost session-destructive-action" type="button" disabled={actionLoading} onClick={() => runStatusAction('declined')}>Decline request</button>}
-              {isTeaching && session.status === 'completed' && <p>Waiting for learner confirmation. No credits have transferred yet.</p>}
-              {(session.status === 'pending' || session.status === 'accepted') && <button className="btn btn-ghost session-cancel-action" type="button" disabled={actionLoading} onClick={() => runStatusAction('cancelled')}>Cancel session</button>}
-            </section>
-          )}
+
         </aside>
       </div>
     </div>

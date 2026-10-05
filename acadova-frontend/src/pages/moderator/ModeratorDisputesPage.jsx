@@ -1,3 +1,4 @@
+import { useConfirm } from '../../context/confirmAccess';
 import React, { useCallback, useEffect, useState } from 'react';
 import moderationService from '../../services/moderationService';
 import Alert from '../../components/common/Alert';
@@ -8,7 +9,9 @@ import { useToast } from '../../context/toastAccess';
 const participantName = (value) => value?.name || 'Student account';
 
 export const ModeratorDisputesPage = () => {
+  const confirm = useConfirm();
   const toast = useToast();
+  const [noteErrors, setNoteErrors] = useState({});
   const [viewStatus, setViewStatus] = useState(() => new URLSearchParams(window.location.search).get('status') === 'resolved' ? 'resolved' : 'open');
   const [sessions, setSessions] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -35,11 +38,13 @@ export const ModeratorDisputesPage = () => {
   const resolve = async (session, resolution) => {
     const resolutionNote = (notes[session._id] || '').trim();
     if (resolutionNote.length < 10) {
-      toast('warning', 'Enter a resolution note of at least 10 characters.');
+      setNoteErrors((current) => ({ ...current, [session._id]: 'Enter a resolution note of at least 10 characters.' }));
+      document.getElementById(`resolution-note-${session._id}`)?.focus();
       return;
     }
+    setNoteErrors((current) => ({ ...current, [session._id]: '' }));
     const action = resolution === 'confirm_session' ? 'confirm this session and transfer credits' : 'reject this session without transferring credits';
-    if (!window.confirm(`Resolve this dispute and ${action}?`)) return;
+    if (!await confirm(`Resolve this dispute and ${action}? Your resolution note will be recorded in the audit log.`, { title: 'Resolve dispute', label: 'Resolve dispute' })) return;
     setWorkingId(session._id);
     setError('');
     try {
@@ -91,7 +96,8 @@ export const ModeratorDisputesPage = () => {
                 <option value="No-show outcome supported by recorded check-in evidence.">Confirmed no-show evidence</option>
               </select>
               <label className="form-label" htmlFor={`resolution-note-${session._id}`}>Resolution note</label>
-              <textarea id={`resolution-note-${session._id}`} className="form-textarea" minLength={10} maxLength={500} rows={3} value={notes[session._id] || ''} onChange={(event) => setNotes((current) => ({ ...current, [session._id]: event.target.value }))} disabled={Boolean(workingId)} />
+              <textarea id={`resolution-note-${session._id}`} className="form-textarea" aria-invalid={Boolean(noteErrors[session._id])} aria-describedby={noteErrors[session._id] ? `resolution-error-${session._id}` : undefined} minLength={10} maxLength={500} rows={3} value={notes[session._id] || ''} onChange={(event) => setNotes((current) => ({ ...current, [session._id]: event.target.value }))} disabled={Boolean(workingId)} />
+              {noteErrors[session._id] && <span id={`resolution-error-${session._id}`} className="form-error">{noteErrors[session._id]}</span>}
               <div className="session-dispute-actions">
                 <button type="button" className="btn btn-primary btn-sm" onClick={() => resolve(session, 'confirm_session')} disabled={Boolean(workingId)}>Confirm session and settle credits</button>
                 <button type="button" className="btn btn-secondary btn-sm" onClick={() => resolve(session, 'cancel_session')} disabled={Boolean(workingId)}>Mark session invalid</button>

@@ -1,21 +1,12 @@
+import { useToast } from '../context/toastAccess';
+import { normalizeName, nameValidationMessage } from '../utils/nameValidation';
+import { useUnsavedChanges } from '../utils/useUnsavedChanges';
 import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import userService from '../services/userService';
 import TagInput from '../components/common/TagInput';
 import StarRating from '../components/common/StarRating';
-import Alert from '../components/common/Alert';
-import LoadingSpinner from '../components/common/LoadingSpinner';
-import {
-  User,
-  Save,
-  GraduationCap,
-  BookOpen,
-  Mail,
-  ShieldCheck,
-  Star,
-  Coins,
-  CheckCircle2,
-} from 'lucide-react';
+import { Save, Mail } from 'lucide-react';
 
 export const ProfilePage = () => {
   const { user } = useAuth();
@@ -24,47 +15,48 @@ export const ProfilePage = () => {
 };
 
 const ProfileEditor = () => {
+  const toast = useToast();
   const { user, credits, refreshUser } = useAuth();
 
   const [name, setName] = useState(() => user?.name || '');
   const [skillsToTeach, setSkillsToTeach] = useState(() => user?.skillsToTeach || []);
   const [skillsToLearn, setSkillsToLearn] = useState(() => user?.skillsToLearn || []);
   const [saving, setSaving] = useState(false);
-  const [error, setError] = useState('');
-  const [success, setSuccess] = useState('');
+  const [nameError, setNameError] = useState('');
+  const [saved, setSaved] = useState(() => JSON.stringify([user?.name || '', user?.skillsToTeach || [], user?.skillsToLearn || []]));
+  const dirty = saved !== JSON.stringify([name, skillsToTeach, skillsToLearn]);
+  useUnsavedChanges(dirty);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setError('');
-    setSuccess('');
+    setNameError('');
 
-    if (!name.trim()) {
-      setError('Name cannot be empty.');
-      return;
-    }
+    const validationError = nameValidationMessage(name);
+    if (validationError) { setNameError(validationError); document.getElementById('name')?.focus(); return; }
 
     try {
       setSaving(true);
       await userService.updateMe({
-        name: name.trim(),
+        name: normalizeName(name),
         skillsToTeach,
         skillsToLearn,
       });
 
       // Normalize the saved name, but preserve any newer edit made in flight.
-      setName((current) => current === name ? name.trim() : current);
+      setName((current) => current === name ? normalizeName(name) : current);
 
       await refreshUser();
-      setSuccess('Profile and academic skills successfully updated!');
+      setSaved(JSON.stringify([normalizeName(name), skillsToTeach, skillsToLearn]));
+      toast('success', 'Profile and academic skills updated.');
     } catch (err) {
-      setError(err.message || 'Failed to update profile.');
+      toast('error', err.message || 'Failed to update profile.');
     } finally {
       setSaving(false);
     }
   };
 
   return (
-    <div className="container-narrow">
+    <div className="container-narrow profile-page" data-unsaved={dirty}>
       <div style={{ marginBottom: '28px' }}>
         <span style={{ fontSize: '0.85rem', color: 'var(--brass-600)', fontFamily: 'var(--font-mono)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
           Account & Academic Preferences
@@ -74,10 +66,7 @@ const ProfileEditor = () => {
         </h1>
       </div>
 
-      <Alert type="danger" message={error} onClose={() => setError('')} />
-      <Alert type="success" message={success} onClose={() => setSuccess('')} />
-
-      <div className="grid-2">
+      <div className="grid-2 profile-layout">
         {/* Left Card: Account Overview & Badges */}
         <div className="card">
           <div style={{ textAlign: 'center', marginBottom: '20px' }}>
@@ -148,12 +137,14 @@ const ProfileEditor = () => {
               </label>
               <input
                 id="name"
+                aria-invalid={Boolean(nameError)} aria-describedby="profile-name-help"
                 type="text"
                 className="form-input"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 required
               />
+              <p id="profile-name-help" className={nameError ? "form-error" : "form-hint"}>{nameError || "Enter the name you normally use for school or tutoring."}</p>
             </div>
 
             <div className="form-group">

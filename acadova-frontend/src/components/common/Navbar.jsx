@@ -1,9 +1,10 @@
 import React, { useEffect, useState } from 'react';
-import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { Layers, LogOut, Menu, ShieldCheck, User, X } from 'lucide-react';
+import { Link, useLocation } from 'react-router-dom';
+import { Layers, Menu, X } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
-import { getRoleHomeRoute, getRoleNavigation, normalizeRole } from '../../config/roleNavigation';
+import { getRoleHomeRoute, normalizeRole } from '../../config/roleNavigation';
 import NotificationBell from './NotificationBell';
+import AccountMenu from './AccountMenu';
 
 const publicLinks = [
   { to: '/#how-it-works', label: 'How It Works' },
@@ -19,14 +20,13 @@ const roleLabels = {
 };
 
 export const Navbar = () => {
-  const { user, isAuthenticated, credits, logout } = useAuth();
-  const navigate = useNavigate();
+  const { user, isAuthenticated, credits } = useAuth();
   const location = useLocation();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const role = normalizeRole(user?.role);
   const isStudent = role === 'student';
   const homeRoute = isAuthenticated ? getRoleHomeRoute(role) : '/';
-  const links = isAuthenticated ? getRoleNavigation(role) : publicLinks;
+  const links = isAuthenticated ? [{ to: homeRoute, label: 'Back to workspace' }] : publicLinks;
 
   useEffect(() => {
     const closeOnEscape = (event) => {
@@ -44,11 +44,6 @@ export const Navbar = () => {
       });
     }
   }, [location.pathname, location.hash]);
-
-  const handleLogout = () => {
-    logout();
-    navigate('/login');
-  };
 
   const isLinkActive = (to) => {
     const [pathname, hash = ''] = to.split('#');
@@ -89,22 +84,8 @@ export const Navbar = () => {
           ) : (
             <>
               <NotificationBell />
-              {isStudent ? (
-                <>
-                  <Link to="/credits" className="credit-pill"><span className="dot" />{credits} Credits</Link>
-                  <Link to="/profile" className="site-user-link" title={user?.email}>
-                    <User size={16} /><span>{user?.name || 'User'}</span>
-                  </Link>
-                </>
-              ) : (
-                <div className="site-staff-identity" title={user?.email}>
-                  <ShieldCheck size={16} />
-                  <span><strong>{user?.name || 'Staff'}</strong><small>{roleLabels[role]}</small></span>
-                </div>
-              )}
-              <button type="button" className="site-logout-button" onClick={handleLogout} aria-label="Log out">
-                <LogOut size={16} />
-              </button>
+              {isStudent && <Link to="/credits" className="credit-pill"><span className="dot" />{credits} Credits</Link>}
+              <AccountMenu />
             </>
           )}
         </div>
@@ -154,9 +135,7 @@ export const Navbar = () => {
                 <Link to="/register" className="btn btn-primary" onClick={() => setMobileMenuOpen(false)}>Get Started</Link>
               </div>
             ) : (
-              <button type="button" className="btn btn-danger site-mobile-logout" onClick={handleLogout}>
-                <LogOut size={16} /> Log Out
-              </button>
+              <AccountMenu />
             )}
           </div>
         </nav>

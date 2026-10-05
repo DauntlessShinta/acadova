@@ -4,8 +4,10 @@ import { useAuth } from '../context/AuthContext';
 import assessmentService from '../services/assessmentService';
 import Alert from '../components/common/Alert';
 import LoadingSpinner from '../components/common/LoadingSpinner';
+import { useToast } from '../context/toastAccess';
 
 export const AssessmentsPage = () => {
+  const toast = useToast();
   const [searchParams] = useSearchParams();
   const openId = searchParams.get('open');
   const { refreshUser } = useAuth();
@@ -16,6 +18,7 @@ export const AssessmentsPage = () => {
   const [loading, setLoading] = useState(true);
   const [working, setWorking] = useState(false);
   const [error, setError] = useState('');
+  const [answerError, setAnswerError] = useState('');
 
   useEffect(() => {
     assessmentService.list().then((response) => setList(response.data || []))
@@ -30,26 +33,27 @@ export const AssessmentsPage = () => {
   }, [openId]);
 
   const open = async (id) => {
-    setError(''); setResult(null); setWorking(true);
+    setError(''); setAnswerError(''); setResult(null); setWorking(true);
     try {
       const response = await assessmentService.get(id);
       setSelected(response.data);
       setAnswers(Array(response.data.questions.length).fill(null));
-    } catch (err) { setError(err.message); }
+    } catch (err) { toast('error', err.message || 'This assessment could not be opened.'); }
     finally { setWorking(false); }
   };
 
   const submit = async (event) => {
     event.preventDefault();
     if (answers.some((answer) => answer === null)) {
-      setError('Answer every question before submitting.'); return;
+      setAnswerError('Answer every question before submitting.'); return;
     }
-    setWorking(true); setError('');
+    setWorking(true); setError(''); setAnswerError('');
     try {
       const response = await assessmentService.submit(selected.id, answers);
       setResult(response.data);
+      toast(response.data.passed ? 'success' : 'info', response.data.passed ? 'Assessment passed. Your result is ready below.' : 'Attempt recorded. Review your result and try again when ready.');
       await refreshUser();
-    } catch (err) { setError(err.message); }
+    } catch (err) { toast('error', err.message || 'Your assessment could not be submitted. Please try again.'); }
     finally { setWorking(false); }
   };
 
@@ -81,7 +85,8 @@ export const AssessmentsPage = () => {
               onChange={() => setAnswers((current) => current.map((answer, i) => i === index ? optionIndex : answer))} /> {option}
           </label>)}
         </fieldset>)}
-        <button type="submit" className="btn btn-primary" disabled={working}>{working ? 'Submitting...' : 'Submit answers'}</button>
+        {answerError && <p id="assessment-answer-error" className="form-error" role="alert">{answerError}</p>}
+        <button type="submit" className="btn btn-primary" disabled={working} aria-describedby={answerError ? 'assessment-answer-error' : undefined}>{working ? 'Submitting...' : 'Submit answers'}</button>
       </form>}
     </div>}
   </div>;

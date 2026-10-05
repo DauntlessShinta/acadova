@@ -1,3 +1,4 @@
+import { useConfirm } from '../../context/confirmAccess';
 import React, { useEffect, useMemo, useState } from 'react';
 import { Search, ShieldCheck, Users } from 'lucide-react';
 import analyticsService from '../../services/analyticsService';
@@ -8,6 +9,7 @@ import LoadingSpinner from '../../components/common/LoadingSpinner';
 import { useToast } from '../../context/toastAccess';
 
 export const AdminUsersPage = () => {
+  const confirm = useConfirm();
   const toast = useToast();
   const [users, setUsers] = useState([]);
   const [search, setSearch] = useState('');
@@ -46,7 +48,7 @@ export const AdminUsersPage = () => {
     const prompt = nextRole === 'moderator'
       ? `Promote ${account.name} to Moderator? They will gain review moderation access.`
       : `Return ${account.name} to Student? They will lose review moderation access.`;
-    if (!window.confirm(prompt)) return;
+    if (!await confirm(prompt, { title: 'Change account role', label: nextRole === 'moderator' ? 'Promote to Moderator' : 'Remove Moderator role', destructive: nextRole !== 'moderator' })) return;
     try {
       setUpdatingId(account._id);
       setError('');
@@ -65,13 +67,11 @@ export const AdminUsersPage = () => {
     const suspended = Boolean(account.suspendedAt);
     let reason;
     if (suspended) {
-      if (!window.confirm(`Reactivate ${account.name}? Their existing login can access the app again.`)) return;
+      if (!await confirm(`Reactivate ${account.name}? Their existing login can access the app again.`, { title: 'Reactivate user', label: 'Reactivate', destructive: false })) return;
     } else {
-      reason = window.prompt(`Reason for suspending ${account.name} (10–500 characters):`);
-      if (reason === null) return;
-      reason = reason.trim();
-      if (reason.length < 10 || reason.length > 500) { toast('warning', 'Enter a suspension reason of 10–500 characters.'); return; }
-      if (!window.confirm(`Suspend ${account.name}? Existing tokens will lose access immediately.`)) return;
+      reason = await confirm(`Suspend ${account.name}? Existing tokens will lose access immediately.`,
+        { title: 'Suspend user', label: 'Suspend user', input: true, minLength: 10, maxLength: 500 });
+      if (!reason) return;
     }
     try {
       setUpdatingId(account._id); setError('');

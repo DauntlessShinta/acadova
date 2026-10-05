@@ -2,14 +2,16 @@ import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import authService from '../services/authService';
 import { passwordRequirements } from '../utils/authForm';
-import Alert from '../components/common/Alert';
+import { useToast } from '../context/toastAccess';
+import { focusInvalidField } from '../utils/focusInvalidField';
 
 export default function ResetPasswordPage() {
   const [token] = useState(() => new URLSearchParams(window.location.search).get('token'));
   const [password, setPassword] = useState('');
   const [confirm, setConfirm] = useState('');
   const [state, setState] = useState(token ? 'ready' : 'invalid');
-  const [error, setError] = useState('');
+  const [fields, setFields] = useState({});
+  const toast = useToast();
   useEffect(() => {
     if (token) window.history.replaceState(window.history.state, '', '/reset-password');
   }, [token]);
@@ -18,16 +20,17 @@ export default function ResetPasswordPage() {
     if (state === 'working') return;
     if (!passwordRequirements(password).every(([, met]) => met)
       || password.length > 64 || new TextEncoder().encode(password).length > 72) {
-      setError('Use 8–64 characters with uppercase, lowercase, a number, and a special character.');
+      setFields({ password: 'Use 8–64 characters with uppercase, lowercase, a number, and a special character.' });
+      focusInvalidField({ password: true }, { password: 'reset-password' });
       return;
     }
-    if (password !== confirm) { setError('Passwords do not match.'); return; }
-    setState('working'); setError('');
-    try { await authService.resetPassword(token, password); setState('success'); setPassword(''); setConfirm(''); }
+    if (password !== confirm) { setFields({ confirm: 'Passwords do not match.' }); focusInvalidField({ confirm: true }, { confirm: 'reset-confirm' }); return; }
+    setState('working'); setFields({});
+    try { await authService.resetPassword(token, password); setState('success'); toast('success', 'Your password has been updated.'); setPassword(''); setConfirm(''); }
     catch (failure) {
       if (failure?.data?.code === 'RESET_EXPIRED') setState('expired');
       else if (failure?.data?.code === 'RESET_INVALID') setState('invalid');
-      else { setState('ready'); setError('Unable to reset your password right now. Please try again.'); }
+      else { setState('ready'); toast('error', 'Unable to reset your password right now. Please try again.'); }
     }
   };
   return <>
@@ -39,14 +42,13 @@ export default function ResetPasswordPage() {
         ? <p className="auth-form-intro">Request a new link to reset your password.</p>
         : <>
           <p className="auth-form-intro">Enter a new password for your Acadova account.</p>
-          <Alert type="danger" message={error} onClose={() => setError('')} />
           <form onSubmit={submit}>
             <div className="form-group"><label className="form-label" htmlFor="reset-password">New password</label>
               <input id="reset-password" className="form-input" type="password" autoComplete="new-password"
-                value={password} onChange={(event) => setPassword(event.target.value)} required /></div>
+                aria-invalid={Boolean(fields.password)} aria-describedby={fields.password ? 'reset-password-error' : undefined} value={password} onChange={(event) => setPassword(event.target.value)} required />{fields.password && <span id="reset-password-error" className="form-error">{fields.password}</span>}</div>
             <div className="form-group"><label className="form-label" htmlFor="reset-confirm">Confirm new password</label>
               <input id="reset-confirm" className="form-input" type="password" autoComplete="new-password"
-                value={confirm} onChange={(event) => setConfirm(event.target.value)} required /></div>
+                aria-invalid={Boolean(fields.confirm)} aria-describedby={fields.confirm ? 'reset-confirm-error' : undefined} value={confirm} onChange={(event) => setConfirm(event.target.value)} required />{fields.confirm && <span id="reset-confirm-error" className="form-error">{fields.confirm}</span>}</div>
             <button className="btn btn-primary auth-submit" disabled={state === 'working'}>
               {state === 'working' ? 'Updating password...' : 'Reset password'}</button>
           </form>

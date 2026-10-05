@@ -1,3 +1,5 @@
+import { useConfirm } from '../../context/confirmAccess';
+import WorkflowTabs from '../../components/common/WorkflowTabs';
 import React, { useEffect, useState } from 'react';
 import assessmentService from '../../services/assessmentService';
 import learningService from '../../services/learningService';
@@ -10,7 +12,9 @@ const initialDraft = () => ({ title: '', topic: '', passingScore: 60,
   questions: [emptyQuestion(), emptyQuestion(), emptyQuestion()] });
 
 export const ModeratorAssessmentsPage = () => {
+  const confirm = useConfirm();
   const toast = useToast();
+  const [section, setSection] = useState('drafts');
   const [draft, setDraft] = useState(initialDraft);
   const [assessments, setAssessments] = useState([]);
   const [learningTopics, setLearningTopics] = useState([]);
@@ -46,7 +50,7 @@ export const ModeratorAssessmentsPage = () => {
     finally { setWorking(false); }
   };
   const publish = async (id) => {
-    if (!window.confirm('Publish this assessment for Students? Questions and answers cannot be changed afterward.')) return;
+    if (!await confirm('Publish this assessment for Students? Questions and answers cannot be changed afterward.', { title: 'Publish assessment', label: 'Publish assessment', destructive: false })) return;
     setWorking(true); setError('');
     try { await assessmentService.publish(id); toast('success', 'Assessment published.');
       setReview((current) => current?.id === id ? { ...current, status: 'published' } : current);
@@ -56,8 +60,8 @@ export const ModeratorAssessmentsPage = () => {
   };
   const reviewAssessment = async (id) => {
     setWorking(true); setError('');
-    try { const response = await assessmentService.staffGet(id); setReview(response.data); }
-    catch (err) { setError(err.message); }
+    try { const response = await assessmentService.staffGet(id); setReview(response.data); setSection('review'); }
+    catch (err) { toast('error', err.message || 'The assessment draft could not be opened.'); }
     finally { setWorking(false); }
   };
 
@@ -65,7 +69,8 @@ export const ModeratorAssessmentsPage = () => {
     <header className="staff-page-header"><div><span className="staff-eyebrow">Moderator / Learning</span>
       <h1>Assessments</h1><p>Create a short multiple-choice assessment, then publish it for Students.</p></div></header>
     <Alert type="danger" message={error} />
-    <div className="card"><h2>Assessment drafts</h2>
+    <WorkflowTabs id="assessment-management" tabs={[['drafts', 'Drafts'], ['builder', 'Create / edit'], ['review', 'Review']]} active={section} onChange={setSection} />
+    <div role="tabpanel" id="assessment-management-panel-drafts" aria-labelledby="assessment-management-tab-drafts" hidden={section !== 'drafts'} className="card"><h2>Assessment drafts</h2>
       {loading ? <LoadingSpinner text="Loading assessments..." /> : assessments.length === 0
         ? <p>No assessments yet.</p> : assessments.map((item) => <div key={item.id}
           style={{ display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: 16, padding: '12px 0' }}>
@@ -74,6 +79,8 @@ export const ModeratorAssessmentsPage = () => {
             onClick={() => reviewAssessment(item.id)}>Review</button>
         </div>)}
     </div>
+    <section role="tabpanel" id="assessment-management-panel-review" aria-labelledby="assessment-management-tab-review" hidden={section !== 'review'}>
+    {!review && <p>Select a draft to review its questions and publishing options.</p>}
     {review && <div className="card" style={{ marginTop: 20 }}>
       <h2>{review.title}</h2><p>{review.topic} · {review.status} · Pass at {review.passingScore}%</p>
       {review.questions.map((question, index) => <div key={index}>
@@ -88,11 +95,12 @@ export const ModeratorAssessmentsPage = () => {
           setDraft({ title: review.title, topic: review.topic, passingScore: review.passingScore,
             ...(review.learningTopic ? { learningTopic: review.learningTopic } : {}),
             questions: review.questions.map((question) => ({ ...question, options: [...question.options] })) });
-          setEditingId(review.id);
+          setEditingId(review.id); setSection('builder');
           setReview(null);
         }}>Edit draft</button>}
     </div>}
-    <form className="card" onSubmit={create} style={{ marginTop: 24 }}>
+    </section>
+    <form role="tabpanel" id="assessment-management-panel-builder" aria-labelledby="assessment-management-tab-builder" hidden={section !== 'builder'} className="card" onSubmit={create} style={{ marginTop: 24 }}>
       <h2>{editingId ? 'Edit assessment draft' : 'Create assessment draft'}</h2>
       <p>Use 3–10 questions, 2–5 options per question, and select one correct answer.</p>
       {editingId && <button type="button" className="btn btn-secondary btn-sm"

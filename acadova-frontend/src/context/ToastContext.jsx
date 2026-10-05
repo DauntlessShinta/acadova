@@ -1,3 +1,4 @@
+import { createPortal } from 'react-dom';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { AlertCircle, CheckCircle2, Info, TriangleAlert, X } from 'lucide-react';
 import { addToast, dismissToast, makeToast } from '../utils/toastState';
@@ -16,7 +17,10 @@ export function ToastProvider({ children }) {
   }, []);
   const showToast = useCallback((type, message) => {
     const toast = makeToast(type, message, ++nextId.current);
-    setToasts((current) => addToast(current, toast));
+    // A burst of outcomes must not stack cards over navigation or actions.
+    for (const timer of timers.current.values()) window.clearTimeout(timer);
+    timers.current.clear();
+    setToasts((current) => addToast(current, toast).slice(-1));
     timers.current.set(toast.id, window.setTimeout(() => dismiss(toast.id), 6000));
     return toast.id;
   }, [dismiss]);
@@ -27,7 +31,7 @@ export function ToastProvider({ children }) {
 
   return <ToastContext.Provider value={showToast}>
     {children}
-    <div className="toast-viewport" aria-label="Notifications">
+    {createPortal(<div className="toast-viewport" aria-label="Action notifications">
       {toasts.map((toast) => {
         const Icon = icons[toast.type];
         return <div className={`app-toast app-toast-${toast.type}`} key={toast.id}
@@ -37,6 +41,6 @@ export function ToastProvider({ children }) {
           <button type="button" aria-label="Dismiss notification" onClick={() => dismiss(toast.id)}><X size={16} /></button>
         </div>;
       })}
-    </div>
+    </div>, document.body)}
   </ToastContext.Provider>;
 }

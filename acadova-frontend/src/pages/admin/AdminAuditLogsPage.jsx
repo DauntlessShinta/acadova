@@ -21,6 +21,7 @@ export default function AdminAuditLogsPage() {
   const [actorDraft, setActorDraft] = useState('');
   const [targetType, setTargetType] = useState('');
   const [loading, setLoading] = useState(true);
+  const [actorError, setActorError] = useState('');
   const [error, setError] = useState('');
   useEffect(() => {
     let active = true;
@@ -45,11 +46,11 @@ export default function AdminAuditLogsPage() {
       <label>Action <select className="form-select" value={action} onChange={updateFilter(setAction)}>
         <option value="">All actions</option>{actions.map((value) => <option key={value}>{value}</option>)}
       </select></label>
-      <label>Actor ID <input className="form-input" value={actorDraft} onChange={(event) => setActorDraft(event.target.value)} placeholder="User ID" /></label>
+      <label>Actor ID <input id="audit-actor" aria-invalid={Boolean(actorError)} aria-describedby={actorError ? 'audit-actor-error' : undefined} className="form-input" value={actorDraft} onChange={(event) => setActorDraft(event.target.value)} placeholder="User ID" />{actorError && <span className="form-error" id="audit-actor-error">{actorError}</span>}</label>
       <button type="button" className="btn btn-secondary btn-sm" onClick={() => {
         const value = actorDraft.trim();
-        if (value && !/^[a-f\d]{24}$/i.test(value)) { setError('Enter a valid Actor ID.'); return; }
-        setActor(value); setPage(1);
+        if (value && !/^[a-f\d]{24}$/i.test(value)) { setActorError('Enter a valid Actor ID.'); document.getElementById('audit-actor')?.focus(); return; }
+        setActorError(''); setActor(value); setPage(1);
       }}>Apply actor</button>
       <label>Target type <select className="form-select" value={targetType} onChange={updateFilter(setTargetType)}>
         <option value="">All types</option>{['Session', 'User', 'Rating', 'LearningTopic', 'LearningResource',

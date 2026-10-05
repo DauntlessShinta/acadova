@@ -1,4 +1,5 @@
-export const normalizeName = (value) => value.trim().replace(/ +/g, ' ');
+import { normalizeName, nameValidationMessage } from './nameValidation.js';
+export { normalizeName } from './nameValidation.js';
 export const normalizeEmail = (value) => value.trim().toLowerCase();
 
 export const passwordRequirements = (password) => [
@@ -13,12 +14,8 @@ export const validateRegistration = ({ name, email, password, confirmPassword, p
   const cleanName = normalizeName(name);
   const cleanEmail = normalizeEmail(email);
   const fields = {};
-  if (!cleanName) fields.name = 'Enter your full name.';
-  else if (cleanName.length > 100) fields.name = 'Name must be 100 characters or fewer.';
-  else if (cleanName.length < 2 || /[\p{Cc}\p{Cf}]/u.test(name)
-    || !/^[\p{L}\p{M}\p{N} .\p{Pd}'\u2019]+$/u.test(cleanName)) {
-    fields.name = 'Enter a valid full name.';
-  }
+  const nameError = nameValidationMessage(name);
+  if (nameError) fields.name = nameError;
   if (cleanEmail.length > 254 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleanEmail)
     || /[\p{Cc}\p{Cf}]/u.test(cleanEmail)) fields.email = 'Enter a valid email address.';
   if (!passwordRequirements(password).every(([, met]) => met)

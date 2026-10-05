@@ -1,3 +1,5 @@
+import { useConfirm } from '../../context/confirmAccess';
+import { useToast } from '../../context/toastAccess';
 import React, { useEffect, useMemo, useState } from 'react';
 import api from '../../services/api';
 import Alert from '../../components/common/Alert';
@@ -10,6 +12,8 @@ const fields = [
 ];
 
 export const AdminCreditsPage = () => {
+  const toast = useToast();
+  const confirm = useConfirm();
   const [rules, setRules] = useState(null);
   const [draft, setDraft] = useState({});
   const [students, setStudents] = useState([]);
@@ -21,8 +25,8 @@ export const AdminCreditsPage = () => {
   const [reference, setReference] = useState(() => crypto.randomUUID());
   const [busy, setBusy] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [adjustmentError, setAdjustmentError] = useState('');
   const [error, setError] = useState('');
-  const [success, setSuccess] = useState('');
 
   const load = async () => {
     try {
@@ -48,7 +52,8 @@ export const AdminCreditsPage = () => {
 
   const saveRules = async (event) => {
     event.preventDefault();
-    setBusy(true); setError(''); setSuccess('');
+    if (!await confirm('Save these credit rules? Future qualifying activity will use the new values.', { title: 'Save credit rules', label: 'Save rules', destructive: false })) return;
+    setBusy(true); setError('');
     try {
       const response = await api.patch('/api/admin/credits/rules', {
         startingCreditGrant: Number(draft.startingCreditGrant),
@@ -56,8 +61,8 @@ export const AdminCreditsPage = () => {
         assessmentReward: Number(draft.assessmentReward), expectedVersion: rules.version,
       });
       setRules(response.data); setDraft(response.data);
-      setSuccess('Credit rules saved. New events use these values; history is unchanged.');
-    } catch (err) { setError(err.message || 'Rules could not be saved. Reload if another Admin edited them.'); }
+      toast('success', 'Credit rules saved. New events use these values; history is unchanged.');
+    } catch (err) { toast('error', err.message || 'Rules could not be saved. Reload if another Admin edited them.'); }
     finally { setBusy(false); }
   };
 
@@ -65,10 +70,10 @@ export const AdminCreditsPage = () => {
     event.preventDefault();
     if (!target || !Number.isSafeInteger(numericAmount) || numericAmount < 1 || numericAmount > 1000
       || projected < 0 || reason.trim().length < 10) {
-      setError('Select a Student and enter a valid amount and reason. Debits cannot make balances negative.');
+      setAdjustmentError('Select a Student and enter a valid amount and reason. Debits cannot make balances negative.');
       return;
     }
-    setBusy(true); setError(''); setSuccess('');
+    setBusy(true); setAdjustmentError('');
     try {
       const currentStudents = (await api.get('/api/admin/users')).data.filter((user) => user.role === 'student');
       setStudents(currentStudents);
@@ -76,18 +81,19 @@ export const AdminCreditsPage = () => {
       if (!currentTarget) throw new Error('Student is no longer available. Reload and choose another account.');
       const currentProjected = currentTarget.credits + (direction === 'credit' ? numericAmount : -numericAmount);
       if (currentProjected < 0) throw new Error('This debit would make the current balance negative.');
-      if (!window.confirm(`${direction === 'credit' ? 'Credit' : 'Debit'} ${numericAmount} credits ${direction === 'credit' ? 'to' : 'from'} ${currentTarget.name}? Balance: ${currentTarget.credits} → ${currentProjected}. Reason: ${reason.trim()}`)) return;
+      if (!await confirm(`${direction === 'credit' ? 'Credit' : 'Debit'} ${numericAmount} credits ${direction === 'credit' ? 'to' : 'from'} ${currentTarget.name}? Balance: ${currentTarget.credits} → ${currentProjected}. Reason: ${reason.trim()}`,
+        { title: 'Adjust credit balance', label: 'Apply adjustment' })) return;
       const response = await api.post('/api/admin/credits/adjustments', {
         targetStudentId, direction, amount: numericAmount, reason: reason.trim(), reference,
       });
       setStudents((current) => current.map((student) => student._id === targetStudentId
         ? { ...student, credits: response.data.balance } : student));
-      setSuccess(response.repeated ? 'Adjustment was already applied; no duplicate credit movement.'
+      toast('success', response.repeated ? 'Adjustment was already applied; no duplicate credit movement.'
         : 'Credit adjustment recorded.');
       setReference(crypto.randomUUID()); setAmount(''); setReason('');
       try { const recent = await api.get('/api/admin/credits/activity'); setActivity(recent.data); }
       catch { /* The committed adjustment remains successful; activity can be refreshed later. */ }
-    } catch (err) { setError(err.message || 'Adjustment failed. Retrying keeps the same reference.'); }
+    } catch (err) { toast('error', err.message || 'Adjustment failed. Retrying keeps the same reference.'); }
     finally { setBusy(false); }
   };
 
@@ -95,20 +101,22 @@ export const AdminCreditsPage = () => {
   return <div className="staff-page">
     <header className="staff-page-header"><div><span className="staff-eyebrow">Administration / Credits</span><h1>Credit administration</h1><p>Manage rules for new activity and make documented Student balance corrections.</p></div></header>
     <Alert type="danger" message={error} onClose={() => setError('')} />
-    <Alert type="success" message={success} onClose={() => setSuccess('')} />
     <div className="grid-2 admin-analytics-grid">
       <section className="card"><h2>Credit rules</h2><p>Changes apply only to future activity.</p><form onSubmit={saveRules}>
         {fields.map(([key, label]) => <div className="form-group" key={key}><label className="form-label" htmlFor={key}>{label}</label><input className="form-input" id={key} type="number" min="1" max="1000" step="1" required value={draft[key] ?? ''} onChange={(event) => setDraft({ ...draft, [key]: event.target.value })} /></div>)}
         <button className="btn btn-primary" disabled={busy || !rules}>Save credit rules</button>
       </form></section>
-      <section className="card"><h2>Student balance correction</h2><form onSubmit={submitAdjustment}>
+      <section className="card"><h2>Student balance correction</h2>
+        {!students.length && <p>No Student accounts are available for a balance correction.</p>}
+        <fieldset className="prerequisite-fields" disabled={!students.length}><form onSubmit={submitAdjustment}>
         <div className="form-group"><label className="form-label" htmlFor="targetStudent">Target Student</label><select className="form-select" id="targetStudent" required value={targetStudentId} onChange={(event) => setTargetStudentId(event.target.value)}><option value="">Select a Student</option>{students.map((student) => <option key={student._id} value={student._id}>{student.name} ({student.email})</option>)}</select></div>
         <div className="form-group"><label className="form-label" htmlFor="direction">Direction</label><select className="form-select" id="direction" value={direction} onChange={(event) => setDirection(event.target.value)}><option value="credit">Credit</option><option value="debit">Debit</option></select></div>
         <div className="form-group"><label className="form-label" htmlFor="amount">Amount</label><input className="form-input" id="amount" type="number" min="1" max="1000" step="1" required value={amount} onChange={(event) => setAmount(event.target.value)} /></div>
         <div className="form-group"><label className="form-label" htmlFor="reason">Reason shown to Student (10–500 characters; no private notes)</label><textarea className="form-input" id="reason" minLength="10" maxLength="500" required value={reason} onChange={(event) => setReason(event.target.value)} /></div>
         <p>Current balance: <strong>{target?.credits ?? '—'}</strong> · Projected balance: <strong>{projected ?? '—'}</strong></p>
+        <p className="form-error" role="alert">{adjustmentError}</p>
         <button className="btn btn-primary" disabled={busy || !target || projected === null || projected < 0}>Confirm adjustment</button>
-      </form></section>
+      </form></fieldset></section>
     </div>
     <section className="card"><h2>Recent credit activity</h2><div className="status-list">{activity.map((row) => <div key={row._id}><span>{row.type.replaceAll('_', ' ')} · {row.adjustmentDirection || ''} {row.adjustmentReason || ''}<small> {row.fromUser ? `From ${students.find((item) => item._id === row.fromUser)?.name || row.fromUser} · ` : ''}{row.toUser ? `To ${students.find((item) => item._id === row.toUser)?.name || row.toUser} · ` : ''}{new Date(row.createdAt).toLocaleString()}</small></span><strong className="mono">{row.amount}</strong></div>)}</div>{activity.length === 0 && <p>No recorded credit events yet.</p>}</section>
   </div>;

@@ -2,7 +2,8 @@ import React, { useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { ArrowRight, Check, Eye, EyeOff } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
-import Alert from '../components/common/Alert';
+import { useToast } from '../context/toastAccess';
+import { focusInvalidField } from '../utils/focusInvalidField';
 import { passwordRequirements, pendingRegistrationNavigation, registrationErrorMessage, validateRegistration } from '../utils/authForm';
 import GoogleSignInButton from '../components/auth/GoogleSignInButton';
 import PolicyReviewDialog from '../components/auth/PolicyReviewDialog';
@@ -18,7 +19,7 @@ export const RegisterPage = () => {
   const [reviewOpen, setReviewOpen] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const [error, setError] = useState('');
+  const toast = useToast();
   const [fields, setFields] = useState({});
   const [submitting, setSubmitting] = useState(false);
   const submittingRef = useRef(false);
@@ -29,12 +30,13 @@ export const RegisterPage = () => {
     if (submittingRef.current) return;
     const { fields: next, account } = validateRegistration({ name, email, password, confirmPassword, policyAccepted });
     setFields(next);
-    setError(Object.keys(next).length ? 'Check the highlighted fields.' : '');
-    if (Object.keys(next).length) return;
+
+    if (Object.keys(next).length) { focusInvalidField(next, { name: 'register-name', email: 'register-email', password: 'register-password', confirmPassword: 'register-confirm-password', policyAccepted: 'register-policy-review' }); return; }
     try {
       submittingRef.current = true;
       setSubmitting(true);
       await register(account);
+      toast('success', 'Account created. Check your email to verify.');
       sessionStorage.setItem('acadova_pending_email', account.email);
       navigate('/verify-email/pending', { replace: true, state: { email: account.email, justRegistered: true } });
     } catch (err) {
@@ -50,7 +52,7 @@ export const RegisterPage = () => {
         return;
       }
       if (err.status === 409) setFields({ email: 'An account with this email already exists.' });
-      setError(registrationErrorMessage(err));
+      toast('error', registrationErrorMessage(err));
     } finally {
       submittingRef.current = false;
       setSubmitting(false);
@@ -61,11 +63,11 @@ export const RegisterPage = () => {
     <span className="auth-form-eyebrow">Join the exchange</span>
     <h2>Create your Acadova account</h2>
     <p className="auth-form-intro">Start learning with student peers. You can add your skills later from your Profile.</p>
-    <Alert type="danger" message={error} onClose={() => setError('')} />
     <form onSubmit={handleSubmit} noValidate>
       <div className="form-group">
         <label className="form-label" htmlFor="register-name">Full name</label>
         <input id="register-name" type="text" className="form-input" autoComplete="name" value={name} onChange={(event) => setName(event.target.value)} aria-invalid={Boolean(fields.name)} aria-describedby={fields.name ? 'register-name-error' : undefined} required autoFocus />
+        <span className="form-hint">Enter the name you normally use for school or tutoring.</span>
         {fields.name && <span className="form-error" id="register-name-error">{fields.name}</span>}
       </div>
       <div className="form-group">
@@ -93,7 +95,7 @@ export const RegisterPage = () => {
       </div>
       <div className="form-group policy-acknowledgment">
         <p>I agree to the <Link to="/terms" target="_blank" rel="noopener noreferrer">Terms of Use</Link> and acknowledge the <Link to="/privacy" target="_blank" rel="noopener noreferrer">Privacy Policy</Link>.</p>
-        <button type="button" className="btn btn-secondary btn-sm" onClick={() => setReviewOpen(true)}
+        <button id="register-policy-review" type="button" className="btn btn-secondary btn-sm" onClick={() => setReviewOpen(true)}
           aria-describedby={fields.policyAccepted ? 'register-policy-error' : undefined}>
           {policyAccepted ? 'Review Terms & Privacy again' : 'Review Terms & Privacy'}
         </button>

@@ -1,3 +1,4 @@
+import { useToast } from '../../context/toastAccess';
 import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Link } from 'react-router-dom';
@@ -13,6 +14,7 @@ export default function GoogleSignInButton() {
   const container = useRef(null);
   const { googleLogin } = useAuth();
   const navigate = useNavigate();
+  const toast = useToast();
   const [error, setError] = useState('');
   const [working, setWorking] = useState(false);
   const [pendingCredential, setPendingCredential] = useState(null);
@@ -38,7 +40,7 @@ export default function GoogleSignInButton() {
               setPendingCredential(credential);
               setPolicyAccepted(false);
               setError('Review the account policies before creating your Acadova account.');
-            } else if (active) setError(failure?.status === 403 ? 'This account is suspended.'
+            } else if (active) toast('error', failure?.status === 403 ? 'This account is suspended.'
               : failure?.status === 429 ? 'Too many attempts. Please try again shortly.'
                 : 'Google sign-in could not be completed. Please try again.');
           } finally {
@@ -66,7 +68,7 @@ export default function GoogleSignInButton() {
       return () => { active = false; script.removeEventListener('load', render); };
     }
     return () => { active = false; };
-  }, [googleLogin, navigate]);
+  }, [googleLogin, toast, navigate]);
 
   const createGoogleAccount = async (event) => {
     event.preventDefault();
@@ -77,7 +79,7 @@ export default function GoogleSignInButton() {
       setPendingCredential(null);
       navigate(getRoleHomeRoute(response?.data?.user?.role), { replace: true });
     } catch {
-      setError('Google sign-up could not be completed. Please try signing in again.');
+      toast('error', 'Google sign-up could not be completed. Please try signing in again.');
       setPendingCredential(null);
     } finally { setWorking(false); }
   };

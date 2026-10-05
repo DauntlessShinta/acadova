@@ -1,3 +1,4 @@
+import { useToast } from '../context/toastAccess';
 import React, { useState, useEffect } from 'react';
 import { useParams, Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
@@ -12,6 +13,7 @@ import {
 } from 'lucide-react';
 
 export const TutorProfilePage = () => {
+  const toast = useToast();
   const { id } = useParams();
   const location = useLocation();
   const { credits, refreshUser } = useAuth();
@@ -20,7 +22,6 @@ export const TutorProfilePage = () => {
   const [reviews, setReviews] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [successMsg, setSuccessMsg] = useState('');
 
   // Request form state
   const [sessionSubject, setSessionSubject] = useState('');
@@ -68,7 +69,7 @@ export const TutorProfilePage = () => {
   const handleRequestSession = async (e) => {
     e.preventDefault();
     setError('');
-    setSuccessMsg('');
+
 
     const errors = {};
     if (!sessionSubject.trim()) errors.subject = 'Choose a subject.';
@@ -78,12 +79,12 @@ export const TutorProfilePage = () => {
     if (requestMessage.trim().length > 500) errors.requestMessage = 'Your message must be 500 characters or fewer.';
     setFieldErrors(errors);
     if (Object.keys(errors).length > 0) {
-      setError('Check the highlighted session details.');
+      requestAnimationFrame(() => document.getElementById(Object.keys(errors)[0])?.focus());
       return;
     }
 
     if (sessionCost !== null && credits < sessionCost) {
-      setError('You need more Acadova Credits for this session. Pass a qualifying assessment or teach a verified session to earn credits.');
+      setFieldErrors({ credits: 'You need more Acadova Credits. Pass a qualifying assessment or teach a verified session to earn credits.' });
       return;
     }
 
@@ -97,10 +98,10 @@ export const TutorProfilePage = () => {
         requestMessage: requestMessage.trim(),
       });
 
-      setSuccessMsg(`Session requested successfully with ${tutor.name}!`);
+      toast('success', `Session requested successfully with ${tutor.name}!`);
       refreshUser();
     } catch (err) {
-      setError(err.message || 'Failed to request session.');
+      toast('error', err.message || 'Failed to request session.');
     } finally {
       setSubmitting(false);
     }
@@ -122,13 +123,12 @@ export const TutorProfilePage = () => {
   }
 
   return (
-    <div className="container-narrow">
+    <div className="container-narrow tutor-profile-page">
       <Link to="/tutors" className="btn btn-secondary btn-sm" style={{ marginBottom: 24, display: 'inline-flex', gap: 6 }}>
         <ArrowLeft size={14} /> Back to All Peers
       </Link>
 
       <Alert type="danger" message={error} onClose={() => setError('')} />
-      <Alert type="success" message={successMsg} onClose={() => setSuccessMsg('')} />
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '28px' }}>
         {/* Left Column: Peer Profile Info */}
@@ -151,7 +151,7 @@ export const TutorProfilePage = () => {
             }}>
               {tutor.name?.charAt(0) || 'T'}
             </div>
-            <h2 style={{ fontSize: '1.6rem', color: 'var(--navy-900)', marginBottom: '6px' }}>{tutor.name}</h2>
+            <h1 style={{ fontSize: '1.6rem', color: 'var(--navy-900)', marginBottom: '6px' }}>{tutor.name}</h1>
             <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 8 }}>
             <StarRating rating={tutor.rating ?? 0} size={18} />
             </div>
@@ -252,6 +252,7 @@ export const TutorProfilePage = () => {
             </div>
 
             <div className="form-group">
+              {fieldErrors.credits && <p className="form-error">{fieldErrors.credits}</p>}
               <span className="form-label">Tutoring Session Cost: {sessionCost ?? 'Unavailable'} credits</span>
             </div>
 

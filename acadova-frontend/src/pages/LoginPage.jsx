@@ -2,7 +2,8 @@ import React, { useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { ArrowRight, Eye, EyeOff } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
-import Alert from '../components/common/Alert';
+import { useToast } from '../context/toastAccess';
+import { focusInvalidField } from '../utils/focusInvalidField';
 import { getRoleHomeRoute } from '../config/roleNavigation';
 import { isVerificationRequired, loginErrorMessage, normalizeEmail } from '../utils/authForm';
 import GoogleSignInButton from '../components/auth/GoogleSignInButton';
@@ -13,7 +14,7 @@ export const LoginPage = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  const [error, setError] = useState('');
+  const toast = useToast();
   const [fields, setFields] = useState({});
   const [submitting, setSubmitting] = useState(false);
   const submittingRef = useRef(false);
@@ -25,12 +26,13 @@ export const LoginPage = () => {
     if (!email.trim()) next.email = 'Enter your email address.';
     if (!password) next.password = 'Enter your password.';
     setFields(next);
-    setError('');
-    if (Object.keys(next).length) return;
+
+    if (Object.keys(next).length) { focusInvalidField(next, { email: 'login-email', password: 'login-password' }); return; }
     try {
       submittingRef.current = true;
       setSubmitting(true);
       const response = await login(normalizeEmail(email), password);
+      toast('success', 'Welcome back.');
       navigate(getRoleHomeRoute(response?.data?.user?.role), { replace: true });
     } catch (err) {
       if (isVerificationRequired(err)) {
@@ -39,7 +41,7 @@ export const LoginPage = () => {
         navigate('/verify-email/pending', { replace: true, state: { email: pendingEmail } });
         return;
       }
-      setError(loginErrorMessage(err));
+      toast('error', loginErrorMessage(err));
     } finally { submittingRef.current = false; setSubmitting(false); }
   };
 
@@ -47,7 +49,6 @@ export const LoginPage = () => {
     <span className="auth-form-eyebrow">Welcome back</span>
     <h2>Log in to Acadova</h2>
     <p className="auth-form-intro">Continue your peer learning journey.</p>
-    <Alert type="danger" message={error} onClose={() => setError('')} />
     <form onSubmit={handleSubmit} noValidate>
       <div className="form-group"><label className="form-label" htmlFor="login-email">Email address</label><input id="login-email" type="email" className="form-input" autoComplete="email" inputMode="email" value={email} onChange={(event) => setEmail(event.target.value)} aria-invalid={Boolean(fields.email)} aria-describedby={fields.email ? 'login-email-error' : undefined} required autoFocus />{fields.email && <span className="form-error" id="login-email-error">{fields.email}</span>}</div>
       <div className="form-group"><label className="form-label" htmlFor="login-password">Password</label><div className="auth-password-field"><input id="login-password" type={showPassword ? 'text' : 'password'} className="form-input" autoComplete="current-password" value={password} onChange={(event) => setPassword(event.target.value)} aria-invalid={Boolean(fields.password)} aria-describedby={fields.password ? 'login-password-error' : undefined} required /><button type="button" onClick={() => setShowPassword((value) => !value)} aria-label={showPassword ? 'Hide password' : 'Show password'} aria-pressed={showPassword}>{showPassword ? <EyeOff size={19} /> : <Eye size={19} />}</button></div>{fields.password && <span className="form-error" id="login-password-error">{fields.password}</span>}</div>

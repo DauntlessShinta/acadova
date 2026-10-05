@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const { normalizeName, nameValidationMessage } = require('../utils/nameValidation');
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const VERIFICATION_TOKEN_REGEX = /^[a-f0-9]{64}$/;
@@ -61,14 +62,9 @@ const emailAddress = (value) => {
 };
 
 const fullName = (value) => {
-  if (typeof value !== 'string' || /[\p{Cc}\p{Cf}]/u.test(value)) {
-    throw new InvalidInput('Enter a valid full name.');
-  }
-  const clean = value.trim().replace(/ +/g, ' ');
-  if (clean.length < 2 || clean.length > 100 || !/^[\p{L}\p{M}\p{N} .\p{Pd}'\u2019]+$/u.test(clean)) {
-    throw new InvalidInput('Enter a valid full name (2 to 100 characters).');
-  }
-  return clean;
+  const error = nameValidationMessage(value);
+  if (error) throw new InvalidInput(error);
+  return normalizeName(value);
 };
 
 const registrationPassword = (value) => {
@@ -317,7 +313,7 @@ const schemas = {
       return true;
     }) },
   profile: {
-    name: optional(requiredText('Name', 80, 2)),
+    name: optional(fullName),
     skillsToTeach: optional(skills('Teaching skills')),
     skillsToLearn: optional(skills('Learning skills')),
   },

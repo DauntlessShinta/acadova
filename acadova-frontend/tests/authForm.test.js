@@ -24,8 +24,8 @@ test('registration accepts international names and sends only normalized account
 
 test('name, email, and confirmation mistakes receive specific errors', () => {
   assert.equal(validateRegistration({ ...valid, name: '   ' }).fields.name, 'Enter your full name.');
-  assert.equal(validateRegistration({ ...valid, name: '<script>' }).fields.name, 'Enter a valid full name.');
-  assert.equal(validateRegistration({ ...valid, name: 'x'.repeat(101) }).fields.name, 'Name must be 100 characters or fewer.');
+  assert.match(validateRegistration({ ...valid, name: '<script>' }).fields.name, /Use letters/);
+  assert.equal(validateRegistration({ ...valid, name: 'x'.repeat(101) }).fields.name, 'Use 2 to 80 characters for your name.');
   assert.equal(validateRegistration({ ...valid, email: 'wrong-address' }).fields.email, 'Enter a valid email address.');
   assert.equal(validateRegistration({ ...valid, confirmPassword: 'different' }).fields.confirmPassword, 'Passwords do not match.');
   assert.ok(validateRegistration({ ...valid, policyAccepted: false }).fields.policyAccepted);

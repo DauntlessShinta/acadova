@@ -7,6 +7,7 @@ import sessionService from '../services/sessionService';
 import Alert from '../components/common/Alert';
 import EmptyState from '../components/common/EmptyState';
 import LoadingSpinner from '../components/common/LoadingSpinner';
+import SessionConversations from '../components/student/SessionConversations';
 import SessionCard from '../components/student/SessionCard';
 import { getSessionPerspective, getSessionStatus, SESSION_STATUS_FILTERS } from '../utils/sessionPresentation';
 import { useToast } from '../context/toastAccess';
@@ -48,8 +49,8 @@ export const SessionsPage = () => {
   };
 
   useEffect(() => {
-    Promise.resolve().then(() => fetchSessions({ showLoading: false }));
-  }, []);
+    if (!messagesView) Promise.resolve().then(() => fetchSessions({ showLoading: false }));
+  }, [messagesView]);
 
   const filteredSessions = useMemo(() => sessions.filter((session) => {
     const perspective = getSessionPerspective(session, user);
@@ -87,6 +88,8 @@ export const SessionsPage = () => {
       ? 'You do not have learning sessions matching these filters.'
       : 'You do not have sessions matching these filters.';
 
+  if (messagesView) return <div className="student-sessions-page"><header className="student-page-header"><div><h1>Messages</h1><p>Conversations with your Session peers.</p></div></header><SessionConversations /></div>;
+
   return (
     <div className="student-sessions-page">
       <header className="student-page-header">
@@ -117,9 +120,7 @@ export const SessionsPage = () => {
         <EmptyState icon={Clock} title="No sessions in this view" description={emptyDescription} actionText={roleFilter !== 'teaching' ? 'Find Peers' : undefined} onAction={roleFilter !== 'teaching' ? () => navigate('/tutors') : undefined} />
       ) : (
         <div className="student-session-list">
-          {filteredSessions.map((session) => messagesView
-            ? <article className="card" key={session._id}><h2>{session.subject}</h2><p>With {getSessionPerspective(session, user).counterpart?.name || 'your peer'}</p><Link className="btn btn-primary" to={`/sessions/${session._id}#session-messages`}>Open conversation</Link></article>
-            : <SessionCard key={session._id} session={session} currentUser={user} actionLoading={actionLoading} onStatusChange={handleUpdateStatus} />)}
+          {filteredSessions.map((session) => <SessionCard key={session._id} session={session} currentUser={user} actionLoading={actionLoading} onStatusChange={handleUpdateStatus} />)}
         </div>
       )}
     </div>

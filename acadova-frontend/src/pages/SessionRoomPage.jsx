@@ -1,5 +1,8 @@
+import { useNotifications } from '../context/notificationAccess';
+import { isChatViewed, isNearChatBottom, newIncomingMessages, canMessageSession } from '../utils/messagingUx';
+import { resourceSource } from '../utils/learningPresentation';
 import { useConfirm } from '../context/confirmAccess';
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { Link, useLocation, useParams } from 'react-router-dom';
 import {
   ArrowLeft,
@@ -45,6 +48,7 @@ export const SessionRoomPage = () => {
 const SessionRoom = ({ id }) => {
   const { hash } = useLocation();
   const [activeSection, setActiveSection] = useState(hash === '#session-messages' ? 'messages' : 'overview');
+  const { refresh: refreshNotifications, setActiveThread } = useNotifications();
   const confirm = useConfirm();
   const { user, refreshUser } = useAuth();
   const toast = useToast();
@@ -61,6 +65,8 @@ const SessionRoom = ({ id }) => {
   const [sendingMessage, setSendingMessage] = useState(false);
   const [clockNow, setClockNow] = useState(null);
   const [messageBody, setMessageBody] = useState('');
+  const [newMessageCount, setNewMessageCount] = useState(0);
+  const [messageNotice, setMessageNotice] = useState('');
   const [messageError, setMessageError] = useState('');
   const [meetingValue, setMeetingValue] = useState('');
   const [googleReady, setGoogleReady] = useState(false);
@@ -76,6 +82,10 @@ const SessionRoom = ({ id }) => {
   const roomLoaded = useRef(false);
   const messagesRef = useRef(null);
   const followMessages = useRef(true);
+  const chatActive = useRef(false);
+  const lastMessages = useRef([]);
+  const fetchedMessages = useRef(false);
+  const forceChatScroll = useRef(true);
   const googleConfigured = isGoogleClientConfigured(import.meta.env.VITE_GOOGLE_CLIENT_ID);
 
   const refreshRoom = useCallback(async ({ showLoading = false, notify = false } = {}) => {
@@ -99,14 +109,18 @@ const SessionRoom = ({ id }) => {
         lastSettlement.current = latest.creditsSettledAt;
         void refreshUser();
       }
-      if (latest.canonicalStatus == null && ['accepted', 'scheduled', 'in_progress', 'awaiting_validation', 'completed'].includes(latest.status)) {
+      if (canMessageSession(latest) && chatActive.current && isChatViewed('messages')) {
         const messageResponse = await sessionService.getMessages(id);
         if (!gate.current.isCurrent(ticket)) return;
-        setMessages((current) => mergeSessionMessages(current, messageResponse.data || []));
-        setMessagesLoaded(true);
-      } else {
-        setMessages([]);
-        setMessagesLoaded(true);
+        if (!chatActive.current) return;
+        const incoming = newIncomingMessages(lastMessages.current, messageResponse.data || [], user);
+        const firstFetch = !fetchedMessages.current;
+        lastMessages.current = mergeSessionMessages(lastMessages.current, messageResponse.data || []);
+        setMessages(lastMessages.current); setMessagesLoaded(true); fetchedMessages.current = true;
+        if (!firstFetch && !followMessages.current && incoming.length) setNewMessageCount((count) => count + incoming.length);
+        if (firstFetch || incoming.length) void refreshNotifications({ afterCurrent: true });
+      } else if (!canMessageSession(latest)) {
+        lastMessages.current = []; setMessages([]); setMessagesLoaded(true);
       }
       setRefreshError('');
       if (notify) toast('info', 'Session refreshed.');
@@ -123,7 +137,7 @@ const SessionRoom = ({ id }) => {
         setLoading(false);
       }
     }
-  }, [id, refreshUser, toast]);
+  }, [id, refreshUser, toast, user, refreshNotifications]);
 
   useEffect(() => {
     let active = true;
@@ -153,13 +167,28 @@ const SessionRoom = ({ id }) => {
   }, [googleConfigured]);
 
   useEffect(() => {
+    if (activeSection === 'messages') { followMessages.current = true; forceChatScroll.current = true; }
+    const viewed = () => {
+      chatActive.current = isChatViewed(activeSection);
+      setActiveThread(chatActive.current ? id : '');
+      if (chatActive.current) void refreshRoom();
+    };
+    viewed(); window.addEventListener('focus', viewed); window.addEventListener('blur', viewed);
+    document.addEventListener('visibilitychange', viewed);
+    return () => { chatActive.current = false; setActiveThread(''); window.removeEventListener('focus', viewed); window.removeEventListener('blur', viewed); document.removeEventListener('visibilitychange', viewed); };
+  }, [activeSection, id, refreshRoom, setActiveThread]);
+  useLayoutEffect(() => {
     const list = messagesRef.current;
-    if (list && followMessages.current) list.scrollTop = list.scrollHeight;
-  }, [messages]);
+    if (activeSection === 'messages' && list && (followMessages.current || forceChatScroll.current)) {
+      list.scrollTop = list.scrollHeight; forceChatScroll.current = false;
+    }
+  }, [messages, activeSection, messagesLoaded]);
+  const changeSection = (section) => { setActiveSection(section); if (section === 'messages') setNewMessageCount(0); };
+  const newestMessages = () => { const list = messagesRef.current; if (list) list.scrollTop = list.scrollHeight; followMessages.current = true; setNewMessageCount(0); };
 
-  // The current API supports actions only for its legacy response contract.
+  // Display helpers never grant permission for unsupported response contracts.
   const usesLegacyActions = session?.canonicalStatus == null;
-  const messagesAvailable = usesLegacyActions && ['accepted', 'scheduled', 'in_progress', 'awaiting_validation', 'completed'].includes(session?.status);
+  const messagesAvailable = canMessageSession(session);
 
   const beginAction = () => {
     if (actionInProgress.current) return false;
@@ -209,8 +238,9 @@ const SessionRoom = ({ id }) => {
 
   const handleCoordinationSave = async (event) => {
     event.preventDefault();
-    if (session.meetingMethod === 'online' && session.meetingLink && meetingValue.trim() !== session.meetingLink
-      && !await confirm('Replace the existing meeting link? Both participants will need to use the new link.', { title: 'Replace meeting link', label: 'Replace link' })) return;
+    if (session.meetingMethod === 'online' && !resourceSource(meetingValue.trim())) { toast('error', 'Use a valid HTTPS meeting URL.'); return; }
+    const existing = session.meetingMethod === 'online' ? session.meetingLink : session.location;
+    if (existing && meetingValue.trim() !== existing && !await confirm('Replace the existing meeting details? Both participants will need to use the new details.', { title: 'Replace meeting details', label: 'Replace details' })) return;
     if (!beginAction()) return;
     try {
       const field = session.meetingMethod === 'online' ? 'meetingLink' : 'location';
@@ -256,6 +286,7 @@ const SessionRoom = ({ id }) => {
   };
 
   const handleRescheduleDecision = async (accept) => {
+    if (!accept && !await confirm('Decline this proposed schedule? The current agreed time will remain.', { title: 'Decline proposed time', label: 'Decline time' })) return;
     if (!beginAction()) return;
     try {
       const response = accept
@@ -313,6 +344,7 @@ const SessionRoom = ({ id }) => {
 
   const handleDispute = async (event) => {
     event.preventDefault();
+    if (!await confirm('Submit this dispute for Moderator review? Normal validation will pause.', { title: 'Submit dispute', label: 'Submit dispute' })) return;
     if (!beginAction()) return;
     try {
       const response = await sessionService.disputeSession(id, disputeReason.trim());
@@ -357,10 +389,13 @@ const SessionRoom = ({ id }) => {
     setSendingMessage(true);
     try {
       const response = await sessionService.sendMessage(id, sentBody);
-      setMessages((current) => mergeSessionMessages(current, [response.data]));
+      lastMessages.current = mergeSessionMessages(lastMessages.current, [response.data]);
+      followMessages.current = true; forceChatScroll.current = true; setNewMessageCount(0);
+      setMessages(lastMessages.current);
       setMessageBody((current) => current === sentBody ? '' : current);
-      toast('success', 'Message sent.');
+      setMessageNotice('Message sent.');
     } catch (err) {
+      setMessageError(err.message || 'Message could not be sent. Your draft is still here.');
       toast('error', err.message || 'Message could not be sent.');
     } finally {
       setSendingMessage(false);
@@ -403,13 +438,13 @@ const SessionRoom = ({ id }) => {
   const myCheckIn = isTeaching ? session.tutorCheckedInAt : session.learnerCheckedInAt;
   const peerCheckIn = isTeaching ? session.learnerCheckedInAt : session.tutorCheckedInAt;
   const checkInBlockedByProposal = Boolean(session.rescheduleProposalId || session.proposedScheduledAt);
-  const canCheckIn = ['accepted', 'scheduled'].includes(session.status)
+  const canCheckIn = usesLegacyActions && ['accepted', 'scheduled'].includes(session.status)
     && checkInOpen && !checkInBlockedByProposal && !myCheckIn;
-  const canReportNoShow = ['accepted', 'scheduled'].includes(session.status)
+  const canReportNoShow = usesLegacyActions && ['accepted', 'scheduled'].includes(session.status)
     && Number.isFinite(agreedTime) && clockNow != null
     && clockNow > agreedTime + 4 * 60 * 60 * 1000 && !checkInBlockedByProposal
     && !session.startedAt && !(session.learnerCheckedInAt && session.tutorCheckedInAt);
-  const canReschedule = ['accepted', 'scheduled'].includes(session.status);
+  const canReschedule = usesLegacyActions && ['accepted', 'scheduled'].includes(session.status);
   const hasRescheduleProposal = canReschedule && Boolean(session.rescheduleProposalId && session.proposedScheduledAt);
   const proposedByMe = hasRescheduleProposal && idOf(session.rescheduleProposedBy) === idOf(user);
   const proposedScheduleLabel = formatSessionDateTime(session.proposedScheduledAt);
@@ -418,11 +453,13 @@ const SessionRoom = ({ id }) => {
     : session.meetingMethod === 'in-person' ? 'In person' : 'Not recorded';
   const creditLabel = `${session.creditAmount} credit${session.creditAmount === 1 ? '' : 's'}`;
   const myValidation = isTeaching ? session.tutorConfirmedAt : session.learnerConfirmedAt;
-  const isClosed = ['cancelled', 'declined', 'no_show', 'resolved'].includes(displayStatus.filterKey);
+  const isClosed = ['cancelled', 'declined', 'rejected', 'no_show', 'resolved'].includes(session.status);
   const hasSecondaryActions = usesLegacyActions && (
     ['pending', 'accepted'].includes(session.status)
     || (isTeaching && session.status === 'completed' && !session.confirmedAt)
   );
+  const needsMeetingDetails = usesLegacyActions && isTeaching && canReschedule
+    && !(session.meetingMethod === 'online' ? session.meetingLink : session.meetingMethod === 'in-person' ? session.location : true);
   const timeline = getSessionTimeline(session);
 
   return (
@@ -457,19 +494,20 @@ const SessionRoom = ({ id }) => {
         <CheckCircle2 size={19} aria-hidden="true" />
         <div>
           <span>Next step</span>
-          <h2 id="next-step-heading">{nextStep}</h2>
+          <h2 id="next-step-heading">{hasRescheduleProposal ? 'Review the proposed time before checking in.' : needsMeetingDetails ? 'Add the agreed meeting details for your peer.' : canReportNoShow ? 'The check-in window ended. Review attendance and report a no-show if needed.' : nextStep}</h2>
           {session.status === 'pending' && !isTeaching && <p>No action is required from you right now.</p>}
           {session.creditsSettledAt && <p>{creditLabel} transferred.</p>}
         </div>
         {usesLegacyActions && isTeaching && session.status === 'pending' && <button className="btn btn-primary btn-sm" type="button" disabled={actionLoading} onClick={() => runStatusAction('scheduled')}>Accept request</button>}
-        {usesLegacyActions && isTeaching && session.status === 'accepted' && <button className="btn btn-primary btn-sm" type="button" disabled={actionLoading} onClick={() => runStatusAction('completed')}>Complete session</button>}
-        {isTeaching && session.status === 'in_progress' && <button className="btn btn-primary btn-sm" type="button" disabled={actionLoading} onClick={handleFinishSession}>Finish live session</button>}
-        {session.status === 'awaiting_validation' && !myValidation && <button className="btn btn-primary btn-sm" type="button" disabled={actionLoading} onClick={handleConfirm}>Confirm session</button>}
-        {canReportNoShow && <button className="btn btn-secondary btn-sm" type="button" disabled={actionLoading} onClick={handleNoShow}>Report no-show</button>}
+        {usesLegacyActions && isTeaching && session.status === 'accepted' && !needsMeetingDetails && <button className={`btn btn-sm ${canCheckIn ? 'btn-secondary' : 'btn-primary'}`} type="button" disabled={actionLoading} onClick={() => runStatusAction('completed')}>Complete session</button>}
+        {usesLegacyActions && isTeaching && session.status === 'in_progress' && <button className="btn btn-primary btn-sm" type="button" disabled={actionLoading} onClick={handleFinishSession}>Finish live session</button>}
+        {usesLegacyActions && session.status === 'awaiting_validation' && !myValidation && <button className="btn btn-primary btn-sm" type="button" disabled={actionLoading} onClick={handleConfirm}>Confirm session</button>}
+        {canReportNoShow && <button className="btn btn-primary btn-sm" type="button" disabled={actionLoading} onClick={handleNoShow}>Report no-show</button>}
         {usesLegacyActions && !isTeaching && session.status === 'completed' && !session.confirmedAt && <button className="btn btn-primary btn-sm" type="button" disabled={actionLoading} onClick={handleConfirm}>Confirm completion and transfer {creditLabel}</button>}
-        {canCheckIn && <button type="button" className="btn btn-primary btn-sm" disabled={actionLoading} onClick={handleCheckIn}>Check in</button>}
-        {session.meetingMethod === 'online' && session.meetingLink && <a className="btn btn-primary btn-sm" href={session.meetingLink} target="_blank" rel="noopener noreferrer">Join Meeting <ExternalLink size={14} aria-hidden="true" /><span className="sr-only"> (opens in a new tab)</span></a>}
-        {hasRescheduleProposal && <button className="btn btn-secondary btn-sm" onClick={() => setActiveSection('reschedule')}>Review proposed time</button>}
+        {canCheckIn && <button type="button" className={`btn btn-sm ${needsMeetingDetails ? 'btn-secondary' : 'btn-primary'}`} disabled={actionLoading} onClick={handleCheckIn}>Check in</button>}
+        {session.meetingMethod === 'online' && ['accepted', 'scheduled', 'in_progress'].includes(session.status) && resourceSource(session.meetingLink) && <a className="btn btn-secondary btn-sm" href={session.meetingLink} target="_blank" rel="noopener noreferrer">Join Meeting <ExternalLink size={14} aria-hidden="true" /><span className="sr-only"> (opens in a new tab)</span></a>}
+        {needsMeetingDetails && <button type="button" className={`btn btn-sm ${hasRescheduleProposal ? 'btn-secondary' : 'btn-primary'}`} onClick={() => changeSection('details')}>Add meeting details</button>}
+        {hasRescheduleProposal && <button className="btn btn-primary btn-sm" onClick={() => changeSection('details')}>Review proposed time</button>}
       </section>
 
       <details className="session-secondary-actions" hidden={!hasSecondaryActions || isClosed}><summary>More session actions</summary>          {hasSecondaryActions && !isClosed && (
@@ -481,7 +519,7 @@ const SessionRoom = ({ id }) => {
             </section>
           )}</details>
       <Alert type="danger" message={refreshError} />
-      <WorkflowTabs id="room" tabs={[['overview', 'Overview'], ['messages', 'Messages'], ['reschedule', 'Reschedule'], ['details', 'Details'], ['progress', 'Progress']]} active={activeSection} onChange={setActiveSection} />
+      <WorkflowTabs id="room" tabs={[['overview', 'Overview'], ['messages', 'Chat'], ['progress', 'Progress'], ['details', 'Details']]} active={activeSection} onChange={changeSection} />
       <div className={`session-room-layout section-${activeSection}`}>
         <div className="session-room-main">
           <section id="room-panel-overview" role="tabpanel" tabIndex={0} aria-labelledby="room-tab-overview" hidden={activeSection !== 'overview'} className="card session-room-section session-details-panel">
@@ -515,7 +553,7 @@ const SessionRoom = ({ id }) => {
               </div>
             )}
 
-            {['awaiting_validation', 'no_show'].includes(session.status) && (
+            {usesLegacyActions && ['awaiting_validation', 'no_show'].includes(session.status) && (
               <form className="session-validation" onSubmit={handleDispute}>
                 <h3>Disagree or report a problem</h3>
                 <p>A Moderator will review the session evidence. Opening a dispute does not transfer credits.</p>
@@ -551,7 +589,7 @@ const SessionRoom = ({ id }) => {
             {session.meetingMethod === 'online' && session.meetingLink && (
               <div className="session-meeting-result">
                 <span>Online meeting</span>
-                <span>Use Join Meeting above to open the agreed link.</span>
+                <span>Join Meeting opens the agreed link. It does not prove attendance; use Acadova check-in and post-session confirmation.</span>
               </div>
             )}
             {session.meetingMethod === 'in-person' && session.location && (
@@ -561,7 +599,105 @@ const SessionRoom = ({ id }) => {
             {!['online', 'in-person'].includes(session.meetingMethod) && (
               <p className="session-muted-copy">This older session has no recorded meeting method. Use a new request for the current coordination workflow; this record is unchanged.</p>
             )}
-            {isTeaching && ['accepted', 'scheduled'].includes(session.status)
+          </section>
+
+          <section id="room-panel-messages" role="tabpanel" tabIndex={0} aria-labelledby="room-tab-messages" hidden={activeSection !== 'messages'} className={`card session-room-section session-messages-panel ${messagesAvailable ? '' : 'is-unavailable'}`}>
+
+            <div className="session-section-heading">
+              <div>
+                <MessageSquare size={18} aria-hidden="true" />
+                <div><h2 id="session-messages">Chat with {counterpart?.name || 'your peer'}</h2>{messagesAvailable && <p>{session.subject}</p>}</div>
+              </div>
+
+            </div>
+            <p className="session-refresh-note">Updates every 5 seconds while Chat is visible and this window is active.</p>
+            {!messagesAvailable ? (
+              <p className="session-muted-copy">{usesLegacyActions ? 'Messages become available after the Tutor accepts this session.' : 'Messaging is unavailable for this session state in the current app.'}</p>
+            ) : !messagesLoaded ? (
+              <LoadingSpinner text="Loading session messages..." size={28} />
+            ) : (
+              <>
+                <div className="session-messages" ref={messagesRef} role="log" aria-label="Session conversation" aria-live="polite" tabIndex={0}
+                  onScroll={(event) => {
+                    const list = event.currentTarget;
+                    followMessages.current = isNearChatBottom(list);
+                    if (followMessages.current) setNewMessageCount(0);
+                  }}>
+                  {messages.length === 0 && !refreshError && <p className="session-muted-copy">No messages yet. Start with the detail your peer needs most.</p>}
+                  {messages.map((message) => {
+                    const isMine = idOf(message.sender) === idOf(user);
+                    return (
+                      <article key={message._id} className={`session-message ${isMine ? 'is-mine' : 'is-theirs'}`}>
+                        <div><strong>{isMine ? 'You' : message.sender?.name || 'Other participant'}</strong><time dateTime={message.createdAt}>{new Date(message.createdAt).toLocaleString()}</time></div>
+                        <p>{message.body}</p>
+                      </article>
+                    );
+                  })}
+                </div>
+                {newMessageCount > 0 && <button type="button" className="btn btn-secondary btn-sm chat-new-messages" onClick={newestMessages}>{newMessageCount} new {newMessageCount === 1 ? 'message' : 'messages'} - go to newest</button>}
+                <form className="message-composer" onSubmit={handleSendMessage}>
+                  <label className="form-label" htmlFor="session-message">Message</label>
+                  <textarea
+                    id="session-message"
+                    className="form-textarea"
+                    rows={3}
+                    maxLength={1000}
+                    value={messageBody}
+                    placeholder="Share a meeting detail or study note..."
+                    aria-invalid={Boolean(messageError)}
+                    aria-describedby={messageError ? 'session-message-error' : undefined}
+                    onChange={(event) => { setMessageBody(event.target.value); setMessageError(''); setMessageNotice(''); }}
+                  />
+                  {messageNotice && <p role="status" className="form-hint">{messageNotice}</p>}
+                  {messageError && <span role="alert" className="form-error" id="session-message-error">{messageError}</span>}
+                  <div><span className="form-hint">{1000 - messageBody.length} characters remaining</span><button type="submit" className="btn btn-primary btn-sm" disabled={actionLoading || sendingMessage}><Send size={14} /> {sendingMessage ? 'Sending...' : 'Send message'}</button></div>
+                </form>
+              </>
+            )}
+          </section>
+
+          <section id="room-panel-details" role="tabpanel" tabIndex={0} aria-labelledby="room-tab-details" hidden={activeSection !== 'details'} className="card session-room-section"><h2 id="details-heading">Session details</h2><div>            {canReschedule && (
+              <details className="session-reschedule" open={hasRescheduleProposal}><summary className="text-action">Schedule and rescheduling</summary>
+                <h3>Reschedule</h3>
+                <p className="session-muted-copy">Current agreed time: {scheduledLabel || 'Not recorded'}. A new time takes effect only when your peer accepts it.</p>
+                {hasRescheduleProposal ? (
+                  <div className="session-reschedule-proposal">
+                    <p><strong>Proposed time:</strong> {proposedScheduleLabel || 'Unavailable'}</p>
+                    <p><strong>Proposed by:</strong> {proposedByMe ? 'You' : counterpart?.name || 'Your peer'}</p>
+                    <p>{proposedByMe ? 'Waiting for your peer to respond.' : `${counterpart?.name || 'Your peer'} proposed this time. The current time remains in place until you accept.`}</p>
+                    {!proposedByMe && (
+                      <div className="session-reschedule-actions">
+                        <button type="button" className="btn btn-primary btn-sm" disabled={actionLoading} onClick={() => handleRescheduleDecision(true)}>Accept new time</button>
+                        <button type="button" className="btn btn-secondary btn-sm" disabled={actionLoading} onClick={() => handleRescheduleDecision(false)}>Decline new time</button>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <form onSubmit={handleRescheduleProposal}>
+                    <label className="form-label" htmlFor="reschedule-time">Propose a new date and time</label>
+                    <div className="session-reschedule-actions">
+                      <input id="reschedule-time" className="form-input" type="datetime-local" value={proposedTime} onChange={(event) => setProposedTime(event.target.value)} required disabled={actionLoading} />
+                      <button type="submit" className="btn btn-secondary btn-sm" disabled={actionLoading}>Propose time</button>
+                    </div>
+                  </form>
+                )}
+              </details>
+            )}
+
+{!canReschedule && <p>A new time cannot be proposed in this session state.</p>}</div>
+            <dl className="session-details-grid">
+              <div><dt><UserRound size={16} /> Other participant</dt><dd>{counterpart?.name || 'Peer student'}</dd></div>
+              <div><dt><Calendar size={16} /> Date and time</dt><dd>{scheduledLabel || 'Not scheduled'}</dd></div>
+              <div><dt><MapPin size={16} /> Method</dt><dd>{meetingMethodLabel}</dd></div>
+              <div><dt><Coins size={16} /> Credits</dt><dd>{usesLegacyActions ? `${creditLabel} transferred after confirmation` : creditLabel}</dd></div>
+            </dl>
+
+            <div className="session-request-message">
+              <h3>Request message</h3>
+              <blockquote>{session.requestMessage || 'No request message was recorded for this older session.'}</blockquote>
+            </div>
+
+            {usesLegacyActions && isTeaching && ['accepted', 'scheduled'].includes(session.status)
               && ['online', 'in-person'].includes(session.meetingMethod) && (
               <>
               {session.meetingMethod === 'online' && <div className="session-meet-choice">
@@ -598,106 +734,10 @@ const SessionRoom = ({ id }) => {
               </form>
               </>
             )}
-          </section>
-
-          <section id="room-panel-messages" role="tabpanel" tabIndex={0} aria-labelledby="room-tab-messages" hidden={activeSection !== 'messages'} className={`card session-room-section session-messages-panel ${messagesAvailable ? '' : 'is-unavailable'}`}>
-
-            <div className="session-section-heading">
-              <div>
-                <MessageSquare size={18} aria-hidden="true" />
-                <div><h2 id="session-messages">Messages</h2>{messagesAvailable && <p>Coordinate the details of your session.</p>}</div>
-              </div>
-
-            </div>
-            <p className="session-refresh-note">Updates automatically every 5 seconds while this page is visible.</p>
-            {!messagesAvailable ? (
-              <p className="session-muted-copy">{usesLegacyActions ? 'Messages become available after the Tutor accepts this session.' : 'Messaging is unavailable for this session state in the current app.'}</p>
-            ) : !messagesLoaded ? (
-              <LoadingSpinner text="Loading session messages..." size={28} />
-            ) : (
-              <>
-                <div className="session-messages" ref={messagesRef} aria-live="polite"
-                  onScroll={(event) => {
-                    const list = event.currentTarget;
-                    followMessages.current = list.scrollHeight - list.scrollTop - list.clientHeight < 72;
-                  }}>
-                  {messages.length === 0 && !refreshError && <p className="session-muted-copy">No messages yet. Start with the detail your peer needs most.</p>}
-                  {messages.map((message) => {
-                    const isMine = idOf(message.sender) === idOf(user);
-                    return (
-                      <article key={message._id} className={`session-message ${isMine ? 'is-mine' : 'is-theirs'}`}>
-                        <div><strong>{isMine ? 'You' : message.sender?.name || 'Other participant'}</strong><time dateTime={message.createdAt}>{new Date(message.createdAt).toLocaleString()}</time></div>
-                        <p>{message.body}</p>
-                      </article>
-                    );
-                  })}
-                </div>
-                <form className="message-composer" onSubmit={handleSendMessage}>
-                  <label className="form-label" htmlFor="session-message">Message</label>
-                  <textarea
-                    id="session-message"
-                    className="form-textarea"
-                    rows={3}
-                    maxLength={1000}
-                    value={messageBody}
-                    placeholder="Share a meeting detail or study note..."
-                    aria-invalid={Boolean(messageError)}
-                    aria-describedby={messageError ? 'session-message-error' : undefined}
-                    onChange={(event) => { setMessageBody(event.target.value); setMessageError(''); }}
-                  />
-                  {messageError && <span className="form-error" id="session-message-error">{messageError}</span>}
-                  <div><span className="form-hint">{1000 - messageBody.length} characters remaining</span><button type="submit" className="btn btn-primary btn-sm" disabled={actionLoading || sendingMessage}><Send size={14} /> {sendingMessage ? 'Sending...' : 'Send message'}</button></div>
-                </form>
-              </>
-            )}
-          </section>
-
-          <section id="room-panel-reschedule" role="tabpanel" tabIndex={0} aria-labelledby="room-tab-reschedule" hidden={activeSection !== 'reschedule'} className="card session-room-section">            {canReschedule && (
-              <div className="session-reschedule">
-                <h3>Reschedule</h3>
-                <p className="session-muted-copy">Current agreed time: {scheduledLabel || 'Not recorded'}. A new time takes effect only when your peer accepts it.</p>
-                {hasRescheduleProposal ? (
-                  <div className="session-reschedule-proposal">
-                    <p><strong>Proposed time:</strong> {proposedScheduleLabel || 'Unavailable'}</p>
-                    <p><strong>Proposed by:</strong> {proposedByMe ? 'You' : counterpart?.name || 'Your peer'}</p>
-                    <p>{proposedByMe ? 'Waiting for your peer to respond.' : `${counterpart?.name || 'Your peer'} proposed this time. The current time remains in place until you accept.`}</p>
-                    {!proposedByMe && (
-                      <div className="session-reschedule-actions">
-                        <button type="button" className="btn btn-primary btn-sm" disabled={actionLoading} onClick={() => handleRescheduleDecision(true)}>Accept new time</button>
-                        <button type="button" className="btn btn-secondary btn-sm" disabled={actionLoading} onClick={() => handleRescheduleDecision(false)}>Decline new time</button>
-                      </div>
-                    )}
-                  </div>
-                ) : (
-                  <form onSubmit={handleRescheduleProposal}>
-                    <label className="form-label" htmlFor="reschedule-time">Propose a new date and time</label>
-                    <div className="session-reschedule-actions">
-                      <input id="reschedule-time" className="form-input" type="datetime-local" value={proposedTime} onChange={(event) => setProposedTime(event.target.value)} required disabled={actionLoading} />
-                      <button type="submit" className="btn btn-secondary btn-sm" disabled={actionLoading}>Propose time</button>
-                    </div>
-                  </form>
-                )}
-              </div>
-            )}
-
-{!canReschedule && <p>A new time cannot be proposed in this session state.</p>}</section>
-          <section id="room-panel-details" role="tabpanel" tabIndex={0} aria-labelledby="room-tab-details" hidden={activeSection !== 'details'} className="card session-room-section">            <h2 id="details-heading">Session details</h2>
-            <dl className="session-details-grid">
-              <div><dt><UserRound size={16} /> Other participant</dt><dd>{counterpart?.name || 'Peer student'}</dd></div>
-              <div><dt><Calendar size={16} /> Date and time</dt><dd>{scheduledLabel || 'Not scheduled'}</dd></div>
-              <div><dt><MapPin size={16} /> Method</dt><dd>{meetingMethodLabel}</dd></div>
-              <div><dt><Coins size={16} /> Credits</dt><dd>{usesLegacyActions ? `${creditLabel} transferred after confirmation` : creditLabel}</dd></div>
-            </dl>
-
-            <div className="session-request-message">
-              <h3>Request message</h3>
-              <blockquote>{session.requestMessage || 'No request message was recorded for this older session.'}</blockquote>
-            </div>
-
 </section>
           <div hidden={activeSection !== 'overview'}>
           {ratingSubmitted && <Alert type="success" message="Your review for this session has been submitted." />}
-          {session.ratingEligible && ['completed', 'resolved'].includes(session.status) && !ratingSubmitted && (
+          {usesLegacyActions && session.ratingEligible && ['completed', 'resolved'].includes(session.status) && !ratingSubmitted && (
             <section className="card session-room-section session-review-panel" aria-labelledby="review-heading">
               <h2 id="review-heading">Review your peer</h2>
               <form onSubmit={handleRating}>
@@ -710,7 +750,7 @@ const SessionRoom = ({ id }) => {
           </div>
         </div>
 
-        <aside id="room-panel-progress" role={activeSection === 'progress' ? 'tabpanel' : undefined} aria-labelledby={activeSection === 'progress' ? 'room-tab-progress' : 'progress-heading'} className="session-room-sidebar" data-selected={activeSection === 'progress'}>
+        <aside id="room-panel-progress" hidden={activeSection !== 'progress'} role="tabpanel" tabIndex={0} aria-labelledby="room-tab-progress" className="session-room-sidebar" data-selected={activeSection === 'progress'}>
           <section className="card session-room-section session-progress-panel" aria-labelledby="progress-heading">
             <h2 id="progress-heading">Session progress</h2>
             <ol className="session-progress">

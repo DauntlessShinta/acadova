@@ -1,52 +1,33 @@
-import React, { useCallback, useEffect, useId, useRef, useState } from 'react';
-import { Bell, X } from 'lucide-react';
+import React, { useEffect, useId, useRef, useState } from 'react';
+import { Bell, X, Volume2, VolumeX } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import api from '../../services/api';
 import { pushAvailable, requestPushPermission } from '../../services/pushClient';
-import { useAuth } from '../../context/AuthContext';
+import { useNotifications } from '../../context/notificationAccess';
 import { useToast } from '../../context/toastAccess';
 
 export default function NotificationBell({ label }) {
   const toast = useToast();
   const panelId = useId();
   const trigger = useRef(null);
-  const { user } = useAuth();
-  const userId = user?._id || user?.id;
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
-  const [items, setItems] = useState([]);
-  const [count, setCount] = useState(0);
-  const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
-  const [loadingItems, setLoadingItems] = useState(false);
-  const refresh = useCallback(async (includeItems = false) => {
-    if (includeItems) setLoadingItems(true);
-    try {
-      const [counts, list] = await Promise.all([
-        api.get('/api/notifications/unread-count'),
-        includeItems ? api.get('/api/notifications?limit=20') : Promise.resolve(null),
-      ]);
-      setCount(counts.data.count);
-      if (list) setItems(list.data);
-      setError('');
-    } catch { setError('Notifications are temporarily unavailable.'); }
-    finally { if (includeItems) setLoadingItems(false); }
-  }, []);
-
+  const { items, count, error, loading: loadingItems, refresh, soundEnabled, toggleSound } = useNotifications();
   useEffect(() => {
-    if (!userId) return undefined;
-    void Promise.resolve().then(() => refresh());
-    const interval = window.setInterval(() => void refresh(open), 60_000);
-    return () => window.clearInterval(interval);
-  }, [userId, open, refresh]);
+    if (!open) return undefined;
+    const outside = (event) => { if (!event.target.closest('.notification-center')) setOpen(false); };
+    document.addEventListener('pointerdown', outside);
+    return () => document.removeEventListener('pointerdown', outside);
+  }, [open]);
 
   const toggle = () => {
-    if (!open) void refresh(true);
+    if (!open) void refresh();
     setOpen(!open);
   };
   const markAll = async () => {
     setBusy(true);
-    try { await api.patch('/api/notifications/read-all', {}); toast('success', 'Notifications marked as read.'); await refresh(true); }
+    try { await api.patch('/api/notifications/read-all', {}); toast('success', 'Notifications marked as read.'); await refresh({ afterCurrent: true }); }
     catch { toast('error', 'Could not mark notifications as read.'); }
     finally { setBusy(false); }
   };
@@ -56,8 +37,8 @@ export default function NotificationBell({ label }) {
       catch { toast('error', 'Could not mark notification as read.'); return; }
     }
     setOpen(false);
-    void refresh();
-    navigate(item.href);
+    void refresh({ afterCurrent: true });
+    navigate(item.type?.startsWith('message.') ? item.href + '#session-messages' : item.href);
   };
   const enablePush = async () => {
     try { await requestPushPermission(); }
@@ -76,6 +57,9 @@ export default function NotificationBell({ label }) {
         <button type="button" aria-label="Close notifications" onClick={() => setOpen(false)}><X size={18} /></button>
         <button type="button" className="text-action" disabled={busy || count === 0} onClick={markAll}>Mark all read</button>
       </div>
+      <button type="button" className="notification-sound text-action" aria-pressed={soundEnabled} onClick={toggleSound}>
+        {soundEnabled ? <Volume2 size={16} aria-hidden="true" /> : <VolumeX size={16} aria-hidden="true" />}{soundEnabled ? 'Mute notification sound' : 'Enable notification sound'}
+      </button>
       {error && <p role="alert" className="notification-error">{error}</p>}
       {loadingItems ? <p className="notification-empty">Loading notifications...</p> :
         items.length === 0 ? <p className="notification-empty">No notifications yet.</p> :

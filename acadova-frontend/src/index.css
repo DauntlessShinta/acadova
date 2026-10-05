@@ -3474,3 +3474,54 @@ a:where(:not([class]), .text-link, .session-room-back):where(:hover, :focus-visi
   .learning-resource-row > button { margin-left: 28px; }
   .learning-resource-copy { flex-basis: calc(100% - 28px); }
 }
+
+/* P7.1B: Session workflow and a single, contextual messaging view. */
+.session-room-page .session-room-layout { display: block; }
+.session-room-page .session-room-sidebar { position: static; max-width: 760px; }
+.session-room-page .session-room-sidebar:not([hidden]) { display: block; }
+.session-room-page .session-room-sidebar[hidden] { display: none; }
+.session-room-page .session-next-step { flex-wrap: wrap; }
+.session-room-page .session-next-step > div { flex: 1 1 280px; }
+.session-room-page .session-messages-panel { padding: var(--space-3); }
+.session-messages-panel .session-messages { max-height: 360px; height: clamp(180px, 32dvh, 360px); gap: 8px; overflow-y: auto; overscroll-behavior: contain; overflow-anchor: none; padding: 12px; border: 1px solid var(--border-subtle); border-radius: var(--radius-md); background: var(--acadova-canvas); }
+.session-messages-panel .session-message { flex-shrink: 0; max-width: min(88%, 640px); margin-block: 0; padding: 10px 14px; }
+.session-messages-panel .session-message > div { font-size: .8rem; }
+.session-message.is-mine { margin-left: auto; }
+.session-message.is-theirs { margin-right: auto; }
+.session-message p { white-space: pre-wrap; overflow-wrap: anywhere; }
+.session-messages-panel .message-composer { margin-top: var(--space-3); border-top: 1px solid var(--border-subtle); padding-top: var(--space-3); }
+.message-composer textarea { min-height: 72px; }
+.chat-new-messages { margin-top: var(--space-2); }
+.notification-sound { display: flex; align-items: center; gap: var(--space-2); margin-inline: 14px; }
+.session-conversations > ul { list-style: none; display: grid; gap: var(--space-2); padding: 0; margin-block: var(--space-3); }
+.conversation-link { display: grid; gap: 4px; padding: var(--space-3); border: 1px solid var(--border-subtle); border-radius: var(--radius-md); background: var(--bg-surface); }
+.conversation-link strong { color: var(--link-color); text-decoration: underline; text-underline-offset: .2em; }
+.conversation-link:hover, .conversation-link:focus-visible { border-color: var(--acadova-action); background: var(--acadova-canvas); }
+.conversation-link small { color: var(--ink-600); }
+.conversation-unread { justify-self: start; font-size: .8rem; color: var(--acadova-primary); background: var(--acadova-tint); border-radius: 6px; padding: 3px 8px; }
+.modal-backdrop:has(.messages-drawer) { justify-content: flex-end; padding: 0; }
+.messages-drawer { border-radius: 0; margin: 0; height: 100dvh; max-height: 100dvh; }
+.messages-drawer .modal-body { flex: 1; }
+@media (min-width: 1025px) {
+  .modal-backdrop:has(.messages-drawer) { top: var(--student-utility-height); left: var(--sidebar-width); }
+  .messages-drawer { height: calc(100dvh - var(--student-utility-height)); max-height: calc(100dvh - var(--student-utility-height)); }
+}
+@media (max-width: 1024px) {
+  .messages-drawer { width: 100%; max-width: 100% !important; }
+}
+@media (max-width: 700px) {
+  .session-room-page .session-room-header { display: grid; grid-template-columns: 1fr auto; gap: 6px; padding: 16px; }
+  .session-room-page .session-room-header > button { position: static; grid-column: 2; grid-row: 1; }
+  .session-room-page .session-room-header > .student-eyebrow { align-self: center; }
+  .session-room-page .session-room-title-row { grid-column: 1 / -1; margin-top: 0; }
+  .session-room-page .session-room-identity, .session-room-page .session-room-summary { grid-column: 1 / -1; }
+  .session-room-page .session-room-summary { flex-direction: row; flex-wrap: wrap; gap: 6px 16px; margin-top: 6px; }
+  .session-room-page .session-room-summary li:first-child { flex-basis: 100%; }
+  .session-room-page .session-next-step > .btn { width: auto; flex: 1 1 120px; }
+  .session-room-page .session-messages-panel { padding: 12px; }
+  .session-messages-panel .session-messages { height: clamp(140px, 34dvh, 300px); }
+  .session-messages-panel .session-message { max-width: 96%; }
+  .session-messages-panel .message-composer > div { flex-wrap: wrap; gap: 8px; }
+  .session-room-page .session-next-step > div { flex-basis: calc(100% - 40px); }
+  .session-room-page .session-next-step .btn { min-height: 44px; }
+}

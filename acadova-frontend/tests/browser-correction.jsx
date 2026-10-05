@@ -104,9 +104,9 @@ try {
       await until(() => visible('a[href="https://example.com/meeting"]').length === 1, 'Join action missing or duplicated');
       assert(visible('a[href="https://example.com/meeting"]').length === 1, 'Join action missing or duplicated');
       assert(visible('#room-panel-overview').length === 1 && !visible('#room-panel-messages').length, 'Default Session panel');
-      await tab('room-tab-messages'); assert(visible('#session-message').length === 1, 'Messages unreachable');
+      await tab('room-tab-messages'); await until(() => visible('#session-message').length === 1, 'Messages unreachable');
       document.getElementById('room-tab-messages').dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true })); await pause();
-      assert(document.activeElement.id === 'room-tab-reschedule' && visible('#room-panel-reschedule').length, 'Keyboard tabs');
+      assert(document.activeElement.id === 'room-tab-progress' && visible('#room-panel-progress').length, 'Keyboard tabs');
       await tab('room-tab-progress'); assert(visible('.session-progress').length === 1, 'Mobile progress unreachable');
       checks.push('Session header/action, tab visibility, keyboard navigation, mobile progress');
     }

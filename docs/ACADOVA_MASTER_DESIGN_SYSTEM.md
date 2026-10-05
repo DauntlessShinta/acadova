@@ -36,7 +36,7 @@ Use the existing 4/8/16/24/32 spacing tokens. Typical cards use 16–20px paddin
 
 ## Workflow and feedback
 
-Preserve P7.1A Session tabs, progress presentation, contextual actions, sticky Save/lesson controls and progressive disclosure. Scroll content rather than stacking all workflows. Do not create nested scrolling except for naturally bounded message history, dialogs and data tables.
+Use P7.1B Session tabs (Overview, Chat, Progress, Details), evidence-backed progress, contextual actions, sticky Save/lesson controls and progressive disclosure. Scroll content rather than stacking all workflows. Do not create nested scrolling except for naturally bounded message history, dialogs and data tables.
 
 Field validation stays adjacent to its field with label, aria-invalid and aria-describedby where applicable; focus the first invalid control on submission. Do not restore the redundant validation banner. Policy explanations and persistent unavailable/load states remain contextual. Action outcomes use the existing single root Toast. Destructive decisions use the existing confirmation system before writes.
 
@@ -55,3 +55,17 @@ Plain text links and text actions use semantic link-color/link-hover-color token
 ExternalResourceLink provides an external-link icon, an accessible new-tab announcement, and HTTPS-only links with noopener/noreferrer. The primary resource action remains a button-styled anchor. Resource sources are shown only when an actual URL is returned; missing metadata is omitted.
 
 Learning uses compact topic/resource/module headings and wrapping breadcrumbs. Topic details prioritize Modules, then separately available topic Resources and topic Assessments. Show counts only from returned arrays, never infer hidden module contents. Modules show their resource order explicitly and use natural document scrolling. A returned module assessment appears after the Study content as Check your learning; omit it when absent. Keep existing resume/navigation and unlock behavior, without completion percentages or fabricated progress.
+
+## Session coordination and messaging (P7.1B)
+
+Keep participant/subject, current state and the valid next action above four mutually exclusive panels: Overview, Chat, Progress and Details. Put meeting editing and disclosed rescheduling in Details; keep progress evidence in Progress. Raw supported API states determine actions; display helpers and unsupported canonical contracts do not grant capabilities. Existing backend authorization remains authoritative.
+
+Check in and Join Meeting are separate actions. Only a valid time/state permits check-in; opening an external HTTPS meeting with noopener/noreferrer proves no attendance. Face-to-face Sessions use the existing location and participant check-ins. First meeting-detail saves, chat sends, viewing and joining do not ask for confirmation. Replacing agreed details, declining a proposed schedule and submitting a dispute use the shared confirmation dialog, alongside existing consequential Session actions.
+
+Chat shows peer/subject context, bounded scrollable history and an associated composer. Initially show newest messages; follow polling within 72px of the bottom and after a successful own send. Preserve an older-message reader's position and offer a counted new-message scroll hint. That hint is not a backend unread count. Preserve drafts on polling, tab changes and send failure. Announce send success inline instead of a toast for every message.
+
+Fetch the current messages endpoint only with Chat selected in a visible, focused window and without a covering modal. The existing endpoint marks the entire thread read, including messages below an older-message reader; this frontend change cannot supply per-message read receipts. Already-started requests cannot be undone when the window later loses focus.
+
+Global Messages opens a 420px desktop conversation drawer or full-width compact-screen picker at 1024px and below. The picker uses existing Session records plus recent notifications without reading message bodies. Selecting a conversation opens the single full Session Room Chat. The existing full-page Messages route uses the same picker. Display peer, subject and honest notification activity; never fabricate snippets or unread totals. Recent activity is limited to the latest 50 notifications.
+
+Use one authenticated, account-keyed notification provider for the Bell, picker and optional audio; keep backend notifications and OneSignal delivery intact. Poll notifications every 60 seconds while visible, on focus and after relevant read actions. Sound defaults off, requires a user gesture, excludes initial history, own sends and the visible active thread, and has a 10-second cooldown. Persist the opt-in separately per account in local storage. Audio is supplemental; browser restrictions and storage failures must not prevent normal messaging or in-app feedback.

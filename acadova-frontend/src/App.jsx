@@ -4,6 +4,7 @@ import PublicLayout from './layouts/PublicLayout';
 import AppLayout from './layouts/AppLayout';
 import StaffLayout from './layouts/StaffLayout';
 import AuthLayout from './layouts/AuthLayout';
+import { NotificationProvider } from './context/NotificationContext';
 import { useAuth } from './context/AuthContext';
 import { getRoleHomeRoute } from './config/roleNavigation';
 import LoadingSpinner from './components/common/LoadingSpinner';
@@ -55,12 +56,13 @@ const GuestOnly = ({ children }) => {
 
 export const App = () => {
   const { pathname, hash } = useLocation();
+  const { user } = useAuth();
   useEffect(() => {
     // Preserve page-specific hash navigation, such as the tutoring request form.
     if (!hash) window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
   }, [pathname, hash]);
   return (
-    <Routes>
+    <NotificationProvider key={user?._id || user?.id || 'guest'}><Routes>
       {/* Public Marketing & Auth Routes */}
       <Route element={<PublicLayout />}>
         <Route path="/" element={<LandingPage />} />
@@ -119,7 +121,7 @@ export const App = () => {
 
       {/* Fallback */}
       <Route path="*" element={<Navigate to="/" replace />} />
-    </Routes>
+    </Routes></NotificationProvider>
   );
 };
 

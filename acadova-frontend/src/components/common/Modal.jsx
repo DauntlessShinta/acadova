@@ -1,7 +1,7 @@
 import React, { useEffect, useId, useRef } from 'react';
 import { X } from 'lucide-react';
 
-export const Modal = ({ isOpen, onClose, title, children, footer, maxWidth = '540px' }) => {
+export const Modal = ({ isOpen, onClose, title, children, footer, maxWidth = '540px', className = '' }) => {
   const titleId = useId();
   const dialogRef = useRef(null);
   const closeRef = useRef(onClose);
@@ -43,7 +43,7 @@ export const Modal = ({ isOpen, onClose, title, children, footer, maxWidth = '54
     <div className="modal-backdrop" onClick={onClose}>
       <div
         ref={dialogRef} role="dialog" aria-modal="true" aria-labelledby={titleId}
-        className="modal-dialog"
+        className={`modal-dialog ${className}`}
         style={{ maxWidth }}
         onClick={(e) => e.stopPropagation()}
       >

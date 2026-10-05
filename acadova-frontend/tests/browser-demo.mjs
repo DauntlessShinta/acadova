@@ -8,7 +8,7 @@ import { createServer } from 'vite';
 
 const browser = process.argv[2] || 'C:/Program Files/Google/Chrome/Application/chrome.exe';
 const fixture = process.argv[3] || 'browser-demo.jsx';
-if (!/^browser-(demo|p71|correction)\.jsx$/.test(fixture)) throw new Error('Unknown browser fixture');
+if (!/^browser-(demo|p71|p71b|correction)\.jsx$/.test(fixture)) throw new Error('Unknown browser fixture');
 const width = Number(process.argv[4] || 1366);
 if (!Number.isInteger(width) || width < 320 || width > 3840) throw new Error('Width must be 320–3840 pixels');
 const height = Number(process.argv[6] || (width < 700 ? 844 : 900));

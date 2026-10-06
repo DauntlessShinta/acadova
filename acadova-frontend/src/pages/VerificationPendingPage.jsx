@@ -58,7 +58,7 @@ export const VerificationPendingPage = () => {
     <span className="auth-form-eyebrow">One more step</span>
     <h2>Check your email</h2>
     <p className="auth-form-intro">{knownEmail
-      ? <>Your Acadova account for <strong>{maskEmail(knownEmail)}</strong> is waiting for email verification. Use the link in your email or resend it below.</>
+      ? <>Your Acadova account for <strong>{maskEmail(knownEmail)}</strong> isn’t verified yet. Check your inbox and spam folder for the verification link, or resend it below.</>
       : 'Enter your email address to request a verification link before logging in to Acadova.'}</p>
     <Alert type={messageType} message={message} />
     {knownEmail ? <button type="button" className="auth-inline-button" onClick={() => { setKnownEmail(''); setMessage(''); }}>Use another email address</button>

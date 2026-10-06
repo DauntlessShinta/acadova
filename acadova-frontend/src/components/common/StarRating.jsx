@@ -58,7 +58,7 @@ export const StarRating = ({
         );
       })}
       {readOnly && showValue && (
-        <span className="mono" style={{ fontSize: '0.85rem', fontWeight: 600, marginLeft: 4, color: 'var(--ink-700)' }}>
+        <span className="tabular" style={{ fontSize: '0.85rem', fontWeight: 600, marginLeft: 4, color: 'var(--ink-700)' }}>
           {Number(rating).toFixed(1)}
         </span>
       )}

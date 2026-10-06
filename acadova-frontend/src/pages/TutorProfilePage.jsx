@@ -276,7 +276,7 @@ export const TutorProfilePage = () => {
               justifyContent: 'space-between',
             }}>
               <span>Your Balance:</span>
-              <strong className="mono">{credits} Credits</strong>
+              <strong className="tabular">{credits} Credits</strong>
             </div>
 
             <button

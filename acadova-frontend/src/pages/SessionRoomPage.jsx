@@ -12,7 +12,9 @@ import {
   Coins,
   ExternalLink,
   MapPin,
+  Maximize2,
   MessageSquare,
+  Minimize2,
   RefreshCw,
   Send,
   UserRound,
@@ -72,6 +74,11 @@ const SessionRoom = ({ id }) => {
   const [newMessageCount, setNewMessageCount] = useState(0);
   const [messageNotice, setMessageNotice] = useState('');
   const [messageError, setMessageError] = useState('');
+  const [chatExpanded, setChatExpanded] = useState(false);
+  const expandTrigger = useRef(null);
+  const chatPanel = useRef(null);
+  const composerRef = useRef(null);
+  const chatScrollSnapshot = useRef(null);
   const [meetingValue, setMeetingValue] = useState('');
   const [googleReady, setGoogleReady] = useState(false);
   const [proposedTime, setProposedTime] = useState('');
@@ -187,6 +194,32 @@ const SessionRoom = ({ id }) => {
       list.scrollTop = list.scrollHeight; forceChatScroll.current = false;
     }
   }, [messages, activeSection, messagesLoaded]);
+  useLayoutEffect(() => {
+    const field = composerRef.current;
+    if (field && activeSection === 'messages') {
+      field.style.height = 'auto';
+      field.style.height = `${Math.min(field.scrollHeight, 144)}px`;
+    }
+  }, [messageBody, activeSection]);
+  useLayoutEffect(() => {
+    const snapshot = chatScrollSnapshot.current;
+    const list = messagesRef.current;
+    if (snapshot && list) {
+      list.scrollTop = snapshot.follow ? list.scrollHeight : snapshot.top;
+      followMessages.current = snapshot.follow;
+      chatScrollSnapshot.current = null;
+    }
+    if (chatExpanded) {
+      const top = chatPanel.current?.getBoundingClientRect().top;
+      if (top != null) window.scrollTo({ top: window.scrollY + top - 88, behavior: 'instant' });
+    }
+  }, [chatExpanded]);
+  const resizeChat = (expanded) => {
+    chatScrollSnapshot.current = { top: messagesRef.current?.scrollTop || 0, follow: followMessages.current };
+    setChatExpanded(expanded);
+    // An in-page workspace retains normal tab order; it is not a modal.
+    if (!expanded) requestAnimationFrame(() => expandTrigger.current?.focus({ preventScroll: true }));
+  };
   const changeSection = (section) => { setActiveSection(section); if (section === 'messages') setNewMessageCount(0); };
   const newestMessages = () => { const list = messagesRef.current; if (list) list.scrollTop = list.scrollHeight; followMessages.current = true; setNewMessageCount(0); };
 
@@ -605,22 +638,25 @@ const SessionRoom = ({ id }) => {
             )}
           </section>
 
-          <section id="room-panel-messages" role="tabpanel" tabIndex={0} aria-labelledby="room-tab-messages" hidden={activeSection !== 'messages'} className={`card session-room-section session-messages-panel ${messagesAvailable ? '' : 'is-unavailable'}`}>
+          <section id="room-panel-messages" ref={chatPanel} role="tabpanel" tabIndex={0} aria-labelledby="room-tab-messages" hidden={activeSection !== 'messages'} className={`card session-room-section session-messages-panel ${chatExpanded ? 'is-expanded' : ''} ${messagesAvailable ? '' : 'is-unavailable'}`}
+            onKeyDown={(event) => { if (event.key === 'Escape' && chatExpanded) { event.preventDefault(); event.stopPropagation(); resizeChat(false); } }}>
 
             <div className="session-section-heading">
               <div>
                 <MessageSquare size={18} aria-hidden="true" />
                 <div><h2 id="session-messages">Chat with {counterpart?.name || 'your peer'}</h2>{messagesAvailable && <p>{session.subject}</p>}</div>
               </div>
-
+              {messagesAvailable && <button type="button" ref={expandTrigger} className="btn btn-secondary btn-sm chat-expand" aria-label={chatExpanded ? 'Minimize chat' : 'Expand chat'} title={chatExpanded ? 'Minimize chat' : 'Expand chat'} aria-expanded={chatExpanded} aria-controls="session-chat-workspace" onClick={() => resizeChat(!chatExpanded)}>
+                {chatExpanded ? <Minimize2 size={16} aria-hidden="true" /> : <Maximize2 size={16} aria-hidden="true" />}<span className="chat-expand-label">{chatExpanded ? 'Minimize chat' : 'Expand chat'}</span>
+              </button>}
             </div>
-            <p className="session-refresh-note">Updates every 5 seconds while Chat is visible and this window is active.</p>
+            <p className="session-refresh-note">Messages refresh automatically while this chat is open.</p>
             {!messagesAvailable ? (
               <p className="session-muted-copy">{usesLegacyActions ? 'Messages become available after the Tutor accepts this session.' : 'Messaging is unavailable for this session state in the current app.'}</p>
             ) : !messagesLoaded ? (
               <LoadingSpinner text="Loading session messages..." size={28} />
             ) : (
-              <>
+              <div className="session-chat-workspace" id="session-chat-workspace">
                 <div className="session-messages" ref={messagesRef} role="log" aria-label="Session conversation" aria-live="polite" tabIndex={0}
                   onScroll={(event) => {
                     const list = event.currentTarget;
@@ -641,10 +677,12 @@ const SessionRoom = ({ id }) => {
                 {newMessageCount > 0 && <button type="button" className="btn btn-secondary btn-sm chat-new-messages" onClick={newestMessages}>{newMessageCount} new {newMessageCount === 1 ? 'message' : 'messages'} - go to newest</button>}
                 <form className="message-composer" onSubmit={handleSendMessage}>
                   <label className="form-label" htmlFor="session-message">Message</label>
+                  <div className="chat-compose-row">
                   <textarea
                     id="session-message"
+                    ref={composerRef}
                     className="form-textarea"
-                    rows={3}
+                    rows={1}
                     maxLength={1000}
                     value={messageBody}
                     placeholder="Share a meeting detail or study note..."
@@ -652,11 +690,13 @@ const SessionRoom = ({ id }) => {
                     aria-describedby={messageError ? 'session-message-error' : undefined}
                     onChange={(event) => { setMessageBody(event.target.value); setMessageError(''); setMessageNotice(''); }}
                   />
+                  <button type="submit" className="btn btn-primary" disabled={actionLoading || sendingMessage || !messageBody.trim()}><Send size={16} aria-hidden="true" />{sendingMessage ? 'Sending...' : 'Send'}</button>
+                  </div>
                   {messageNotice && <p role="status" className="form-hint">{messageNotice}</p>}
                   {messageError && <span role="alert" className="form-error" id="session-message-error">{messageError}</span>}
-                  <div><span className="form-hint">{1000 - messageBody.length} characters remaining</span><button type="submit" className="btn btn-primary btn-sm" disabled={actionLoading || sendingMessage}><Send size={14} /> {sendingMessage ? 'Sending...' : 'Send message'}</button></div>
+                  <span className="form-hint chat-character-count">{1000 - messageBody.length} characters remaining</span>
                 </form>
-              </>
+              </div>
             )}
           </section>
 

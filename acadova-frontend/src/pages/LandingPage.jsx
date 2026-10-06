@@ -24,6 +24,7 @@ import {
   Zap,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import { getRoleHomeRoute } from '../config/roleNavigation';
 import '../styles/landing.css';
 
 const learningSteps = [
@@ -151,7 +152,8 @@ const dashboardViews = {
 };
 
 export const LandingPage = () => {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, user } = useAuth();
+  const homeRoute = getRoleHomeRoute(user?.role);
   const location = useLocation();
   const [selectedSkillKey, setSelectedSkillKey] = useState('web');
   const [teachSkill, setTeachSkill] = useState('Web Development');
@@ -168,7 +170,8 @@ export const LandingPage = () => {
 
     const target = document.getElementById(location.hash.slice(1));
     if (target) {
-      window.requestAnimationFrame(() => target.scrollIntoView({ behavior: 'smooth', block: 'start' }));
+      const frame = window.requestAnimationFrame(() => target.scrollIntoView({ behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth', block: 'start' }));
+      return () => cancelAnimationFrame(frame);
     }
   }, [location.hash]);
 
@@ -198,7 +201,7 @@ export const LandingPage = () => {
             </p>
 
             <div className="landing-action-row">
-              <Link to={isAuthenticated ? '/dashboard' : '/register'} className="btn btn-primary btn-lg">
+              <Link to={isAuthenticated ? homeRoute : '/register'} className="btn btn-primary btn-lg">
                 {isAuthenticated ? 'Open your dashboard' : 'Start learning'} <ArrowRight size={18} />
               </Link>
               <a href="#how-it-works" className="btn btn-secondary btn-lg">How it works</a>
@@ -550,7 +553,7 @@ export const LandingPage = () => {
             <h2 id="cta-title">Your next skill could come from your next peer.</h2>
             <p>Create your Acadova profile, share what you know, and discover the subjects other students can help you master.</p>
             <div className="landing-action-row landing-action-center">
-              <Link to={isAuthenticated ? '/dashboard' : '/register'} className="btn btn-primary btn-lg">
+              <Link to={isAuthenticated ? homeRoute : '/register'} className="btn btn-primary btn-lg">
                 {isAuthenticated ? 'Go to dashboard' : 'Join Acadova'} <ArrowRight size={18} />
               </Link>
               {!isAuthenticated && <Link to="/login" className="btn btn-secondary btn-lg">Log in</Link>}

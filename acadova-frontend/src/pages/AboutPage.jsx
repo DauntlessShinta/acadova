@@ -4,11 +4,11 @@ import { Award } from 'lucide-react';
 
 export const AboutPage = () => {
   return (
-    <div style={{ padding: '60px 0 80px' }}>
+    <div className="public-info-page">
       <div className="container-narrow">
         <div style={{ textAlign: 'center', marginBottom: '48px' }}>
           <span style={{
-            fontFamily: 'var(--font-mono)',
+            fontFamily: 'var(--font-body)',
             fontSize: '0.8rem',
             textTransform: 'uppercase',
             letterSpacing: '0.08em',

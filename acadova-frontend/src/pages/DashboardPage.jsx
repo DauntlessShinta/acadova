@@ -1,7 +1,7 @@
 import { useConfirm } from '../context/confirmAccess';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { BookOpen, Coins, GraduationCap, Search } from 'lucide-react';
+import { ArrowRight, BookOpen, Coins, GraduationCap, Search } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import sessionService from '../services/sessionService';
 import learningService from '../services/learningService';
@@ -109,35 +109,35 @@ export const DashboardPage = () => {
         <h1>{sessions.length ? 'Welcome back' : 'Welcome to Acadova'}, {user?.name?.split(' ')[0] || 'Student'}</h1>
         <p>What would you like to do today?</p></div><Link to="/credits" className="home-credit-summary home-mobile-credits"><Coins size={18} aria-hidden="true" /><strong>{credits} Credits</strong></Link></div>
         <div className="home-paths">
-          <Link to="/tutors" className="home-path"><Search aria-hidden="true" size={24} /><strong>Find someone to teach me</strong><span>Get help from a peer with a subject or skill.</span></Link>
-          <Link to="/learning" className="home-path"><BookOpen aria-hidden="true" size={24} /><strong>Explore learning</strong><span>Study approved resources at your own pace.</span></Link>
-          <Link to="/profile" className="home-path"><GraduationCap aria-hidden="true" size={24} /><strong>Share what I know</strong><span>Add teaching skills so peers can find you.</span></Link>
+          <Link to="/tutors" className="home-path"><Search aria-hidden="true" size={24} /><strong>Find someone to teach me</strong><span>Get help from a peer with a subject or skill.</span><ArrowRight className="home-path-arrow" size={18} aria-hidden="true" /></Link>
+          <Link to="/learning" className="home-path"><BookOpen aria-hidden="true" size={24} /><strong>Explore learning</strong><span>Study approved resources at your own pace.</span><ArrowRight className="home-path-arrow" size={18} aria-hidden="true" /></Link>
+          <Link to="/profile" className="home-path"><GraduationCap aria-hidden="true" size={24} /><strong>Share what I know</strong><span>Add teaching skills so peers can find you.</span><ArrowRight className="home-path-arrow" size={18} aria-hidden="true" /></Link>
         </div>
       </header>
       <Alert type="danger" message={error} onClose={() => setError('')} />
       <div className="home-context-grid">
         {upcomingSessions.length > 0 && <section aria-labelledby="next-session-heading">
-          <div className="student-section-heading"><h2 id="next-session-heading">Upcoming session</h2><Link to="/sessions">All sessions</Link></div>
+          <div className="student-section-heading"><h2 id="next-session-heading">Upcoming session</h2><Link to="/sessions">All sessions <ArrowRight size={16} aria-hidden="true" /></Link></div>
           <SessionCard session={upcomingSessions[0]} currentUser={user} compact />
         </section>}
         {resume && <section aria-labelledby="continue-learning-heading">
           <div className="student-section-heading"><h2 id="continue-learning-heading">Continue learning</h2></div>
-          <div className="card"><h3>{resume.moduleTitle || 'Your last module'}</h3><p>Continue at lesson {resume.lessonIndex + 1} on this browser.</p>
-            <Link to="/learning?continue=1" className="btn btn-primary">Continue learning</Link></div>
+          <Link to="/learning?continue=1" className="card home-resume-card"><h3>{resume.moduleTitle || 'Your last module'}</h3><p>Continue at lesson {resume.lessonIndex + 1} on this browser.</p>
+            <span className="learning-card-hint">Continue learning <ArrowRight size={18} aria-hidden="true" /></span></Link>
         </section>}
       </div>
-      {attentionSessions.length > 0 && <section aria-labelledby="attention-heading"><div className="student-section-heading"><h2 id="attention-heading">Needs your attention</h2><Link to="/sessions">All sessions</Link></div><div className="home-context-grid">{attentionSessions.slice(0, 3).map((session) => <SessionCard key={session._id} session={session} currentUser={user} compact />)}</div></section>}
+      {attentionSessions.length > 0 && <section aria-labelledby="attention-heading"><div className="student-section-heading"><h2 id="attention-heading">Needs your attention</h2><Link to="/sessions">All sessions <ArrowRight size={16} aria-hidden="true" /></Link></div><div className="home-context-grid">{attentionSessions.slice(0, 3).map((session) => <SessionCard key={session._id} session={session} currentUser={user} compact />)}</div></section>}
       {pendingTeachingRequests.length > 0 && <section aria-labelledby="teaching-heading">
-        <div className="student-section-heading"><h2 id="teaching-heading">Teaching requests ({pendingTeachingRequests.length})</h2><Link to="/sessions">All requests</Link></div>
+        <div className="student-section-heading"><h2 id="teaching-heading">Teaching requests ({pendingTeachingRequests.length})</h2><Link to="/sessions">All requests <ArrowRight size={16} aria-hidden="true" /></Link></div>
         <div className="home-context-grid">{pendingTeachingRequests.slice(0, 3).map((session) => <SessionCard key={session._id} session={session} currentUser={user}
           actionLoading={actionLoading} onStatusChange={handleUpdateStatus} compact />)}</div>
       </section>}
       {availability.peers && recommendedPeers.length > 0 && <section aria-labelledby="peers-heading">
-        <div className="student-section-heading"><h2 id="peers-heading">Peers who can help</h2><Link to="/tutors">Browse tutors</Link></div>
+        <div className="student-section-heading"><h2 id="peers-heading">Peers who can help</h2><Link to="/tutors">Browse tutors <ArrowRight size={16} aria-hidden="true" /></Link></div>
         <p>Explore peers who have added teaching skills.</p>
         <div className="student-peer-grid">{recommendedPeers.slice(0, 3).map((peer) => <PeerCard key={peer._id} peer={peer} compact />)}</div>
       </section>}
-      {topics.length > 0 && <section aria-labelledby="featured-learning-heading"><div className="student-section-heading"><h2 id="featured-learning-heading">Explore learning topics</h2><Link to="/learning">All topics</Link></div>
+      {topics.length > 0 && <section aria-labelledby="featured-learning-heading"><div className="student-section-heading"><h2 id="featured-learning-heading">Explore learning topics</h2><Link to="/learning">All topics <ArrowRight size={16} aria-hidden="true" /></Link></div>
         <div className="home-paths">{topics.slice(0, 3).map((topic) => <Link key={topic.id} to={`/learning?topic=${topic.id}`} className="home-path"><BookOpen size={22} aria-hidden="true" /><strong>{topic.name}</strong><span>{topic.description}</span></Link>)}</div>
       </section>}
       {(!user?.skillsToLearn?.length || !user?.skillsToTeach?.length) && <section className="card profile-reminders">

@@ -1,6 +1,6 @@
 import { useConfirm } from '../../context/confirmAccess';
 import { useToast } from '../../context/toastAccess';
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import api from '../../services/api';
 import Alert from '../../components/common/Alert';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
@@ -27,6 +27,7 @@ export const AdminCreditsPage = () => {
   const [loading, setLoading] = useState(true);
   const [adjustmentError, setAdjustmentError] = useState('');
   const [error, setError] = useState('');
+  const mutationPending = useRef(false);
 
   const load = async () => {
     try {
@@ -52,7 +53,10 @@ export const AdminCreditsPage = () => {
 
   const saveRules = async (event) => {
     event.preventDefault();
+    if (mutationPending.current) return;
     if (!await confirm('Save these credit rules? Future qualifying activity will use the new values.', { title: 'Save credit rules', label: 'Save rules', destructive: false })) return;
+    if (mutationPending.current) return;
+    mutationPending.current = true;
     setBusy(true); setError('');
     try {
       const response = await api.patch('/api/admin/credits/rules', {
@@ -63,16 +67,18 @@ export const AdminCreditsPage = () => {
       setRules(response.data); setDraft(response.data);
       toast('success', 'Credit rules saved. New events use these values; history is unchanged.');
     } catch (err) { toast('error', err.message || 'Rules could not be saved. Reload if another Admin edited them.'); }
-    finally { setBusy(false); }
+    finally { mutationPending.current = false; setBusy(false); }
   };
 
   const submitAdjustment = async (event) => {
     event.preventDefault();
+    if (mutationPending.current) return;
     if (!target || !Number.isSafeInteger(numericAmount) || numericAmount < 1 || numericAmount > 1000
       || projected < 0 || reason.trim().length < 10) {
       setAdjustmentError('Select a Student and enter a valid amount and reason. Debits cannot make balances negative.');
       return;
     }
+    mutationPending.current = true;
     setBusy(true); setAdjustmentError('');
     try {
       const currentStudents = (await api.get('/api/admin/users')).data.filter((user) => user.role === 'student');
@@ -94,7 +100,7 @@ export const AdminCreditsPage = () => {
       try { const recent = await api.get('/api/admin/credits/activity'); setActivity(recent.data); }
       catch { /* The committed adjustment remains successful; activity can be refreshed later. */ }
     } catch (err) { toast('error', err.message || 'Adjustment failed. Retrying keeps the same reference.'); }
-    finally { setBusy(false); }
+    finally { mutationPending.current = false; setBusy(false); }
   };
 
   if (loading) return <LoadingSpinner text="Loading credit administration..." size={34} />;
@@ -119,7 +125,7 @@ export const AdminCreditsPage = () => {
         <button className="btn btn-primary" disabled={busy || !target || projected === null || projected < 0}>Confirm adjustment</button>
       </form></fieldset></section>
     </div>
-    <section className="card"><h2>Recent credit activity</h2><div className="status-list">{activity.map((row) => <div key={row._id}><span>{row.type.replaceAll('_', ' ')} · {row.adjustmentDirection || ''} {row.adjustmentReason || ''}<small> {row.fromUser ? `From ${students.find((item) => item._id === row.fromUser)?.name || row.fromUser} · ` : ''}{row.toUser ? `To ${students.find((item) => item._id === row.toUser)?.name || row.toUser} · ` : ''}{new Date(row.createdAt).toLocaleString()}</small></span><strong className="mono">{row.amount}</strong></div>)}</div>{activity.length === 0 && <p>No recorded credit events yet.</p>}</section>
+    <section className="card"><h2>Recent credit activity</h2><div className="status-list">{activity.map((row) => <div key={row._id}><span>{row.type.replaceAll('_', ' ')} · {row.adjustmentDirection || ''} {row.adjustmentReason || ''}<small> {row.fromUser ? `From ${students.find((item) => item._id === row.fromUser)?.name || row.fromUser} · ` : ''}{row.toUser ? `To ${students.find((item) => item._id === row.toUser)?.name || row.toUser} · ` : ''}{new Date(row.createdAt).toLocaleString()}</small></span><strong className="tabular">{row.amount}</strong></div>)}</div>{activity.length === 0 && <p>No recorded credit events yet.</p>}</section>
   </div>;
 };
 

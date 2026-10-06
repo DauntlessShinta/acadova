@@ -46,7 +46,7 @@ test('learning schemas constrain price, URLs, ordering, and unique topic slug', 
 
 test('learning routes enforce governance, safe previews, and no spending', async () => {
   const originals = {
-    user: User.findById, topicFind: LearningTopic.find, topicOne: LearningTopic.findOne,
+    user: User.findById, userFind: User.find, topicFind: LearningTopic.find, topicOne: LearningTopic.findOne,
     topicExists: LearningTopic.exists, topicCreate: LearningTopic.create, topicUpdate: LearningTopic.findOneAndUpdate,
     resourceFind: LearningResource.find, resourceOne: LearningResource.findOne,
     resourceById: LearningResource.findById, resourceCreate: LearningResource.create,
@@ -85,6 +85,9 @@ test('learning routes enforce governance, safe previews, and no spending', async
   User.findById = (id) => ({ select: () => ({ lean: async () => ({ _id: id,
     role: id === moderator ? 'moderator' : id === admin ? 'admin' : 'student',
     emailVerified: true, credits: 100, name: 'Test', email: 'test@example.test' }) }) });
+  let submitterNameProjection;
+  User.find = () => ({ select(fields) { submitterNameProjection = fields; return this; },
+    lean: async () => [{ _id: student, name: 'Student contributor' }] });
   LearningTopic.find = find(topics); LearningTopic.findOne = one(topics);
   LearningTopic.exists = async (filter) => topics.some((row) => match(row, filter));
   LearningTopic.create = async (body) => { const row = { _id: new mongoose.Types.ObjectId().toString(), ...body[0] };
@@ -144,6 +147,18 @@ test('learning routes enforce governance, safe previews, and no spending', async
     assert.equal((await call('/learning/resources/submit', student, 'POST', textBody)).status, 201);
     assert.equal(resources[0].reviewStatus, 'submitted');
     assert.equal(resources[0].creditCost, 0);
+    const queue = await call('/moderator/learning/resources', moderator);
+    assert.equal(queue.status, 200);
+    assert.equal(queue.body.data[0].submittedBy, student);
+    assert.equal(queue.body.data[0].submitterName, 'Student contributor');
+    assert.equal(submitterNameProjection, '_id name');
+    assert.equal(Object.hasOwn(queue.body.data[0], 'email'), false);
+    const staffPreview = await call(`/moderator/learning/resources/${resourceId}`, admin);
+    assert.equal(staffPreview.body.data.submitterName, 'Student contributor');
+    User.find = () => ({ select() { return this; }, lean: async () => [] });
+    const formerContributor = await call('/moderator/learning/resources', moderator);
+    assert.equal(formerContributor.body.data[0].submittedBy, student);
+    assert.equal(formerContributor.body.data[0].submitterName, null);
     assert.equal((await call(`/learning/resources/${resourceId}`, student)).status, 404);
     assert.equal((await call(`/moderator/learning/resources/${resourceId}/publish`, student, 'POST',
       { creditCost: 0 })).status, 403);
@@ -155,6 +170,7 @@ test('learning routes enforce governance, safe previews, and no spending', async
       { creditCost: 0 })).status, 200);
     assert.equal(audits.some((entry) => entry.action === 'learning.resource_approved'), true);
     assert.equal((await call(`/learning/resources/${resourceId}`, student)).body.data.textContent, 'Protected lesson text');
+    assert.equal(Object.hasOwn((await call(`/learning/resources/${resourceId}`, student)).body.data, 'submitterName'), false);
     resources[0].reviewStatus = 'submitted';
     assert.equal((await call(`/moderator/learning/resources/${resourceId}/publish`, admin, 'POST',
       { creditCost: 25 })).status, 200);
@@ -199,7 +215,7 @@ test('learning routes enforce governance, safe previews, and no spending', async
     assert.equal(ledgerWrites, 0);
   } finally {
     await new Promise((resolve) => server.close(resolve));
-    User.findById = originals.user; LearningTopic.find = originals.topicFind;
+    User.findById = originals.user; User.find = originals.userFind; LearningTopic.find = originals.topicFind;
     LearningTopic.findOne = originals.topicOne; LearningTopic.exists = originals.topicExists;
     LearningTopic.create = originals.topicCreate; LearningTopic.findOneAndUpdate = originals.topicUpdate;
     LearningResource.find = originals.resourceFind; LearningResource.findOne = originals.resourceOne;

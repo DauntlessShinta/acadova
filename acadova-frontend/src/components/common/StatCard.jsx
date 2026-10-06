@@ -4,7 +4,7 @@ export const StatCard = ({ title, value, subtitle, icon: Icon, color = 'var(--br
   return (
     <div className="card" style={{ display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
-        <span style={{ fontSize: '0.82rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--ink-500)', fontFamily: 'var(--font-mono)' }}>
+        <span style={{ fontSize: '0.82rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--ink-500)', fontFamily: 'var(--font-body)' }}>
           {title}
         </span>
         {Icon && (
@@ -23,7 +23,7 @@ export const StatCard = ({ title, value, subtitle, icon: Icon, color = 'var(--br
         )}
       </div>
       <div>
-        <div className="mono" style={{ fontSize: '1.9rem', fontWeight: 700, color: 'var(--ink-900)', lineHeight: 1.1 }}>
+        <div className="tabular" style={{ fontSize: '1.9rem', fontWeight: 700, color: 'var(--ink-900)', lineHeight: 1.1 }}>
           {value}
         </div>
         {subtitle && (

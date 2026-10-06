@@ -4,7 +4,8 @@ import { learningAccessLabel, resourceSource } from '../utils/learningPresentati
 import WorkflowTabs from '../components/common/WorkflowTabs';
 import { useConfirm } from '../context/confirmAccess';
 import { useToast } from '../context/toastAccess';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
+import { ArrowRight } from 'lucide-react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { discoveryDestination, discoveryQueryError, filterLearningTopics, learningTopicTitle } from '../utils/discoverySearch';
 import learningService from '../services/learningService';
@@ -38,6 +39,8 @@ export const LearningPage = () => {
   const [submission, setSubmission] = useState(emptySubmission);
   const [loading, setLoading] = useState(true);
   const [working, setWorking] = useState(false);
+  const mutationPending = useRef(false);
+  const [submissionSent, setSubmissionSent] = useState(false);
   const section = searchParams.get('view') === 'contribute' ? 'contribute' : 'library';
   const setSection = (value) => {
     const next = new URLSearchParams(searchParams);
@@ -97,18 +100,23 @@ export const LearningPage = () => {
       lessonIndex: index, moduleTitle: content.title });
   };
   const submit = async (event) => {
-    event.preventDefault(); setWorking(true); setError('');
+    event.preventDefault();
+    if (mutationPending.current) return;
+    mutationPending.current = true; setWorking(true); setError(''); setSubmissionSent(false);
     const body = { topic: submission.topic, title: submission.title,
       description: submission.description, resourceType: submission.resourceType,
       ...(submission.resourceType === 'text' ? { textContent: submission.textContent }
         : { externalUrl: submission.externalUrl }) };
-    try { await learningService.submit(body); toast('success', 'Resource submitted for staff review.');
-      setSubmission(emptySubmission); }
+    try { await learningService.submit(body); toast('success', 'Resource submitted for review.');
+      setSubmission(emptySubmission); setSubmissionSent(true); }
     catch (err) { toast('error', err.message || 'Resource could not be submitted.'); }
-    finally { setWorking(false); }
+    finally { mutationPending.current = false; setWorking(false); }
   };
   const unlock = async () => {
+    if (mutationPending.current) return;
     if (!content?.locked || !await confirm(`Unlock ${content.title} for ${content.creditCost} credits?`, { title: 'Unlock learning content', label: 'Unlock', destructive: false })) return;
+    if (mutationPending.current) return;
+    mutationPending.current = true;
     setWorking(true); setError('');
     try {
       const module = !content.resourceType;
@@ -122,7 +130,7 @@ export const LearningPage = () => {
     } catch (err) { toast('error', err.message?.includes('credits')
       ? 'You need more Acadova Credits. Pass a qualifying assessment or teach a verified session to earn credits.'
       : 'Content could not be unlocked right now. Please try again.'); }
-    finally { setWorking(false); }
+    finally { mutationPending.current = false; setWorking(false); }
   };
   const resourceBody = (item) => item.resourceType === 'text'
     ? <p style={{ whiteSpace: 'pre-wrap' }}>{item.textContent}</p>
@@ -148,8 +156,8 @@ export const LearningPage = () => {
       {!topic && topicQuery && <div className="learning-search-summary"><p role="status">{matchingTopics.length} {matchingTopics.length === 1 ? 'published topic matches' : 'published topics match'} “{topicQuery}”.</p><button type="button" className="btn btn-secondary btn-sm" onClick={() => { const next = new URLSearchParams(searchParams); next.delete('q'); setSearchParams(next); }}>Clear search</button></div>}
       {!topic ? <div className="assessment-list learning-topic-results">{!topicsAvailable ? <div className="card"><h2>Learning topics could not be loaded.</h2><p>Refresh to try again, or find a peer to learn with.</p><Link className="btn btn-primary" to="/tutors">Find a Tutor</Link></div> : topics.length === 0 ? <div className="card"><h2>No learning topics are available yet.</h2><p>You can still learn with a peer while staff prepare topics.</p><Link className="btn btn-primary" to="/tutors">Find a Tutor</Link></div>
         : matchingTopics.length === 0 ? <div className="card"><h2>No matching learning topics</h2><p>Try a shorter subject or clear the search to browse all published topics.</p><Link className="btn btn-secondary" to={discoveryQueryError('tutors', topicQuery) ? '/tutors' : discoveryDestination('tutors', topicQuery)}>Find a Tutor instead</Link></div>
-        : matchingTopics.map((item) => <article className="card" key={item.id}><h2>{learningTopicTitle(item)}</h2><p>{item.description}</p>
-          <button type="button" className="btn btn-primary btn-sm" disabled={working} onClick={() => openTopic(item.id)}>Explore topic</button>
+        : matchingTopics.map((item) => <article className="card learning-destination-card" key={item.id}><h2><button type="button" className="learning-card-action" disabled={working} aria-label={`Explore topic: ${learningTopicTitle(item)}`} onClick={() => openTopic(item.id)}>{learningTopicTitle(item)}</button></h2><p>{item.description}</p>
+          <span className="learning-card-hint" aria-hidden="true"><ArrowRight size={18} /></span>
         </article>)}</div> : <>
         {content && <section className="learning-content-detail" aria-label={content.resourceType ? 'Resource detail' : 'Module content'}>
           <p className="learning-item-meta"><span className="learning-access">{learningAccessLabel(content)}{content.resourceType && content.creditCost === 0 ? ' resource' : ''}</span></p>
@@ -193,11 +201,11 @@ export const LearningPage = () => {
         {!content && <>
           <section className="learning-topic-section" aria-labelledby="learning-modules-heading"><h2 id="learning-modules-heading">Modules</h2>
             <p>Choose a structured unit to study its resources in order.</p>
-            {topic.modules.length ? <div className="learning-module-list">{topic.modules.map((item) => <article className="card learning-module-summary" key={item.id}>
-              <div><h3>{item.title}</h3><p>{item.description}</p><div className="learning-item-meta">
+            {topic.modules.length ? <div className="learning-module-list">{topic.modules.map((item) => <article className="card learning-module-summary learning-destination-card" key={item.id}>
+              <div><h3><button type="button" className="learning-card-action" disabled={working} aria-label={`Open module: ${item.title}`} onClick={() => openModule(item)}>{item.title}</button></h3><p>{item.description}</p><div className="learning-item-meta">
                 {Array.isArray(item.resources) && <span>{item.resources.length} learning resources</span>}
                 {learningAccessLabel(item) && <span className="learning-access">{learningAccessLabel(item)}</span>}</div></div>
-              <button type="button" className="btn btn-primary btn-sm" disabled={working} onClick={() => openModule(item)}>Open module</button>
+              <span className="learning-card-hint" aria-hidden="true"><ArrowRight size={18} /></span>
             </article>)}</div> : <p>No modules are available yet. Explore the resources below.</p>}
           </section>
           {topic.resources.length > 0 && <section className="learning-topic-section" aria-labelledby="learning-resources-heading"><h2 id="learning-resources-heading">Topic resources</h2>
@@ -205,13 +213,15 @@ export const LearningPage = () => {
               <ResourceRow key={item.id} resource={item} disabled={working} onOpen={() => openResource(item.id)} />
             )}</div></section>}
           {topic.assessments.length > 0 && <section className="learning-topic-section" aria-labelledby="learning-topic-assessments-heading"><h2 id="learning-topic-assessments-heading">Topic assessments</h2>
-            {topic.assessments.map((item) => <p key={item.id}><Link to={`/assessments?open=${item.id}`}>{item.title}</Link> · {item.questionCount} questions</p>)}
+            <div className="learning-topic-assessment-list">{topic.assessments.map((item) => <Link className="learning-assessment-link" key={item.id} to={`/assessments?open=${item.id}`}><span><strong>{item.title}</strong><span>{item.questionCount} questions</span></span><ArrowRight size={18} aria-hidden="true" /></Link>)}</div>
           </section>}
         </>}
       </>}
       </section>
       <section role="tabpanel" id="learning-panel-contribute" aria-labelledby="learning-tab-contribute" hidden={section !== 'contribute'} className="learning-contribution">{topics.length ? <form className="card" data-unsaved={dirty} onSubmit={submit}><h2>Share a resource</h2>
-        <p>Any Student can contribute teaching material. Staff review it before publication.</p>
+        <p>Share a text lesson or an HTTPS resource with other Students. A Moderator reviews your submission before it appears in Learning.</p>
+        <ol className="contribution-steps" aria-label="Resource review process"><li>Submit your resource</li><li>Moderator reviews it</li><li>Approved material is published</li></ol>
+        {submissionSent && <p className="alert alert-success" role="status">Your resource is awaiting review. You'll receive an in-app notification when it is published or returned with feedback.</p>}
         <label className="form-label" htmlFor="learning-topic">Topic</label>
         <select id="learning-topic" className="form-input" required value={submission.topic} onChange={(event) => setSubmission({ ...submission, topic: event.target.value })}>
           <option value="">Choose a topic</option>{topics.map((item) => <option key={item.id} value={item.id}>{learningTopicTitle(item)}</option>)}
@@ -228,7 +238,8 @@ export const LearningPage = () => {
           <textarea id="learning-text" className="form-input" required maxLength={10000} value={submission.textContent} onChange={(event) => setSubmission({ ...submission, textContent: event.target.value })} /></>
           : <><label className="form-label" htmlFor="learning-url">HTTPS URL</label>
             <input id="learning-url" className="form-input" type="url" required maxLength={1000} value={submission.externalUrl} onChange={(event) => setSubmission({ ...submission, externalUrl: event.target.value })} /></>}
-        <button type="submit" className="btn btn-primary" disabled={working || !topics.length}>Submit for review</button>
+        <p className="form-hint">Submitting does not publish the resource or award credits. If changes are needed, use the review feedback to submit a corrected resource.</p>
+        <button type="submit" className="btn btn-primary" disabled={working || !topics.length}>{working ? 'Submitting...' : 'Submit for review'}</button>
       </form> : <p>Resource contributions will open when staff publish a topic. <Link to="/tutors">Find a Tutor</Link></p>}</section>
     </>}
   </div>;

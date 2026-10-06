@@ -5,6 +5,7 @@ const { nameValidationMessage } = require('../utils/nameValidation');
 const { checkInvocation, seedTopics } = require('../scripts/seedStarterTopics');
 
 test('register and profile enforce the same international name contract', () => {
+  assert.equal(nameValidationMessage('aaaaaa'), '', 'Syntactic validation must not guess whether a name is real');
   for (const name of ["Mary-Jane O'Connor", 'José Dela Cruz', '王小明', 'Nguyễn Thị Ánh', 'A. Rahman', 'Sukarno', 'Jose\u0301', 'Student123', 'https://example.com', 'www.example.com', 'John.. Doe', 'a'.repeat(60), ' ', 'John\nDoe']) {
     const expected = !nameValidationMessage(name);
     for (const schema of [{ name: schemas.register.name }, { name: schemas.profile.name }]) {

@@ -62,7 +62,7 @@ export default function AdminAuditLogsPage() {
       </select></label>
     </div>
     {loading ? <LoadingSpinner text="Loading audit logs..." size={30} /> : error ? <p className="staff-data-note">Audit records are unavailable. <button type="button" className="btn btn-secondary btn-sm" onClick={() => setAttempt((value) => value + 1)}>Retry</button></p> : <>
-      <div className="table-responsive"><table className="table"><thead><tr>
+      <div className="table-responsive" tabIndex={0} role="region" aria-label="Audit records. Scroll horizontally to view all columns."><table className="table"><thead><tr>
         <th>Time</th><th>Actor</th><th>Role</th><th>Action</th><th>Target</th><th>Summary</th>
       </tr></thead><tbody>{rows.map((row) => <tr key={row._id}>
         <td>{new Date(row.createdAt).toLocaleString()}</td><td>{row.actorRole === 'system' ? 'System' : row.actor?.name || row.actor?._id || 'Former account'}</td>

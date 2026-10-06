@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import assessmentService from '../services/assessmentService';
@@ -20,6 +20,7 @@ export const AssessmentsPage = () => {
   const [working, setWorking] = useState(false);
   const [error, setError] = useState('');
   const [answerError, setAnswerError] = useState('');
+  const submissionPending = useRef(false);
 
   useEffect(() => {
     assessmentService.list().then((response) => { setList(response.data || []); setListAvailable(true); })
@@ -49,11 +50,13 @@ export const AssessmentsPage = () => {
 
   const submit = async (event) => {
     event.preventDefault();
+    if (submissionPending.current) return;
     if (answers.some((answer) => answer === null)) {
       setAnswerError('Answer every question before submitting.');
       document.querySelector(`input[name="question-${answers.findIndex((answer) => answer === null)}"]`)?.focus();
       return;
     }
+    submissionPending.current = true;
     setWorking(true); setError(''); setAnswerError('');
     try {
       const response = await assessmentService.submit(selected.id, answers);
@@ -61,10 +64,10 @@ export const AssessmentsPage = () => {
       toast(response.data.passed ? 'success' : 'info', response.data.passed ? 'Assessment passed. Your result is ready below.' : 'Attempt recorded. Review your result and try again when ready.');
       await refreshUser();
     } catch (err) { toast('error', err.message || 'Your assessment could not be submitted. Please try again.'); }
-    finally { setWorking(false); }
+    finally { submissionPending.current = false; setWorking(false); }
   };
 
-  return <div>
+  return <div className="assessments-page">
     <h1>Assessments</h1>
     <p>Complete a published assessment to earn the current credit reward once per assessment.</p>
     <Alert type="danger" message={error} onClose={() => setError('')} />
@@ -87,7 +90,7 @@ export const AssessmentsPage = () => {
       </div> : <form onSubmit={submit}>
         {selected.questions.map((question, index) => <fieldset className="card" key={index} disabled={working} aria-describedby={answerError && answers[index] === null ? 'assessment-answer-error' : undefined}>
           <legend><strong>{index + 1}. {question.prompt}</strong></legend>
-          {question.options.map((option, optionIndex) => <label key={optionIndex} style={{ display: 'block', margin: '10px 0' }}>
+          {question.options.map((option, optionIndex) => <label key={optionIndex} className="assessment-option">
             <input type="radio" name={`question-${index}`} checked={answers[index] === optionIndex}
               onChange={() => setAnswers((current) => current.map((answer, i) => i === index ? optionIndex : answer))} /> {option}
           </label>)}

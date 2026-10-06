@@ -1,7 +1,7 @@
 import { useConfirm } from '../../context/confirmAccess';
 import WorkflowTabs from '../../components/common/WorkflowTabs';
 import ExternalResourceLink from '../../components/common/ExternalResourceLink';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { staffLearningHash, staffLearningSection } from '../../utils/staffLearningNavigation';
 import learningService from '../../services/learningService';
@@ -34,6 +34,8 @@ export const ModeratorLearningPage = () => {
   const [loading, setLoading] = useState(true);
   const [working, setWorking] = useState(false);
   const [error, setError] = useState('');
+  const [resourceStatus, setResourceStatus] = useState('submitted');
+  const mutationPending = useRef(false);
 
   const load = async () => {
     try {
@@ -48,17 +50,23 @@ export const ModeratorLearningPage = () => {
   };
   useEffect(() => { Promise.resolve().then(load); }, []);
   const act = async (operation, message) => {
+    if (mutationPending.current) return false;
     if (/archived|rejected/i.test(message) && !await confirm(message.includes('rejected')
       ? 'Reject this resource with the entered feedback? The creator will be notified and can submit a corrected resource.'
       : 'Archive this content? Students will no longer be able to access it. Archived resources also disappear from published modules; existing unlock records are preserved.',
       { title: message.includes('rejected') ? 'Reject resource' : 'Archive content', label: message.includes('rejected') ? 'Reject resource' : 'Archive' })) return false;
+    if (mutationPending.current) return false;
+    mutationPending.current = true;
     setWorking(true);
     try { await operation(); toast('success', message); await load(); return true; }
     catch (err) { toast('error', err.message || 'Learning content could not be updated.'); return false; }
-    finally { setWorking(false); }
+    finally { mutationPending.current = false; setWorking(false); }
   };
   const hasPublishedTopic = topics.some((item) => item.status === 'published');
+  const awaitingReview = resources.filter((item) => item.reviewStatus === 'submitted').length;
+  const visibleResources = resourceStatus === 'all' ? resources : resources.filter((item) => item.reviewStatus === resourceStatus);
   const publishContent = async (kind, item, operation, price = null) => {
+    if (mutationPending.current) return;
     const cost = price === null ? '' : `\nPrice: ${price === 0 ? 'free' : price + ' credits'}.`;
     if (!await confirm(`Publish "${item.name || item.title}" for Students?${cost}\nThis content becomes available in Learning. Published content cannot be edited through the draft editor.`,
       { title: `Publish ${kind}`, label: `Publish ${kind}`, destructive: false })) return;
@@ -79,15 +87,15 @@ export const ModeratorLearningPage = () => {
 
   return <div className="staff-page"><header className="staff-page-header"><div><span className="staff-eyebrow">{staffBase === '/admin' ? 'Administration' : 'Moderator'} / Learning</span>
     <h1>Learning Management</h1><p>Prepare topics, lessons, modules, and assessments without editing the database.</p></div></header>
-    <WorkflowTabs id="manage" tabs={[['topics', 'Topics'], ['resources', 'Resources'], ['modules', 'Modules']]} active={section} onChange={setSection} /><Link to={`${staffBase}/assessments`}>Manage assessments</Link>
+    <div className="learning-management-toolbar"><WorkflowTabs id="manage" tabs={[['topics', 'Topics'], ['resources', 'Resources'], ['modules', 'Modules']]} active={section} onChange={setSection} /><Link className="btn btn-secondary" to={`${staffBase}/assessments`}>Manage assessments</Link></div>
     <Alert type="danger" message={error} />
     {loading ? <LoadingSpinner text="Loading learning content..." /> : error ? <p className="staff-data-note">Learning management is unavailable. <button type="button" className="btn btn-secondary btn-sm" onClick={() => { setLoading(true); void load(); }}>Retry</button></p> : <>
-      <section className="card" id="manage-panel-topics" role="tabpanel" aria-labelledby="manage-tab-topics" hidden={section !== 'topics'}><h2>Topics</h2>{!topics.length && <p>No topics yet. <button type="button" className="text-action" onClick={() => { document.querySelector('#manage-panel-topics .learning-staff-editor').open = true; document.getElementById('topic-name')?.focus(); }}>Create first topic</button>, then publish it to enable resources and modules.</p>}{topics.map((item) => <div key={item.id} style={{ marginBottom: 14 }}>
+      <section className="card" id="manage-panel-topics" role="tabpanel" aria-labelledby="manage-tab-topics" hidden={section !== 'topics'}><h2>Topics</h2>{!topics.length && <p>No topics yet. <button type="button" className="text-action" onClick={() => { document.querySelector('#manage-panel-topics .learning-staff-editor').open = true; document.getElementById('topic-name')?.focus(); }}>Create first topic</button>, then publish it to enable resources and modules.</p>}{topics.map((item) => <div key={item.id} className="learning-management-item">
         <strong>{item.name}</strong> · {item.status}<p>{item.description}</p>
-        {item.status === 'draft' && <button type="button" className="btn btn-secondary btn-sm" disabled={working} onClick={() => publishContent('topic', item, () => learningService.publishTopic(item.id))}>Publish</button>}
+        {item.status === 'draft' && <button type="button" className="btn btn-primary btn-sm" disabled={working} onClick={() => publishContent('topic', item, () => learningService.publishTopic(item.id))}>Publish</button>}
         {item.status === 'draft' && <button type="button" className="btn btn-secondary btn-sm" disabled={working}
           onClick={() => { setEditingTopic(item.id); setTopicDraft({ name: item.name, description: item.description }); }}>Edit draft</button>}
-        {item.status === 'published' && <button type="button" className="btn btn-secondary btn-sm" disabled={working} onClick={() => act(() => learningService.archiveTopic(item.id), 'Topic archived.')}>Archive</button>}
+        {item.status === 'published' && <button type="button" className="btn btn-danger btn-sm" disabled={working} onClick={() => act(() => learningService.archiveTopic(item.id), 'Topic archived.')}>Archive</button>}
       </div>)}
         <details className="learning-staff-editor" open={editingTopic ? true : undefined}><summary>{editingTopic ? 'Edit topic draft' : 'Create topic draft'}</summary><form onSubmit={async (event) => { event.preventDefault();
           if (await act(() => editingTopic
@@ -105,11 +113,13 @@ export const ModeratorLearningPage = () => {
         </form></details>
       </section>
       <section className="card" id="manage-panel-resources" role="tabpanel" aria-labelledby="manage-tab-resources" hidden={section !== 'resources'} style={{ marginTop: 20 }}>
-        <h2>Resources and lessons</h2><p>Create a text lesson or HTTPS link, then review and publish it.</p>
-        {resources.length === 0 && <p>No resources yet.</p>}
-        {resources.map((item) => <article key={item.id} style={{ borderTop: '1px solid var(--border-subtle)', padding: '16px 0' }}>
-          <h3>{item.title}</h3><p>{item.description} · {item.reviewStatus}</p><p>Submitted by: {item.submittedBy}</p>
-          <details><summary>Review resource content</summary>{item.resourceType === 'text' ? <p style={{ whiteSpace: 'pre-wrap' }}>{item.textContent}</p>
+        <h2>Resources and lessons</h2><p>Student submissions appear here as Submitted. Review the material, publish it with an approved cost, or reject it with feedback. The creator receives an in-app notification.</p>
+        <div className="learning-review-filters" role="group" aria-label="Resource review status">{[['submitted', `Awaiting review (${awaitingReview})`], ['published', 'Published'], ['rejected', 'Rejected'], ['all', 'All resources']].map(([value, label]) => <button type="button" key={value} className={`btn btn-sm ${resourceStatus === value ? 'btn-primary' : 'btn-secondary'}`} aria-pressed={resourceStatus === value} onClick={() => setResourceStatus(value)}>{label}</button>)}</div>
+        {visibleResources.length === 0 && <p className="learning-review-empty">{resources.length === 0 ? 'No resources yet.' : resourceStatus === 'submitted' ? 'No submissions are awaiting review. Use another filter to see reviewed resources.' : 'No resources match this review status.'}</p>}
+        {visibleResources.map((item) => <article key={item.id} className="learning-management-item">
+          <div className="learning-submission-heading"><h3>{item.title}</h3><span className={`badge ${item.reviewStatus === 'submitted' ? 'badge-pending' : item.reviewStatus === 'published' ? 'badge-success' : item.reviewStatus === 'rejected' ? 'badge-danger' : 'badge-navy'}`}>{item.reviewStatus === 'submitted' ? 'Awaiting review' : item.reviewStatus}</span></div><p>{item.description}</p>
+          <dl className="learning-submission-meta"><div><dt>Topic</dt><dd>{topics.find((topic) => topic.id === item.topic)?.name || 'Topic unavailable'}</dd></div><div><dt>Submitted by</dt><dd>{item.submitterName || item.submittedBy || 'Account unavailable'}</dd></div><div><dt>Content type</dt><dd>{item.resourceType === 'text' ? 'Text lesson' : 'HTTPS resource'}</dd></div><div><dt>Submitted</dt><dd>{item.createdAt ? <time dateTime={item.createdAt}>{new Date(item.createdAt).toLocaleString()}</time> : 'Not recorded'}</dd></div></dl>
+          <details><summary>Preview resource content</summary>{item.resourceType === 'text' ? <p style={{ whiteSpace: 'pre-wrap' }}>{item.textContent}</p>
             : <ExternalResourceLink href={item.externalUrl}>Review external resource</ExternalResourceLink>}</details>
           {item.reviewNote && <p>Review note: {item.reviewNote}</p>}
           {item.reviewStatus === 'submitted' && <button type="button" className="btn btn-secondary btn-sm"
@@ -134,8 +144,8 @@ export const ModeratorLearningPage = () => {
             <label className="form-label" htmlFor={`reject-${item.id}`}>Feedback for creator</label>
             <input id={`reject-${item.id}`} className="form-input" maxLength={300} value={reasons[item.id] || ''} onChange={(event) => setReasons({ ...reasons, [item.id]: event.target.value })} />
             <p className="form-hint">Rejecting closes this submission. The creator receives this note and may submit a corrected resource.</p>
-            <button type="button" className="btn btn-secondary btn-sm" disabled={working || (reasons[item.id] || '').trim().length < 3} onClick={() => act(() => learningService.rejectResource(item.id, reasons[item.id]), 'Resource rejected with feedback.')}>Reject with feedback</button></>}
-          {item.reviewStatus === 'published' && <button type="button" className="btn btn-secondary btn-sm" disabled={working} onClick={() => act(() => learningService.archiveResource(item.id), 'Resource archived.')}>Archive</button>}
+            <button type="button" className="btn btn-danger btn-sm" disabled={working || (reasons[item.id] || '').trim().length < 3} onClick={() => act(() => learningService.rejectResource(item.id, reasons[item.id]), 'Resource rejected with feedback.')}>Reject with feedback</button></>}
+          {item.reviewStatus === 'published' && <button type="button" className="btn btn-danger btn-sm" disabled={working} onClick={() => act(() => learningService.archiveResource(item.id), 'Resource archived.')}>Archive</button>}
         </article>)}
         {!hasPublishedTopic && <p>Create and publish a topic before adding resources.</p>}
         <details className="learning-staff-editor" open={editingResource ? true : undefined}><summary>{editingResource ? 'Edit resource submission' : 'Create resource'}</summary><fieldset disabled={!hasPublishedTopic} className="prerequisite-fields"><form className="learning-staff-form" onSubmit={async (event) => {
@@ -187,7 +197,7 @@ export const ModeratorLearningPage = () => {
             {editingResource ? 'Save submission' : 'Create resource'}</button>
         </form></fieldset></details>
       </section>
-      <section className="card" id="manage-panel-modules" role="tabpanel" aria-labelledby="manage-tab-modules" hidden={section !== 'modules'} style={{ marginTop: 20 }}><h2>Modules</h2>{modules.map((item) => <article key={item.id} style={{ marginBottom: 16 }}>
+      <section className="card" id="manage-panel-modules" role="tabpanel" aria-labelledby="manage-tab-modules" hidden={section !== 'modules'} style={{ marginTop: 20 }}><h2>Modules</h2>{modules.map((item) => <article key={item.id} className="learning-management-item">
         <strong>{item.title}</strong> · {item.status}<p>{item.description}</p>
         {item.status === 'draft' && <button type="button" className="btn btn-secondary btn-sm"
           disabled={working} onClick={() => {
@@ -198,7 +208,7 @@ export const ModeratorLearningPage = () => {
         {item.status === 'draft' && <><label className="form-label" htmlFor={`module-price-${item.id}`}>Approved cost (0 = free)</label>
           <input id={`module-price-${item.id}`} className="form-input" type="number" min="0" max="1000" step="1" value={prices[item.id] ?? 0} onChange={(event) => setPrices({ ...prices, [item.id]: event.target.value })} />
           <button type="button" className="btn btn-primary btn-sm" disabled={working} onClick={() => publishContent('module', item, () => learningService.publishModule(item.id, priceFor(item.id)), priceFor(item.id))}>Publish</button></>}
-        {item.status === 'published' && <button type="button" className="btn btn-secondary btn-sm" disabled={working} onClick={() => act(() => learningService.archiveModule(item.id), 'Module archived.')}>Archive</button>}
+        {item.status === 'published' && <button type="button" className="btn btn-danger btn-sm" disabled={working} onClick={() => act(() => learningService.archiveModule(item.id), 'Module archived.')}>Archive</button>}
       </article>)}
         {!hasPublishedTopic && <p>Create and publish a topic before adding a module.</p>}
         <details className="learning-staff-editor" open={editingModule ? true : undefined}><summary>{editingModule ? 'Edit module draft' : 'Create module draft'}</summary><fieldset disabled={!hasPublishedTopic} className="prerequisite-fields"><form onSubmit={async (event) => { event.preventDefault();

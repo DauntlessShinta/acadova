@@ -58,7 +58,7 @@ const ProfileEditor = () => {
   return (
     <div className="container-narrow profile-page" data-unsaved={dirty}>
       <div style={{ marginBottom: '28px' }}>
-        <span style={{ fontSize: '0.85rem', color: 'var(--brass-600)', fontFamily: 'var(--font-mono)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+        <span style={{ fontSize: '0.85rem', color: 'var(--brass-600)', fontFamily: 'var(--font-body)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
           Account & Academic Preferences
         </span>
         <h1 style={{ fontSize: '2rem', color: 'var(--navy-900)', margin: '4px 0 0' }}>
@@ -103,7 +103,7 @@ const ProfileEditor = () => {
 
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.9rem' }}>
               <span style={{ color: 'var(--ink-600)' }}>Wallet Balance:</span>
-              <span className="mono" style={{ fontWeight: 700, color: 'var(--brass-700)' }}>
+              <span className="tabular" style={{ fontWeight: 700, color: 'var(--brass-700)' }}>
                 {credits} Credits
               </span>
             </div>
@@ -116,7 +116,7 @@ const ProfileEditor = () => {
             {user?.createdAt && (
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.9rem' }}>
                 <span style={{ color: 'var(--ink-600)' }}>Member Since:</span>
-                <span className="mono" style={{ fontSize: '0.82rem', color: 'var(--ink-500)' }}>
+                <span className="tabular" style={{ fontSize: '0.82rem', color: 'var(--ink-500)' }}>
                   {new Date(user.createdAt).toLocaleDateString()}
                 </span>
               </div>

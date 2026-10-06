@@ -40,7 +40,7 @@ export const Navbar = () => {
   useEffect(() => {
     if (location.hash) {
       window.requestAnimationFrame(() => {
-        document.getElementById(location.hash.slice(1))?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        document.getElementById(location.hash.slice(1))?.scrollIntoView({ behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth', block: 'start' });
       });
     }
   }, [location.pathname, location.hash]);

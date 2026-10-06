@@ -1,5 +1,5 @@
 import { useConfirm } from '../../context/confirmAccess';
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import moderationService from '../../services/moderationService';
 import Alert from '../../components/common/Alert';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
@@ -18,6 +18,7 @@ export const ModeratorDisputesPage = () => {
   const [error, setError] = useState('');
   const [workingId, setWorkingId] = useState(null);
   const [notes, setNotes] = useState({});
+  const mutationPending = useRef(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -36,6 +37,7 @@ export const ModeratorDisputesPage = () => {
   useEffect(() => { Promise.resolve().then(load); }, [load]);
 
   const resolve = async (session, resolution) => {
+    if (mutationPending.current) return;
     const resolutionNote = (notes[session._id] || '').trim();
     if (resolutionNote.length < 10) {
       setNoteErrors((current) => ({ ...current, [session._id]: 'Enter a resolution note of at least 10 characters.' }));
@@ -45,6 +47,8 @@ export const ModeratorDisputesPage = () => {
     setNoteErrors((current) => ({ ...current, [session._id]: '' }));
     const action = resolution === 'confirm_session' ? 'confirm this session and transfer credits' : 'reject this session without transferring credits';
     if (!await confirm(`Resolve this dispute and ${action}? Your note stays with the Session resolution evidence. The audit log records the action and outcome.`, { title: 'Resolve dispute', label: 'Resolve dispute' })) return;
+    if (mutationPending.current) return;
+    mutationPending.current = true;
     setWorkingId(session._id);
     setError('');
     try {
@@ -54,6 +58,7 @@ export const ModeratorDisputesPage = () => {
     } catch (err) {
       toast('error', err.message || 'Dispute could not be resolved. Refresh and review the latest state.');
     } finally {
+      mutationPending.current = false;
       setWorkingId(null);
     }
   };
@@ -100,7 +105,7 @@ export const ModeratorDisputesPage = () => {
               {noteErrors[session._id] && <span id={`resolution-error-${session._id}`} className="form-error">{noteErrors[session._id]}</span>}
               <div className="session-dispute-actions">
                 <button type="button" className="btn btn-primary btn-sm" onClick={() => resolve(session, 'confirm_session')} disabled={Boolean(workingId) || session.reviewIndicators?.includes('prior_credit_transaction')}>Confirm session and settle credits</button>
-                <button type="button" className="btn btn-secondary btn-sm" onClick={() => resolve(session, 'cancel_session')} disabled={Boolean(workingId) || session.reviewIndicators?.includes('prior_credit_transaction')}>Mark session invalid</button>
+                <button type="button" className="btn btn-danger btn-sm" onClick={() => resolve(session, 'cancel_session')} disabled={Boolean(workingId) || session.reviewIndicators?.includes('prior_credit_transaction')}>Mark session invalid</button>
               </div>
               </>}
             </article>

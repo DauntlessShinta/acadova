@@ -3,6 +3,7 @@ const LearningResource = require('../models/LearningResource');
 const LearningModule = require('../models/LearningModule');
 const Assessment = require('../models/Assessment');
 const LearningUnlock = require('../models/LearningUnlock');
+const User = require('../models/User');
 const { logSecurityEvent } = require('../utils/securityLogger');
 const { ACTIONS, auditedContentChange } = require('../services/auditService');
 const notifications = require('../services/notificationService');
@@ -26,6 +27,13 @@ const resourcePreview = (row, entitled = false) => {
   delete view.textContent;
   delete view.externalUrl;
   return view;
+};
+const staffResourceViews = async (rows) => {
+  const submitterIds = [...new Set(rows.map((row) => row.submittedBy && id(row.submittedBy)).filter(Boolean))];
+  const submitters = submitterIds.length
+    ? await User.find({ _id: { $in: submitterIds } }).select('_id name').lean() : [];
+  const names = new Map(submitters.map((user) => [id(user._id), user.name]));
+  return rows.map((row) => ({ ...resourceView(row, true), submitterName: names.get(id(row.submittedBy)) || null }));
 };
 const moduleView = (row, staff = false, entitled = false) => ({
   id: id(row._id), topic: id(row.topic), title: row.title, description: row.description,
@@ -185,13 +193,13 @@ exports.archiveTopic = async (req, res) => {
 exports.listStaffResources = async (req, res) => {
   try {
     const rows = await LearningResource.find().sort({ createdAt: -1 }).limit(100).lean();
-    return res.json({ success: true, data: rows.map((row) => resourceView(row, true)) });
+    return res.json({ success: true, data: await staffResourceViews(rows) });
   } catch { return failure(res); }
 };
 exports.getStaffResource = async (req, res) => {
   try {
     const row = await LearningResource.findById(req.params.id).lean();
-    return row ? res.json({ success: true, data: resourceView(row, true) }) : unavailable(res);
+    return row ? res.json({ success: true, data: (await staffResourceViews([row]))[0] }) : unavailable(res);
   } catch { return failure(res); }
 };
 exports.createStaffResource = async (req, res) => {

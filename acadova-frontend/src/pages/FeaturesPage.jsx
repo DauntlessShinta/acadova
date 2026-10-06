@@ -4,11 +4,11 @@ import { Clock, Coins, Star, BarChart3 } from 'lucide-react';
 
 export const FeaturesPage = () => {
   return (
-    <div style={{ padding: '60px 0 80px' }}>
+    <div className="public-info-page">
       <div className="container">
         <div style={{ textAlign: 'center', maxWidth: '720px', margin: '0 auto 54px' }}>
           <span style={{
-            fontFamily: 'var(--font-mono)',
+            fontFamily: 'var(--font-body)',
             fontSize: '0.8rem',
             textTransform: 'uppercase',
             letterSpacing: '0.08em',

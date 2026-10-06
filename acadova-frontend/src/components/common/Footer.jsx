@@ -42,29 +42,29 @@ export const Footer = () => {
               <li><Link to="/#how-it-works">How It Works</Link></li>
               <li><Link to="/#credit-system">Credit Model</Link></li>
               <li><Link to="/#features">Features</Link></li>
-              <li><Link to="/#dashboard-preview">Dashboard Preview</Link></li>
+              <li><Link to={!isAuthenticated ? "/#dashboard-preview" : "/features"}>{!isAuthenticated ? "Dashboard Preview" : "Platform features"}</Link></li>
               <li><Link to="/about">About Acadova</Link></li>
             </ul>
           </div>
 
           <div>
-            <h2>Explore Skills</h2>
+            <h2>{!isAuthenticated ? "Explore Skills" : "Learning"}</h2>
             <ul>
-              <li><Link to="/#skill-network">Web Development</Link></li>
-              <li><Link to="/#skill-network">Mathematics</Link></li>
-              <li><Link to="/#skill-network">Networking</Link></li>
-              <li><Link to="/#skill-network">Cybersecurity</Link></li>
-              <li><Link to="/#skill-network">Databases</Link></li>
+              {!isAuthenticated ? ['Web Development', 'Mathematics', 'Networking', 'Cybersecurity', 'Databases'].map((skill) =>
+                <li key={skill}><Link to="/#skill-network">{skill}</Link></li>) : <>
+                <li><Link to="/tutors">Find Tutors</Link></li>
+                <li><Link to="/learning">Learning library</Link></li>
+                <li><Link to="/#features">Two ways to learn</Link></li>
+              </>}
             </ul>
           </div>
 
           <div>
             <h2>Learning & Trust</h2>
             <ul>
-              <li><Link to="/#community">Community Reputation</Link></li>
+              <li><Link to="/#community">{!isAuthenticated ? "Community Reputation" : "Community accountability"}</Link></li>
               <li><Link to="/#sdg-section">SDG 4 Quality Education</Link></li>
-              <li><span>Credit-based exchange</span></li>
-              <li><span>Peer accountability</span></li>
+              {!isAuthenticated && <><li><span>Credit-based exchange</span></li><li><span>Peer accountability</span></li></>}
               <li><Link to="/community-guidelines">Community Guidelines</Link></li>
             </ul>
           </div>

@@ -164,7 +164,7 @@ export const FindTutorsPage = () => {
     <div>
       {/* Header */}
       <div style={{ marginBottom: '32px' }}>
-        <span style={{ fontSize: '0.85rem', color: 'var(--brass-600)', fontFamily: 'var(--font-mono)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+        <span style={{ fontSize: '0.85rem', color: 'var(--brass-600)', fontFamily: 'var(--font-body)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
           Peer tutoring
         </span>
         <h1 style={{ fontSize: '2rem', color: 'var(--navy-900)', margin: '4px 0 8px' }}>
@@ -244,7 +244,7 @@ export const FindTutorsPage = () => {
           onAction={() => handleFilterClick('All')}
         />
       ) : (
-        <div className="grid-3">
+        <div className="student-peer-grid">
           {tutors.map((peer) => <PeerCard key={peer._id} peer={peer} onRequest={openRequestModal} />)}
         </div>
       )}
@@ -270,7 +270,7 @@ export const FindTutorsPage = () => {
             fontSize: '0.88rem',
           }}>
             <span style={{ color: 'var(--brass-700)' }}>Your Available Balance:</span>
-            <span className="mono" style={{ fontWeight: 700, color: 'var(--brass-700)' }}>{credits} Credits</span>
+            <span className="tabular" style={{ fontWeight: 700, color: 'var(--brass-700)' }}>{credits} Credits</span>
           </div>
 
           <div className="form-group">

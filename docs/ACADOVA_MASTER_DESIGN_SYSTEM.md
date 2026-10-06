@@ -88,7 +88,7 @@ Focused UI/UX Pro Max local searches informed this audit (focus visibility, inli
 
 Use one shared AccountMenu for all roles. Student desktop account lives in the utility bar with avatar, name, Student role and chevron; its menu contains Profile and Sign out. Staff desktop account lives at sidebar bottom, with the actual Administrator/Moderator label and Sign out only. Compact headers expose an account trigger directly. Remove duplicate noninteractive identity displays. Every Sign out opens the shared Confirm dialog: **Sign out of Acadova?** / **You'll need to sign in again to continue using your account.** / **Stay signed in** / **Sign out**. If drafts exist, explain their loss in the same dialog. Cancel preserves auth and drafts.
 
-Use width, never desktop height or browser zoom, to choose navigation. Desktop begins at 1025 CSS px; compact begins at 1024 and below. Staff short desktop sidebars may scroll vertically; keep their account actions within reach. Group Student Home/Find Tutors/Learning, Sessions/Messages/Credits, then Profile. Put How Acadova works directly after the secondary group, avoiding a stranded link. Keep the blue/white tokens and existing destinations.
+Use width, never desktop height or browser zoom, to choose navigation. Desktop begins at 1025 CSS px; compact begins at 1024 and below. At short desktop heights, scroll the staff navigation region while keeping the account footer visible. Keep account actions within reach. Group Student Home/Find Tutors/Learning, Sessions/Messages/Credits, then Profile. Put How Acadova works directly after the secondary group, avoiding a stranded link. Keep the blue/white tokens and existing destinations.
 
 Profile and Tutor Profile use a maximum 1040px desktop wrapper with two readable columns and a single compact column. Associate skill labels with stable IDs; keep the input present, disabled at the existing tag-count limit, and enforce the backend's 50-character skill length. Staff workspace headers and headings are compact, plain surfaces. Tables scroll only inside their own region. Audit filters form a deliberate grid and expose readable action labels. Analytics use existing data and place shorter panels together.
 
@@ -97,3 +97,37 @@ Learning uses topic/module/resource/lesson query parameters as navigation state 
 Topic, Resource, Module and Assessment publication all use shared confirmation with title, Student audience, applicable price and draft-edit limitation. Draft saves remain direct. Staff editors and long resource bodies use disclosure. Unavailable queue sources/notifications are never authoritative zeros/empty states. Home separates Upcoming session from Needs your attention. Cancelled/declined/resolved-invalid Progress marks unachievable later steps Not applicable, preserving recorded evidence.
 
 Canonical scheduled cancellation is available only before either check-in, start or settlement evidence; use **Cancel this session?** and explain cancellation for both participants. Chat retains its bounded history/composer and P7.1B behavior with one fewer decorative outer card boundary. Message send retry and the whole-thread read race remain deferred, as recorded in FINAL_STABILIZATION_REPORT.md. Legacy accepted/completed compatibility remains an explicit backend exception to the stronger canonical workflow.
+
+
+## Final global usability polish (2026-10-06)
+
+Use a 24px minimum measured hit area for interactive controls; important buttons, tabs, navigation, notification and account controls use 44px or more. Form controls use 46px; assessment answer labels expose a padded 48px target. Keep adjacent actions separated, with danger styling for destructive moderation/account actions and shared confirmation for consequential changes. Draft edits and check-ins remain direct.
+
+Topic/module cards have one button extending over their card surface. Resource rows are whole semantic buttons. Single-destination Session cards have one heading link over the main surface. Teaching requests with independent actions keep a passive card and separate 44px View Session, Accept and Decline controls. Home paths and Continue learning are whole links. Do not add a second destination button inside these surfaces. Preserve visible focus around the full target and descriptive accessible names.
+
+Use 180ms shared feedback/entrances and a 220ms landing entrance. Respect reduced motion in CSS and scripted hash scrolling. The landing photo is a locally served licensed asset with visible attribution, intrinsic dimensions and descriptive alternative text; it does not represent a testimonial or endorsement. Retain the existing common mark and blue/white tokens.
+
+Contribution copy explains submission, Moderator review, publication and creator notifications. Success keeps an awaiting-review status visible; submission alone earns no credits. Pending mutation guards must prevent rapid duplicate writes without preventing legitimate later activity or replacing server checks.
+
+See GLOBAL_UI_UX_POLISH_REPORT.md for the exact changed files, scope, browser verification and manual limitations.
+
+
+The global polish addendum uses a shared 32px gap between Dashboard major sections and 16px from section heading to content, with padded arrow links and whole shortcut surfaces. Resource management opens on Awaiting review, shows its count, and offers Published/Rejected/All filters. Review metadata includes Topic, submitter name, content type and submitted date; staff-only name lookup preserves historical creator IDs and exposes no account email/security fields. Credits remain authoritative account data, not frontend defaults; a verified eligible fresh registration receives its configured snapshot once (default 100).
+
+## Research-driven product pass (2026-10-06)
+
+The final direction keeps the blue/white palette, Inter body, Plus Jakarta Sans headings, Lucide mark and existing React architecture. Use the normal body typeface for skills, ratings, credits and Session metadata; tabular numerals can align changing amounts without monospace. Reserve monospace for genuinely technical identifiers/code.
+
+Action labels stay on one line. Layouts wrap or stack their controls rather than breaking words or reducing targets. Peer grids use content-aware minimum card widths; independent View Profile and Request Session actions fit side by side when there is room and stack otherwise. Multi-action cards have passive backgrounds.
+
+Following the focused visual rollback, public/auth composition follows commit 1ef2440: a split brand/form Auth shell on desktop, the original 465px form card, large Acadova brand heading and H2 form heading, and the original stacked compact reflow. Keep current visible labels, accessible password controls, adjacent validation and valid entered values after failed submission. Name validation remains syntactic and Unicode-friendly, not a plausibility detector.
+
+Following the focused visual rollback, Landing uses the original 1ef2440 illustration, headline/composition, comparison, How it works, credit preview, Features, skill explorer, dashboard preview, community, SDG 4 and CTA sections. Public navigation/footer destinations match that structure. Preserve current focus, global targets, semantic controls and reduced-motion safeguards. The photograph is unused and retained pending the owner's final inclusion decision. The existing Layers mark remains across roles; its matching SVG favicon is kept.
+
+Session Chat is one conversation surface: context/Expand action, bounded message history and an integrated bottom composer. Textarea growth is limited to 144px. Own and peer bubbles remain aligned and width-limited; URLs wrap. Expansion is an in-page workspace fitting the available viewport, with a taller history and visible bottom composer. It uses the same mounted log, draft and polling state; it is not a modal and keeps normal keyboard order. Enter activates Expand, Escape within the workspace minimizes, and focus returns to the trigger. Preserve older-message position/new-message hints, read gating and notification/mute behavior. Existing pickers and confirmations remain dialogs with their existing keyboard behavior.
+
+The acceptance matrix is measured at 100% zoom and device scale 1, with canonical fonts; narrow/zoom reflow uses layout changes, never page scaling. Reduced motion disables entrances/transforms/smooth scrolling. The report records exact dimensions, screenshots, tests and remaining live checks.
+
+## Focused public/auth visual rollback (2026-10-06)
+
+The user's explicit preference for the last committed design supersedes the holistic public/auth redesign. Landing-specific CSS and AuthLayout are restored from 1ef2440. Only Auth-specific selectors/responsive rules are restored in the shared CSS; Student/staff/Chat/Peer/Learning rules remain. All Auth routes share that shell for consistency. Current functional/security behavior and the improved verification explanation remain. Public footer content is conditional, retaining the current authenticated footer. See PUBLIC_AUTH_VISUAL_ROLLBACK_REPORT.md for before/after captures, exact scoped changes, unused assets and fresh verification.

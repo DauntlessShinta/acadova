@@ -1,7 +1,7 @@
 import { useConfirm } from '../../context/confirmAccess';
 import WorkflowTabs from '../../components/common/WorkflowTabs';
 import { useLocation } from 'react-router-dom';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import assessmentService from '../../services/assessmentService';
 import learningService from '../../services/learningService';
 import Alert from '../../components/common/Alert';
@@ -26,6 +26,7 @@ export const ModeratorAssessmentsPage = () => {
   const [loading, setLoading] = useState(true);
   const [working, setWorking] = useState(false);
   const [error, setError] = useState('');
+  const mutationPending = useRef(false);
 
   const load = async () => {
     try { const response = await assessmentService.staffList(); setAssessments(response.data || []); setError(''); }
@@ -42,7 +43,9 @@ export const ModeratorAssessmentsPage = () => {
     ...current, questions: current.questions.map((question, i) => i === index ? { ...question, ...changes } : question),
   }));
   const create = async (event) => {
-    event.preventDefault(); setWorking(true); setError('');
+    event.preventDefault();
+    if (mutationPending.current) return;
+    mutationPending.current = true; setWorking(true); setError('');
     try {
       if (editingId) await assessmentService.update(editingId, draft);
       else await assessmentService.create(draft);
@@ -50,16 +53,18 @@ export const ModeratorAssessmentsPage = () => {
       toast('success', editingId ? 'Draft updated. Review it before publishing.'
         : 'Draft created. Review it before publishing.'); await load();
     } catch { toast('error', 'Check each question, option, correct answer, and topic, then try again.'); }
-    finally { setWorking(false); }
+    finally { mutationPending.current = false; setWorking(false); }
   };
   const publish = async (id) => {
+    if (mutationPending.current) return;
     if (!await confirm(`Publish "${review?.title || 'this assessment'}" for Students? Assessments are free to take. Questions and answers cannot be changed afterward.`, { title: 'Publish assessment', label: 'Publish assessment', destructive: false })) return;
-    setWorking(true); setError('');
+    if (mutationPending.current) return;
+    mutationPending.current = true; setWorking(true); setError('');
     try { await assessmentService.publish(id); toast('success', 'Assessment published.');
       setReview((current) => current?.id === id ? { ...current, status: 'published' } : current);
       await load(); }
     catch (err) { toast('error', err.message || 'Assessment could not be published.'); }
-    finally { setWorking(false); }
+    finally { mutationPending.current = false; setWorking(false); }
   };
   const reviewAssessment = async (id) => {
     setWorking(true); setError('');

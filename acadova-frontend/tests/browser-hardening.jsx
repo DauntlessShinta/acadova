@@ -14,7 +14,8 @@ const student = { _id: 'me', name: 'Alex Santos', email: 'alex@example.test', ro
   emailVerified: true, rating: null, ratingCount: 0, onboardingFinishedAt: '2026-10-01', skillsToLearn: ['Java'], skillsToTeach: ['Math'] };
 let peer = { ...student, _id: 'peer', name: 'Nathan Santos', skillsToTeach: ['Java'], suspendedAt: null };
 const topic = { id: 'topic', name: 'Java', description: 'Learn Java basics.', status: 'published' };
-const resource = { id: 'r', topic: topic.id, title: 'Java basics', description: 'Read a short explanation.', resourceType: 'text', textContent: 'A useful Java lesson.', reviewStatus: 'published', creditCost: 0 };
+const resource = { id: 'r', topic: topic.id, title: 'Java basics', description: 'Read a short explanation.', resourceType: 'text', textContent: 'A useful Java lesson.', reviewStatus: 'published', creditCost: 0,
+  submittedBy: peer._id, submitterName: peer.name, createdAt: '2026-10-01T10:00:00.000Z' };
 const module = { id: 'module', topic: topic.id, title: 'Java module', description: 'Study Java in order.', status: 'published', resources: [resource], unavailableResourceCount: 1, creditCost: 0, locked: false };
 const questions = Array.from({ length: 3 }, (_, i) => ({ prompt: `Choose the right answer for question ${i + 1}`, options: ['First', 'Second'] }));
 const assessment = { id: 'a', title: 'Java check', topic: 'Java', questionCount: 3, passingScore: 60, questions };
@@ -24,9 +25,25 @@ const rules = { startingCreditGrant: 100, tutoringSessionCost: 20, assessmentRew
 let current = student; let failure = ''; let statusWrites = 0; let roleWrites = 0;
 let releaseSuspension; let releaseRequest; let delayRequest = false; let requestWrites = 0; let publicationWrites = 0; let cancellationWrites = 0;
 let roomSession = { ...session, status: 'scheduled', meetingLink: 'https://example.com/meeting' };
+let contributionWrites = 0; let releaseContribution;
+let assessmentWrites = 0; let releaseAssessment;
+let reviewWrites = 0;
+let review = { _id: 'rating', rating: 4, comment: 'Helpful session.', isHidden: false, fromUser: peer, toUser: student,
+  session: { subject: 'Java tutoring' }, createdAt: new Date().toISOString() };
 const json = (data, status = 200, extra = {}) => new Response(JSON.stringify({ success: status < 400, data, ...extra }), { status });
 window.fetch = async (url, options = {}) => {
   const route = new URL(String(url), 'https://fixture.test').pathname;
+  if (options.method === 'PATCH' && route === '/api/moderator/ratings/rating/visibility') {
+    reviewWrites++; review = { ...review, isHidden: JSON.parse(options.body).hidden }; return json(review);
+  }
+  if (options.method === 'POST' && route === '/api/assessments/a/submit') {
+    assessmentWrites++;
+    return new Promise((resolve) => { releaseAssessment = () => resolve(json({ passed: true, score: 100, rewardIssued: true, creditsAwarded: 20 })); });
+  }
+  if (options.method === 'POST' && route === '/api/learning/resources/submit') {
+    contributionWrites++;
+    return new Promise((resolve) => { releaseContribution = () => resolve(json({ id: 'submitted', reviewStatus: 'submitted' }, 201)); });
+  }
   if (options.method === 'POST' && route.endsWith('/publish')) { publicationWrites++; return json({}); }
   if (options.method === 'POST' && route === '/api/sessions') {
     requestWrites++;
@@ -57,6 +74,7 @@ window.fetch = async (url, options = {}) => {
   if (route === '/api/moderator/learning/resources') data = [resource, { ...resource, id: 'submitted', title: 'Resource draft', reviewStatus: 'submitted' }];
   if (route === '/api/moderator/learning/modules') data = [{ ...module, id: 'draft-module', title: 'Module draft', status: 'draft', resources: ['r'] }];
   if (route === '/api/moderator/sessions/disputed') data = [session];
+  if (route === '/api/moderator/ratings') data = [review];
   if (route === '/api/admin/users') data = [student, peer];
   if (route === '/api/admin/credits/rules' || route === '/api/credits/rules') data = rules;
   if (route === '/api/admin/security') data = { counts: { cooldownStarted: 0, cooldownExtended: 0, activeCooldowns: 0, recoveredLogins: 0, suspendedAttempts: 0 }, events: [] };
@@ -70,7 +88,7 @@ const root = createRoot(document.getElementById('root')); let renderKey = 0;
 const pause = (ms = 40) => new Promise((resolve) => setTimeout(resolve, ms));
 const assert = (value, label) => { if (!value) throw new Error(label); };
 const until = async (check, label) => { for (let i = 0; i < 150; i++) { if (check()) return; await pause(); } throw new Error(label); };
-const visible = (selector) => [...document.querySelectorAll(selector)].filter((element) => element.getClientRects().length && !element.closest('details:not([open])'));
+const visible = (selector) => [...document.querySelectorAll(selector)].filter((element) => element.getClientRects().length && (!element.closest('details:not([open])') || element.matches('summary')));
 const fill = (selector, value) => { const field = document.querySelector(selector); Object.getOwnPropertyDescriptor(field.tagName === 'TEXTAREA' ? HTMLTextAreaElement.prototype : HTMLInputElement.prototype, 'value').set.call(field, value); field.dispatchEvent(new Event('input', { bubbles: true })); };
 // oxlint-disable-next-line react/only-export-components
 function Probe() { const location = useLocation(); const navigate = useNavigate(); return <span hidden id="probe" data-url={location.pathname + location.search + location.hash}><button id="back" onClick={() => navigate(-1)}>Back</button><button id="forward" onClick={() => navigate(1)}>Forward</button></span>; }
@@ -82,8 +100,15 @@ async function render(path, user = student) {
   window.history.replaceState({}, '', path);
   root.render(<BrowserRouter key={renderKey}><AuthProvider><ToastProvider><ConfirmProvider><App /><Probe /></ConfirmProvider></ToastProvider></AuthProvider></BrowserRouter>);
   await until(() => document.getElementById('probe') !== previous && (document.getElementById('probe')?.dataset.url === path || (path === '/learning?continue=1' && document.getElementById('probe')?.dataset.url.startsWith('/learning?topic='))), 'Router commit: ' + path);
-  await until(() => document.querySelector('#main-content h1, .auth-form-panel h2, .auth-form h2, #login-email, .onboarding h1, .landing-page h1'), 'Loaded route: ' + path);
+  await until(() => document.querySelector('#root h1, .auth-form-panel h2, .auth-form h2, #login-email'), 'Loaded route: ' + path);
   await pause(100);
+  for (const control of visible('button, a[href], input:not([type="hidden"]), select, summary')) {
+    const box = control.getBoundingClientRect();
+    assert(box.width >= 23.9 && box.height >= 23.9, `Target below 24px on ${path}: ${control.id || control.className || control.textContent?.slice(0, 45)} (${box.width}x${box.height})`);
+  }
+  for (const control of visible('.btn, .workflow-tabs button, .account-trigger, .notification-trigger')) {
+    assert(control.getBoundingClientRect().height >= 43.9, 'Important control below 44px: ' + path + ' ' + control.className);
+  }
 }
 const cancelDialog = async () => { [...document.querySelectorAll('[role="dialog"] button')].find((button) => button.textContent === 'Cancel').click(); await until(() => !document.querySelector('[role="dialog"]'), 'Dialog cancellation'); };
 const acceptDialog = async (label) => { [...document.querySelectorAll('[role="dialog"] button')].find((button) => button.textContent === label).click(); await until(() => !document.querySelector('[role="dialog"]'), 'Dialog completion'); };
@@ -101,6 +126,10 @@ try {
       assert((getComputedStyle(document.querySelector('.staff-menu-button')).display === 'none') === (innerWidth > 1024), 'Staff hamburger width policy');
     }
     const trigger = visible('.account-trigger')[0]; assert(trigger, 'Visible account disclosure: ' + role);
+    if (role !== 'student' && innerWidth > 1024) {
+      const bounds = trigger.getBoundingClientRect();
+      assert(bounds.top >= 0 && bounds.bottom <= innerHeight, 'Staff account stays visible before scrolling: ' + role);
+    }
     trigger.scrollIntoView({ block: 'nearest' }); trigger.click(); await until(() => visible('.account-actions').length, 'Account menu');
     await until(() => { const bounds = visible('.account-actions')[0]?.getBoundingClientRect(); return bounds && bounds.top >= 0 && bounds.bottom <= innerHeight; }, 'Account actions reachable inside viewport: ' + role);
     assert(visible('.account-actions a').length === (role === 'student' ? 1 : 0), 'Role-appropriate Profile link');
@@ -130,6 +159,25 @@ try {
   profileForm.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true })); profileForm.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
   await until(() => document.querySelector('.session-request-success'), 'Profile request success'); assert(requestWrites === profileBefore + 1 && !document.querySelector('#request-session form'), 'Profile submit guard');
   checks.push('Find Tutors has one search and Quick Filters; discovery/profile repeated-submit guards and success destination');
+  await render('/learning'); await until(() => document.querySelector('.learning-card-action'), 'Whole topic destination');
+  const topicCard = document.querySelector('.learning-destination-card');
+  assert(topicCard.querySelectorAll('button, a').length === 1, 'Topic has one destination');
+  topicCard.querySelector('button').focus();
+  assert(getComputedStyle(document.activeElement, '::after').position === 'absolute', 'Whole topic hit surface');
+  topicCard.scrollIntoView({ block: 'center', behavior: 'instant' }); await pause();
+  const topicBounds = topicCard.getBoundingClientRect();
+  assert(document.elementFromPoint(topicBounds.right - 8, topicBounds.bottom - 8)?.closest('button') === topicCard.querySelector('button'), 'Topic corner opens same destination');
+  document.getElementById('learning-tab-contribute').click(); await until(() => visible('#learning-panel-contribute').length, 'Contribution form');
+  const select = document.getElementById('learning-topic'); select.value = 'topic'; select.dispatchEvent(new Event('change', { bubbles: true }));
+  fill('#learning-title', 'Helpful Java resource'); fill('#learning-description', 'A clear Java explanation.'); fill('#learning-text', 'Java study notes for Students.'); await pause();
+  const contributionForm = document.querySelector('.learning-contribution form');
+  contributionForm.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+  contributionForm.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+  await until(() => releaseContribution, 'Contribution is pending'); assert(contributionWrites === 1, 'One contribution per repeated submit');
+  assert(contributionForm.querySelector('[type="submit"]').disabled, 'Contribution pending target disabled'); releaseContribution();
+  await until(() => document.body.textContent.includes('Your resource is awaiting review'), 'Contribution persistent review status');
+  assert(document.getElementById('learning-title').value === '', 'Successful contribution clears draft');
+  checks.push('Whole topic target and one destination; repeated contribution sends once and shows awaiting-review status');
   await render('/learning?topic=topic'); await until(() => document.querySelector('.learning-module-summary button'), 'Query topic load');
   document.querySelector('.learning-module-summary button').click(); await until(() => document.querySelector('.learning-content-detail'), 'Module query load');
   assert(document.getElementById('probe').dataset.url.includes('module=module'), 'Module URL');
@@ -204,6 +252,12 @@ try {
   await until(() => document.querySelector('input[name="question-0"]'), 'Assessment questions');
   document.querySelector('fieldset').closest('form').dispatchEvent(new Event('submit', { bubbles: true, cancelable: true })); await pause();
   assert(document.activeElement.name === 'question-0' && document.querySelector('fieldset').getAttribute('aria-describedby') === 'assessment-answer-error', 'Unanswered question focus/description');
+  for (let index = 0; index < 3; index++) { document.querySelector(`input[name="question-${index}"]`).click(); await pause(); }
+  const assessmentForm = document.querySelector('fieldset').closest('form');
+  assessmentForm.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+  assessmentForm.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+  await until(() => releaseAssessment, 'Assessment pending'); assert(assessmentWrites === 1, 'One assessment attempt per repeated submit');
+  releaseAssessment(); await until(() => document.body.textContent.includes('+20 credits earned'), 'Assessment result');
   await render('/learning'); await until(() => document.querySelector('.learning-topic-results button'), 'Learning topic'); document.querySelector('.learning-topic-results button').click();
   await until(() => document.querySelector('.learning-module-summary button'), 'Module list'); document.querySelector('.learning-module-summary button').click();
   await until(() => document.body.textContent.includes('Some resources in this module are no longer available'), 'Archived resource explanation');
@@ -214,9 +268,10 @@ try {
       await until(() => visible(`#manage-panel-${section}`).length, 'Staff deep link: ' + section);
       assert(visible('[id^="manage-panel-"]').length === 1, 'Only intended Learning tab');
     }
-    document.getElementById('manage-tab-resources').click(); await pause(); document.getElementById('manage-tab-topics').click(); await pause();
-    document.getElementById('back').click(); await until(() => visible('#manage-panel-resources').length, 'Learning back');
-    document.getElementById('forward').click(); await until(() => visible('#manage-panel-topics').length, 'Learning forward');
+    document.getElementById('manage-tab-resources').click(); await until(() => document.getElementById('probe').dataset.url.endsWith('#manage-panel-resources') && visible('#manage-panel-resources').length, 'Resources navigation commit');
+    document.getElementById('manage-tab-topics').click(); await until(() => document.getElementById('probe').dataset.url.endsWith('#manage-panel-topics') && visible('#manage-panel-topics').length, 'Topics navigation commit');
+    document.getElementById('back').click(); await until(() => document.getElementById('probe').dataset.url.endsWith('#manage-panel-resources') && visible('#manage-panel-resources').length, 'Learning back');
+    document.getElementById('forward').click(); await until(() => document.getElementById('probe').dataset.url.endsWith('#manage-panel-topics') && visible('#manage-panel-topics').length, 'Learning forward');
   }
   await render('/moderator', { ...student, role: 'moderator' });
   await until(() => document.querySelector('a[href="/moderator/learning#manage-panel-resources"]'), 'Canonical queue links');
@@ -239,6 +294,26 @@ try {
   await until(() => peerRow().textContent.includes('Suspended'), 'Suspended row'); assert(statusWrites === 1, 'One status request');
   peerRow().querySelectorAll('button')[1].click(); await until(() => document.querySelector('[role="dialog"]'), 'Reactivation confirmation'); await cancelDialog(); assert(statusWrites === 1, 'Cancel prevents write');
   checks.push('Canonical staff deep links/back-forward/queue, staff routes/tables, blocked dispute and Admin role/status confirmations');
+  for (const role of ['moderator', 'admin']) {
+    await render(role === 'moderator' ? '/moderator/reviews' : '/admin/moderation', { ...student, role });
+    await until(() => document.querySelector('.staff-review-header > button'), 'Review action');
+    const beforeReview = reviewWrites; document.querySelector('.staff-review-header > button').click();
+    await until(() => document.querySelector('[role="dialog"]'), 'Review visibility confirmation'); await cancelDialog();
+    assert(reviewWrites === beforeReview, 'Review Cancel writes nothing');
+    document.querySelector('.staff-review-header > button').click(); await until(() => document.querySelector('[role="dialog"]'), 'Review confirm again');
+    await acceptDialog(review.isHidden ? 'Restore review' : 'Hide review');
+    await until(() => reviewWrites === beforeReview + 1, 'One review mutation');
+  }
+  checks.push('Moderator/Admin shared Hide/Restore review confirmation and Cancel without mutation');
+  await render('/moderator/learning#manage-panel-resources', { ...student, role: 'moderator' });
+  await until(() => document.querySelector('.learning-submission-meta'), 'Submission review metadata');
+  const reviewPanel = document.querySelector('#manage-panel-resources');
+  assert(reviewPanel.textContent.includes('Awaiting review (1)') && reviewPanel.textContent.includes('Nathan Santos') && reviewPanel.textContent.includes('Java') && reviewPanel.querySelector('time'), 'Submission context/title/topic/creator/date');
+  assert(reviewPanel.querySelectorAll('.learning-management-item').length === 1, 'Pending submissions are the default review list');
+  [...reviewPanel.querySelectorAll('.learning-review-filters button')].find((button) => button.textContent === 'Published').click();
+  await until(() => reviewPanel.querySelector('.learning-management-item h3')?.textContent === 'Java basics', 'Published review filter');
+  assert(reviewPanel.querySelector('.learning-management-item .btn-danger').textContent === 'Archive', 'Published resource danger action');
+  checks.push('Pending-review filter and title/topic/submitter/type/date/preview metadata; reviewed-resource filters');
   for (const [path, endpoint, expected] of [
     ['/admin/audit-logs', '/api/admin/audit-logs', 'Audit records are unavailable'],
     ['/admin/security', '/api/admin/security', 'Security activity is unavailable'],
@@ -275,14 +350,54 @@ try {
   for (const path of ['/dashboard', '/sessions', '/sessions?view=messages', '/credits', '/learning', '/profile', '/tutors', '/tutors/peer', '/sessions/s']) {
     await render(path); assert(document.documentElement.scrollWidth <= innerWidth, 'Student overflow: ' + path);
   }
-  for (const path of ['/', '/login', '/register', '/forgot-password', '/reset-password']) {
+  for (const path of ['/', '/about', '/features', '/login', '/register', '/verify-email/pending', '/verify-email', '/forgot-password', '/reset-password']) {
     await render(path, null); assert(document.documentElement.scrollWidth <= innerWidth, 'Public/auth overflow: ' + path);
   }
   await render('/onboarding', { ...student, onboardingFinishedAt: null, skillsToLearn: [], skillsToTeach: [] }); assert(document.documentElement.scrollWidth <= innerWidth, 'Onboarding overflow');
   checks.push('Representative Student/staff/auth/public/onboarding routes at CSS viewport with scale 1 and fresh default zoom');
+  await render('/', null); await until(() => document.querySelector('.landing-network'), 'Original Landing illustration');
+  assert(document.querySelector('.landing-network').getAttribute('aria-label')?.length > 20, 'Illustration alternative description');
+  assert(!document.querySelector('.landing-study-photo'), 'Rejected photo design removed');
+  if (window.__acadovaFontsLoaded) checks.push('Canonical Inter, Plus Jakarta Sans and JetBrains Mono loaded before UI checks');
+  if (matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    assert(Number.parseFloat(getComputedStyle(document.querySelector('.landing-network-pulse')).animationDuration) < .001, 'Reduced-motion hero entrance');
+    assert(Number.parseFloat(getComputedStyle(document.querySelector('.btn')).transitionDuration) < .001, 'Reduced-motion interactions');
+  }
+  await render('/register', null);
+  [...document.querySelectorAll('button')].find((button) => button.textContent.includes('Review Terms')).click();
+  await until(() => document.querySelector('.policy-review-dialog'), 'Policy review dialog');
+  const policyCheck = document.querySelector('.policy-review-actions input');
+  assert(policyCheck.getBoundingClientRect().width >= 24 && policyCheck.getBoundingClientRect().height >= 24, 'Policy agreement hit area');
+  assert([...document.querySelectorAll('.policy-review-dialog button')].every((button) => button.getBoundingClientRect().height >= 44), 'Policy dialog controls too small');
+  document.querySelector('[aria-label="Close policy review"]').click(); await until(() => !document.querySelector('.policy-review-dialog'), 'Policy close');
+  await render('/sessions'); await until(() => document.querySelector('.session-card-destination'), 'Single-destination Session');
+  const singleCard = document.querySelector('.student-session-card'); singleCard.scrollIntoView({ block: 'center', behavior: 'instant' }); await pause();
+  const singleBounds = singleCard.getBoundingClientRect();
+  assert(document.elementFromPoint(singleBounds.left + 6, singleBounds.top + 6)?.closest('a') === singleCard.querySelector('.session-card-destination'), 'Single-destination Session whole surface');
+  const savedSession = roomSession; roomSession = { ...roomSession, status: 'pending', tutor: student, learner: peer, canonicalStatus: undefined };
+  await render('/sessions'); await until(() => document.querySelector('.student-session-actions button'), 'Teaching request actions');
+  const requestCard = document.querySelector('.student-session-card'); requestCard.scrollIntoView({ block: 'center', behavior: 'instant' }); await pause();
+  const cardBounds = requestCard.getBoundingClientRect();
+  assert(!requestCard.querySelector('.session-card-destination') && !document.elementFromPoint(cardBounds.left + 6, cardBounds.top + 6)?.closest('a'), 'Multi-action Session background must stay passive');
+  const explicitView = requestCard.querySelector('.student-session-actions a');
+  assert(explicitView?.getAttribute('href') === '/sessions/s' && explicitView.getBoundingClientRect().height >= 44, 'Multi-action View Session target');
+  for (const action of requestCard.querySelectorAll('button')) { const box = action.getBoundingClientRect(); assert(document.elementFromPoint(box.left + box.width / 2, box.top + box.height / 2)?.closest('button') === action, 'Session action is not covered by destination'); }
+  roomSession = savedSession;
+  roomSession = { ...roomSession, status: 'scheduled', scheduledAt: '2099-10-01T10:00:00.000Z' };
+  await render('/dashboard', { ...student, skillsToTeach: [] });
+  await until(() => document.querySelector('#next-session-heading') && document.querySelector('#peers-heading') && document.querySelector('.profile-reminders'), 'Dashboard populated sections');
+  const dashboardBlocks = visible('.student-dashboard > .home-welcome, .student-dashboard > .home-context-grid, .student-dashboard > section').filter((element) => element.children.length);
+  for (let index = 1; index < dashboardBlocks.length; index++) {
+    assert(dashboardBlocks[index].getBoundingClientRect().top - dashboardBlocks[index - 1].getBoundingClientRect().bottom >= 31.9, 'Dashboard sections accidentally touch');
+  }
+  assert(document.querySelectorAll('.home-welcome .home-path-arrow').length === 3, 'Dashboard shortcut destination affordance');
+  roomSession = savedSession;
+  checks.push('Populated Upcoming/Continue/Peers/Topics/setup Dashboard sections have consistent physical separation');
+  checks.push('All rendered controls at least 24px; primary buttons/tabs/account/notifications at least 44px; About/Features/verification and restored named illustration');
   const capture = capturePath;
-  await render(capture || '/admin/users', { ...student, role: capture?.startsWith('/moderator') ? 'moderator' : capture?.startsWith('/admin') ? 'admin' : 'student' });
-  window.scrollTo({ top: 0, behavior: 'instant' }); await pause();
+  const publicCapture = ['/', '/about', '/features', '/login', '/register', '/verify-email', '/verify-email/pending', '/forgot-password', '/reset-password'].includes(capture);
+  await render(capture || '/admin/users', publicCapture ? null : { ...student, role: capture?.startsWith('/moderator') ? 'moderator' : capture?.startsWith('/admin') ? 'admin' : 'student' });
+  window.scrollTo({ top: 0, behavior: 'instant' }); await pause(300);
   assert(errors.length === 0, 'Runtime errors: ' + errors.join('; '));
   document.getElementById('result').textContent = `PASS: ${innerWidth}x${innerHeight} hardening\n${checks.join('\n')}`;
   document.getElementById('result').hidden = true;

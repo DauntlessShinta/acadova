@@ -39,7 +39,7 @@ window.fetch = async (url, options = {}) => {
   if (options.method && options.method !== 'GET') writes++;
   if (failActions && options.method && options.method !== 'GET') return new Response(JSON.stringify({ message: 'Connection unavailable. Try again.' }), { status: 503 });
   const route = String(url).split('?')[0];
-  const data = route === '/api/learning/topics' ? topics : route.startsWith('/api/learning/topics/') ? topicDetail(topics.find((topic) => topic.id === route.split('/').at(-1))) : route.startsWith('/api/learning/modules/') ? learningModules.find((module) => module.id === route.split('/').at(-1)) : route.startsWith('/api/learning/resources/') ? learningResources.find((resource) => resource.id === route.split('/').at(-1)) : route.includes('/moderator/learning/resources') ? learningResources : route.includes('unread-count') ? { count: 0 }
+  const data = route === '/api/learning/topics' ? topics : route.startsWith('/api/learning/topics/') ? topicDetail(topics.find((topic) => topic.id === route.split('/').at(-1))) : route.startsWith('/api/learning/modules/') ? learningModules.find((module) => module.id === route.split('/').at(-1)) : route.startsWith('/api/learning/resources/') ? learningResources.find((resource) => resource.id === route.split('/').at(-1)) : route.includes('/moderator/learning/resources') ? learningResources.map((resource) => ({ ...resource, reviewStatus: 'submitted', creditCost: 0, submittedBy: peer._id, submitterName: peer.name, createdAt: '2026-10-01T10:00:00.000Z' })) : route.includes('unread-count') ? { count: 0 }
     : route === '/api/sessions/demo' ? session
       : route === '/api/sessions' ? [session]
         : route === '/api/users/tutors' ? [peer]
@@ -118,8 +118,13 @@ try {
     await until(() => document.querySelector('#learning-modules-heading'), 'Topic modules');
   };
   const openLearningModule = async (title) => {
+    await until(() => [...document.querySelectorAll('.learning-module-summary')].some((card) => card.querySelector('h3').textContent === title && !card.querySelector('button').disabled), 'Module destination ready: ' + title);
     [...document.querySelectorAll('.learning-module-summary')].find((card) => card.querySelector('h3').textContent === title).querySelector('button').click();
     await until(() => document.querySelector('.learning-page-header h1')?.textContent === title, 'Module content'); await pause();
+  };
+  const backToTopic = async () => {
+    document.querySelectorAll('.learning-breadcrumbs button')[1].click();
+    await until(() => document.querySelector('.learning-page-header h1')?.textContent === 'Computer Networks' && document.querySelectorAll('.learning-module-summary').length === 4, 'Topic navigation commit');
   };
   const safeExternalAction = () => {
     const action = document.querySelector('.learning-external-action');
@@ -140,30 +145,30 @@ try {
   assert(document.querySelector('.learning-assessment').compareDocumentPosition(document.querySelector('.learning-module-layout')) & Node.DOCUMENT_POSITION_PRECEDING, 'Assessment is not final');
   assert(document.querySelector('.learning-resource-order').textContent.includes('cloudflare.com'), 'Resource source missing');
   safeExternalAction();
-  document.querySelectorAll('.learning-resource-order button')[1].click(); await pause();
-  assert(document.querySelector('.learning-current-resource h2').textContent === 'TCP/IP Basics', 'Resource selection');
-  document.querySelector('.learning-lesson-actions button').click(); await pause();
-  assert(document.querySelector('.learning-current-resource h2').textContent === 'Understanding the OSI Model', 'Previous resource');
+  document.querySelectorAll('.learning-resource-order button')[1].click();
+  await until(() => document.querySelector('.learning-current-resource h2')?.textContent === 'TCP/IP Basics', 'Resource selection');
+  document.querySelector('.learning-lesson-actions button').click();
+  await until(() => document.querySelector('.learning-current-resource h2')?.textContent === 'Understanding the OSI Model', 'Previous resource');
   assert(document.documentElement.scrollWidth <= innerWidth, 'Module overflow');
-  document.querySelectorAll('.learning-breadcrumbs button')[1].click(); await pause();
+  await backToTopic();
   await openLearningModule('Network Reading');
   assert(!document.querySelector('.learning-assessment'), 'Invented assessment');
   assert(document.querySelector('.learning-current-resource').textContent.includes('Protocols let devices exchange data.'), 'Text resource missing');
-  document.querySelectorAll('.learning-breadcrumbs button')[1].click(); await pause();
+  await backToTopic();
   await openLearningModule('Upcoming materials');
   assert(document.querySelector('.learning-content-detail').textContent.includes("doesn't have learning materials"), 'Empty module recovery');
-  document.querySelectorAll('.learning-breadcrumbs button')[1].click(); await pause();
+  await backToTopic();
   await openLearningModule('Further study');
   document.querySelector('.learning-unlock button').click(); await until(() => document.querySelector('[role="dialog"]'), 'Unlock confirmation');
   assert(document.querySelector('[role="dialog"]').textContent.includes('25 credits'), 'Unlock price changed');
   [...document.querySelectorAll('[role="dialog"] button')].find((button) => button.textContent === 'Cancel').click(); await pause();
-  document.querySelectorAll('.learning-breadcrumbs button')[1].click(); await pause();
+  await backToTopic();
   document.querySelector('.learning-resource-list button').click();
   await until(() => document.querySelector('.learning-page-header h1')?.textContent === 'Understanding the OSI Model', 'Resource detail');
   safeExternalAction();
   assert(document.querySelector('.learning-content-detail').textContent.includes('Free resource'), 'Free resource metadata');
   assert(document.documentElement.scrollWidth <= innerWidth, 'Resource detail overflow');
-  document.querySelectorAll('.learning-breadcrumbs button')[1].click(); await pause();
+  await backToTopic();
   assert(document.querySelector('#learning-modules-heading'), 'Back to topic failed');
   assert(writes === 0, 'Learning presentation wrote data');
   checks.push('Topic/module/resource hierarchy, ordered study, external actions/focus, assessment/no-assessment, empty/locked content and cancellation');
@@ -185,8 +190,8 @@ try {
   await render('/learning?q=loops'); await until(() => document.querySelector('.learning-search-summary'), 'Topic search');
   assert(document.querySelector('.learning-topic-results').textContent.includes('Python') && !document.querySelector('.learning-topic-results').textContent.includes('Mathematics'), 'Topic filter is not real');
   await render('/learning?q=unavailable'); await until(() => document.body.textContent.includes('No matching learning topics'), 'No-results recovery');
-  [...document.querySelectorAll('button')].find((button) => button.textContent === 'Clear search').click(); await pause();
-  assert(document.querySelector('.learning-topic-results').textContent.includes('Mathematics'), 'Clear search did not restore topics');
+  [...document.querySelectorAll('button')].find((button) => button.textContent === 'Clear search').click();
+  await until(() => document.querySelector('.learning-topic-results')?.textContent.includes('Mathematics'), 'Clear search did not restore topics');
   await render('/learning?q=Java.*'); await until(() => document.body.textContent.includes('No matching learning topics'), 'Literal pattern no-results state');
   assert(document.querySelector('.learning-topic-results a').getAttribute('href') === '/tutors', 'Learning fallback forwarded an unsupported Tutor pattern');
   checks.push('Scoped global search, real topic filtering and no-results recovery');

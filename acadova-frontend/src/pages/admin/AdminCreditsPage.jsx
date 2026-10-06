@@ -98,6 +98,7 @@ export const AdminCreditsPage = () => {
   };
 
   if (loading) return <LoadingSpinner text="Loading credit administration..." size={34} />;
+  if (!rules && error) return <div className="staff-page"><h1>Credit administration</h1><Alert type="danger" message={error} /><p>Credit administration is unavailable.</p><button type="button" className="btn btn-secondary" onClick={load}>Retry</button></div>;
   return <div className="staff-page">
     <header className="staff-page-header"><div><span className="staff-eyebrow">Administration / Credits</span><h1>Credit administration</h1><p>Manage rules for new activity and make documented Student balance corrections.</p></div></header>
     <Alert type="danger" message={error} onClose={() => setError('')} />

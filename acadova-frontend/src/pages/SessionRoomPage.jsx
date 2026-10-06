@@ -35,7 +35,7 @@ import {
   getSessionNextStep,
   getSessionPerspective,
   getSessionStatus,
-  getSessionTimeline,
+  getSessionTimeline, canCancelSession,
 } from '../utils/sessionPresentation';
 
 const idOf = (value) => String(value?._id || value?.id || value || '');
@@ -46,7 +46,7 @@ export const SessionRoomPage = () => {
 };
 
 const SessionRoom = ({ id }) => {
-  const { hash } = useLocation();
+  const { hash, key: navigationKey } = useLocation();
   const [activeSection, setActiveSection] = useState(hash === '#session-messages' ? 'messages' : 'overview');
   const { refresh: refreshNotifications, setActiveThread } = useNotifications();
   const confirm = useConfirm();
@@ -57,8 +57,12 @@ const SessionRoom = ({ id }) => {
   const [messagesLoaded, setMessagesLoaded] = useState(false);
   const [loading, setLoading] = useState(true);
   useEffect(() => {
-    if (!loading && hash === '#session-messages') { Promise.resolve().then(() => setActiveSection('messages')); document.getElementById('session-messages')?.scrollIntoView({ block: 'start' }); }
-  }, [loading, hash]);
+    if (!loading && hash === '#session-messages') {
+      Promise.resolve().then(() => setActiveSection('messages'));
+      const frame = requestAnimationFrame(() => document.getElementById('session-messages')?.scrollIntoView({ block: 'start' }));
+      return () => cancelAnimationFrame(frame);
+    }
+  }, [loading, hash, navigationKey]);
   const [refreshing, setRefreshing] = useState(false);
   const [refreshError, setRefreshError] = useState('');
   const [actionLoading, setActionLoading] = useState(false);
@@ -218,10 +222,10 @@ const SessionRoom = ({ id }) => {
   const runStatusAction = async (status) => {
     const prompts = {
       declined: 'Decline this session request? The learner will need to find another peer.',
-      cancelled: 'Cancel this session? Both participants will lose access to active coordination.',
+      cancelled: session.status === 'pending' ? 'This request will be cancelled for both participants. No credits will be transferred.' : 'The scheduled session will be cancelled for both participants. No credits will be transferred.',
       completed: `Mark this ${session.subject} session as finished?\n\n${session.learner?.name || 'The learner'} will be asked to confirm before credits are transferred.`,
     };
-    if (prompts[status] && !await confirm(prompts[status], { title: status === 'cancelled' ? 'Cancel Session' : status === 'declined' ? 'Decline request' : 'Finish Session', label: status === 'cancelled' ? 'Cancel Session' : status === 'declined' ? 'Decline request' : 'Finish Session' })) return;
+    if (prompts[status] && !await confirm(prompts[status], { title: status === 'cancelled' ? 'Cancel this session?' : status === 'declined' ? 'Decline request' : 'Finish Session', label: status === 'cancelled' ? 'Cancel Session' : status === 'declined' ? 'Decline request' : 'Finish Session' })) return;
     if (!beginAction()) return;
     try {
       const response = await sessionService.updateSessionStatus(id, status);
@@ -455,7 +459,7 @@ const SessionRoom = ({ id }) => {
   const myValidation = isTeaching ? session.tutorConfirmedAt : session.learnerConfirmedAt;
   const isClosed = ['cancelled', 'declined', 'rejected', 'no_show', 'resolved'].includes(session.status);
   const hasSecondaryActions = usesLegacyActions && (
-    ['pending', 'accepted'].includes(session.status)
+    canCancelSession(session)
     || (isTeaching && session.status === 'completed' && !session.confirmedAt)
   );
   const needsMeetingDetails = usesLegacyActions && isTeaching && canReschedule
@@ -515,7 +519,7 @@ const SessionRoom = ({ id }) => {
               <h2 id="actions-heading">Actions</h2>
               {isTeaching && session.status === 'pending' && <button className="btn btn-ghost session-destructive-action" type="button" disabled={actionLoading} onClick={() => runStatusAction('declined')}>Decline request</button>}
               {isTeaching && session.status === 'completed' && <p>Waiting for learner confirmation. No credits have transferred yet.</p>}
-              {(session.status === 'pending' || session.status === 'accepted') && <button className="btn btn-ghost session-cancel-action" type="button" disabled={actionLoading} onClick={() => runStatusAction('cancelled')}>Cancel session</button>}
+              {canCancelSession(session) && <button className="btn btn-ghost session-cancel-action" type="button" disabled={actionLoading} onClick={() => runStatusAction('cancelled')}>Cancel session</button>}
             </section>
           )}</details>
       <Alert type="danger" message={refreshError} />
@@ -761,7 +765,7 @@ const SessionRoom = ({ id }) => {
                 aria-current={step.state === 'current' ? 'step' : undefined}>
                 <span>{step.state === 'done' ? <Check size={14} /> : index + 1}</span>
                 <div><strong>{step.label}</strong><small>{step.state === 'done' ? 'Done'
-                  : step.state === 'current' ? 'Needs attention' : 'Not yet complete'}</small></div>
+                  : step.state === 'current' ? 'Needs attention' : step.state === 'stopped' ? 'Not applicable ? session stopped' : 'Not yet complete'}</small></div>
               </li>)}
             </ol>
           </section>

@@ -10,6 +10,7 @@ export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [token, setToken] = useState(() => localStorage.getItem('acadova_token') || null);
   const [loading, setLoading] = useState(true);
+  const [authNotice, setAuthNotice] = useState('');
 
   const logout = useCallback(() => {
     localStorage.removeItem('acadova_token');
@@ -47,10 +48,12 @@ export const AuthProvider = ({ children }) => {
   }, [logout]);
 
   useEffect(() => {
-    setOnUnauthorized(() => {
+    setOnUnauthorized((reason) => {
       logout();
+      setAuthNotice(reason === 'suspended' ? 'Your account is suspended. Contact an Acadova administrator for help.' : '');
     });
     refreshUser();
+    return () => setOnUnauthorized(null);
   }, [refreshUser, logout]);
 
   useEffect(() => {
@@ -77,6 +80,7 @@ export const AuthProvider = ({ children }) => {
   const establishSession = useCallback(async (res) => {
     if (res && res.success && res.data) {
       const { token: newToken, user: userData } = res.data;
+      setAuthNotice('');
       localStorage.setItem('acadova_token', newToken);
       localStorage.setItem('acadova_user', JSON.stringify(userData));
       setToken(newToken);
@@ -90,6 +94,9 @@ export const AuthProvider = ({ children }) => {
         }
       } catch {
         // use basic userData
+      }
+      if (localStorage.getItem('acadova_token') !== newToken) {
+        throw new Error('Your account could not access Acadova. Please check the account notice.');
       }
       return res;
     }
@@ -109,6 +116,7 @@ export const AuthProvider = ({ children }) => {
     user,
     token,
     loading,
+    authNotice,
     isAuthenticated: Boolean(token && user),
     isAdmin: user?.role === 'admin',
     isModerator: user?.role === 'moderator',

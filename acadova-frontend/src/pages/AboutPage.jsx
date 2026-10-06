@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { Award, BookOpen, GraduationCap, CheckCircle2, Users, HeartHandshake, ShieldCheck } from 'lucide-react';
+import { Award } from 'lucide-react';
 
 export const AboutPage = () => {
   return (
@@ -18,9 +18,9 @@ export const AboutPage = () => {
           }}>
             About Acadova
           </span>
-          <h1 style={{ color: 'var(--navy-900)', marginBottom: '16px' }}>EduExchange Academic Platform</h1>
+          <h1 style={{ color: 'var(--navy-900)', marginBottom: '16px' }}>How Acadova works</h1>
           <p style={{ color: 'var(--ink-600)', fontSize: '1.15rem', lineHeight: 1.6 }}>
-            A 3rd-year BSIT capstone initiative exploring reciprocal peer tutoring economics through a credit-based MERN stack application.
+            Learn from fellow Students, share skills you can teach, and explore self-paced learning with Acadova Credits.
           </p>
         </div>
 
@@ -41,16 +41,16 @@ export const AboutPage = () => {
           </p>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px', marginTop: '20px' }}>
             <div style={{ background: 'var(--bg-subtle)', padding: '16px', borderRadius: 'var(--radius-md)' }}>
-              <div className="mono" style={{ fontWeight: 700, color: 'var(--brass-700)', marginBottom: 4 }}>+100 Starting Credits</div>
-              <div style={{ fontSize: '0.85rem', color: 'var(--ink-600)' }}>Every new student receives an initial credit balance to book their first session.</div>
+              <div className="mono" style={{ fontWeight: 700, color: 'var(--brass-700)', marginBottom: 4 }}>Starting credit grant</div>
+              <div style={{ fontSize: '0.85rem', color: 'var(--ink-600)' }}>Eligible new Students receive the configured starting grant after email verification (default: 100 credits).</div>
             </div>
             <div style={{ background: 'var(--bg-subtle)', padding: '16px', borderRadius: 'var(--radius-md)' }}>
               <div className="mono" style={{ fontWeight: 700, color: 'var(--brass-700)', marginBottom: 4 }}>Atomic Credit Transfer</div>
-              <div style={{ fontSize: '0.85rem', color: 'var(--ink-600)' }}>Credits are transferred only when a session is mutually executed and completed.</div>
+              <div style={{ fontSize: '0.85rem', color: 'var(--ink-600)' }}>A verified session transfers credits after both participants confirm, or after a valid Moderator resolution. Credits are not reserved when a request is sent.</div>
             </div>
             <div style={{ background: 'var(--bg-subtle)', padding: '16px', borderRadius: 'var(--radius-md)' }}>
-              <div className="mono" style={{ fontWeight: 700, color: 'var(--brass-700)', marginBottom: 4 }}>Double-Blind Reviews</div>
-              <div style={{ fontSize: '0.85rem', color: 'var(--ink-600)' }}>Verified peer ratings ensure pedagogical quality and trust across the campus.</div>
+              <div className="mono" style={{ fontWeight: 700, color: 'var(--brass-700)', marginBottom: 4 }}>Reviews after verified sessions</div>
+              <div style={{ fontSize: '0.85rem', color: 'var(--ink-600)' }}>Eligible participants can review a completed, settled session once. Visible reviews contribute to peer reputation.</div>
             </div>
           </div>
         </div>
@@ -67,7 +67,7 @@ export const AboutPage = () => {
 
         <div style={{ textAlign: 'center', marginTop: '40px' }}>
           <Link to="/register" className="btn btn-primary btn-lg">
-            Join the Acadova Network (+100 Credits after verification)
+            Join Acadova
           </Link>
         </div>
       </div>

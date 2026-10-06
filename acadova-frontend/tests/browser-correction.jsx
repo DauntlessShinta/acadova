@@ -9,9 +9,9 @@ import { ConfirmProvider } from '../src/context/ConfirmContext';
 import { useToast } from '../src/context/toastAccess';
 import '../src/index.css';
 
-const student = { _id: 'student', name: 'JosÃ© Dela Cruz', role: 'student', credits: 100, onboardingFinishedAt: '2026-10-01', skillsToLearn: ['Python'], skillsToTeach: ['Mathematics'] };
-const peer = { ...student, _id: 'peer', name: 'Mary-Jane Oâ€™Connor', skillsToTeach: ['Python'], rating: 5 };
-const session = { _id: 'demo', learner: student, tutor: peer, subject: 'Python fundamentals', status: 'scheduled', scheduledAt: new Date().toISOString(), meetingMethod: 'online', meetingLink: 'https://example.com/meeting', creditAmount: 50, requestMessage: 'Help with functions and loops.' };
+const student = { _id: 'student', name: 'Jos\u00e9 Dela Cruz', role: 'student', credits: 100, onboardingFinishedAt: '2026-10-01', skillsToLearn: ['Python'], skillsToTeach: ['Mathematics'] };
+const peer = { ...student, _id: 'peer', name: 'Mary-Jane O\u2019Connor', skillsToTeach: ['Python'], rating: 5 };
+const session = { _id: 'demo', learner: student, tutor: peer, subject: 'Python fundamentals', status: 'scheduled', scheduledAt: new Date(Date.now() + 86400000).toISOString(), meetingMethod: 'online', meetingLink: 'https://example.com/meeting', creditAmount: 50, requestMessage: 'Help with functions and loops.' };
 const topics = [
   { id: 'python', title: 'Python fundamentals', description: 'Functions and loops' },
   { id: 'math', name: 'Mathematics', description: 'Algebra basics' },
@@ -20,16 +20,16 @@ const topics = [
   { id: 'networking', title: 'Computer Networks', description: 'Learn how computers communicate.' },
 ];
 const learningResources = [
-  { id: 'osi', title: 'Understanding the OSI Model', description: 'Explore the seven layers of network communication.', resourceType: 'url', externalUrl: 'https://www.cloudflare.com/learning/ddos/glossary/open-systems-interconnection-model-osi/', creditCost: 0, locked: false },
-  { id: 'tcp', title: 'TCP/IP Basics', description: 'Understand how protocols carry data between computers.', resourceType: 'url', externalUrl: 'https://www.cloudflare.com/learning/ddos/glossary/tcp-ip/', creditCost: 0, locked: false },
-  { id: 'notes', title: 'Network study notes', description: 'Read a short summary.', resourceType: 'text', textContent: 'Layers organize network responsibilities.\nProtocols let devices exchange data.', creditCost: 0, locked: false },
-  { id: 'private', title: 'Additional reading', description: 'A locked resource.', resourceType: 'text', creditCost: 20, locked: true },
+  { topic: 'networking', id: 'osi', title: 'Understanding the OSI Model', description: 'Explore the seven layers of network communication.', resourceType: 'url', externalUrl: 'https://www.cloudflare.com/learning/ddos/glossary/open-systems-interconnection-model-osi/', creditCost: 0, locked: false },
+  { topic: 'networking', id: 'tcp', title: 'TCP/IP Basics', description: 'Understand how protocols carry data between computers.', resourceType: 'url', externalUrl: 'https://www.cloudflare.com/learning/ddos/glossary/tcp-ip/', creditCost: 0, locked: false },
+  { topic: 'networking', id: 'notes', title: 'Network study notes', description: 'Read a short summary.', resourceType: 'text', textContent: 'Layers organize network responsibilities.\nProtocols let devices exchange data.', creditCost: 0, locked: false },
+  { topic: 'networking', id: 'private', title: 'Additional reading', description: 'A locked resource.', resourceType: 'text', creditCost: 20, locked: true },
 ];
 const learningModules = [
-  { id: 'net-module', title: 'Networking Fundamentals', description: 'Study the OSI model and TCP/IP in order.', creditCost: 0, locked: false, resources: learningResources.slice(0, 2), assessment: 'network-assessment' },
-  { id: 'notes-module', title: 'Network Reading', description: 'Review a short reading resource.', creditCost: 0, locked: false, resources: [learningResources[2]], assessment: null },
-  { id: 'locked-module', title: 'Further study', description: 'A locked unit.', creditCost: 25, locked: true },
-  { id: 'empty-module', title: 'Upcoming materials', description: 'No resources yet.', creditCost: 0, locked: false, resources: [], assessment: null },
+  { topic: 'networking', id: 'net-module', title: 'Networking Fundamentals', description: 'Study the OSI model and TCP/IP in order.', creditCost: 0, locked: false, resources: learningResources.slice(0, 2), assessment: 'network-assessment' },
+  { topic: 'networking', id: 'notes-module', title: 'Network Reading', description: 'Review a short reading resource.', creditCost: 0, locked: false, resources: [learningResources[2]], assessment: null },
+  { topic: 'networking', id: 'locked-module', title: 'Further study', description: 'A locked unit.', creditCost: 25, locked: true },
+  { topic: 'networking', id: 'empty-module', title: 'Upcoming materials', description: 'No resources yet.', creditCost: 0, locked: false, resources: [], assessment: null },
 ];
 const topicDetail = (topic) => ({ ...topic, resources: topic.id === 'networking' ? learningResources.map(({ externalUrl: _externalUrl, textContent: _textContent, ...preview }) => preview) : [],
   modules: topic.id === 'networking' ? learningModules.map((module) => ({ ...module, ...(module.resources ? { resources: module.resources.map((resource) => resource.id) } : {}) })) : [], assessments: [] });
@@ -79,7 +79,7 @@ try {
     const header = visible('.student-utility-bar, .student-mobile-header')[0];
     assert(header && document.querySelector('#main-content h1').getBoundingClientRect().top >= header.getBoundingClientRect().bottom, `Heading under header: ${path}`);
     assert(visible('.student-mobile-bottom').length === (innerWidth <= 1024 ? 1 : 0), `Bottom navigation breakpoint: ${path}`);
-    if (innerWidth > 1024) assert(visible('.student-utility-bar input[type="search"]').length === 1, `Desktop search field: ${path}`);
+    if (innerWidth > 1024) assert(visible('.utility-discovery-shortcut').length === 1 && visible('button[aria-label="Search Acadova"]').length === 1, `Compact discovery utility: ${path}`);
     assert(!document.querySelector('.site-navbar'), `Old navigation: ${path}`);
     assert(visible('.student-sidebar').length === (innerWidth > 1024 ? 1 : 0), `Sidebar breakpoint: ${path}`);
     assert(document.documentElement.scrollWidth <= innerWidth, `Overflow: ${path}; ${[...document.querySelectorAll('body *')].filter((node) => node.getBoundingClientRect().right > innerWidth + 1).slice(0, 6).map((node) => `${node.tagName}.${node.className}: ${node.getBoundingClientRect().right}`).join('; ')}`);
@@ -169,13 +169,13 @@ try {
   checks.push('Topic/module/resource hierarchy, ordered study, external actions/focus, assessment/no-assessment, empty/locked content and cancellation');
 
   await render('/dashboard'); await until(() => document.querySelector('.home-path'), 'Search Home');
-  if (innerWidth <= 1024) { document.querySelector('.student-mobile-utilities button[aria-label="Search Acadova"]').click(); await until(() => document.querySelector('[role="dialog"] .discovery-search'), 'Mobile search dialog'); }
+  { visible('button[aria-label="Search Acadova"]')[0].click(); await until(() => document.querySelector('[role="dialog"] .discovery-search'), 'Mobile search dialog'); }
   const searchForm = visible('.discovery-search')[0];
   fillSearch(searchForm.querySelector('input'), 'Python'); await pause();
   searchForm.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
   await until(() => document.querySelector('#toast-probe')?.dataset.path === '/tutors', 'Tutor search navigation');
   assert(document.querySelector('#tutor-search')?.value === 'Python', 'Tutor skill query missing');
-  if (innerWidth <= 1024) { document.querySelector('.student-mobile-utilities button[aria-label="Search Acadova"]').click(); await until(() => document.querySelector('[role="dialog"] .discovery-search'), 'Second mobile search'); }
+  { visible('button[aria-label="Search Acadova"]')[0].click(); await until(() => document.querySelector('[role="dialog"] .discovery-search'), 'Second mobile search'); }
   const learningSearch = visible('.discovery-search')[0];
   learningSearch.querySelector('select').value = 'learning'; learningSearch.querySelector('select').dispatchEvent(new Event('change', { bubbles: true }));
   fillSearch(learningSearch.querySelector('input'), 'loops'); await pause();

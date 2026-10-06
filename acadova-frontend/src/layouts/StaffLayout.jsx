@@ -1,6 +1,6 @@
 import React, { useRef, useState } from 'react';
 import { Link, NavLink, Navigate, Outlet, useLocation } from 'react-router-dom';
-import { ArrowLeft, Layers, Menu, ShieldCheck } from 'lucide-react';
+import { ArrowLeft, Layers, Menu } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { canAccessStaffArea, getRoleHomeRoute, getRoleNavigation } from '../config/roleNavigation';
 import LoadingSpinner from '../components/common/LoadingSpinner';
@@ -56,7 +56,7 @@ export const StaffLayout = ({ area }) => {
           <button ref={menuButtonRef} type="button" className="staff-menu-button" aria-label="Open staff navigation" aria-expanded={menuOpen} onClick={() => setMenuOpen(true)}><Menu size={21} /></button>
           <span><strong>{isAdminArea ? 'Administration' : 'Moderator'}</strong><small>{current}</small></span>
           <NotificationBell />
-          <div className="staff-topbar-account"><ShieldCheck size={16} /> {user.name || 'Staff'}</div>
+          <div className="staff-topbar-account"><AccountMenu compact /></div>
         </header>
         <main className="staff-content" id="main-content" tabIndex={-1}><Outlet /></main>
         <footer className="staff-workspace-footer">Acadova · {isAdminArea ? 'Administration' : 'Moderator'} workspace</footer>

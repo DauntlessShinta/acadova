@@ -21,7 +21,7 @@ export const TagInput = ({
 
   const addTag = () => {
     const trimmed = inputValue.trim().replace(/^,|,$/g, '');
-    if (trimmed && !tags.includes(trimmed) && tags.length < maxTags) {
+    if (trimmed && trimmed.length <= 50 && !tags.includes(trimmed) && tags.length < maxTags) {
       onChange([...tags, trimmed]);
       setInputValue('');
     }
@@ -45,18 +45,18 @@ export const TagInput = ({
           </button>
         </span>
       ))}
-      {tags.length < maxTags && (
-        <input
+      <input
           id={id}
+          disabled={tags.length >= maxTags}
+          maxLength={50}
           type="text"
           className="tag-input-field"
           value={inputValue}
           onChange={(e) => setInputValue(e.target.value)}
           onKeyDown={handleKeyDown}
           onBlur={addTag}
-          placeholder={tags.length === 0 ? placeholder : 'Add more...'}
+          placeholder={tags.length >= maxTags ? 'Skill limit reached' : tags.length === 0 ? placeholder : 'Add more...'}
         />
-      )}
     </div>
   );
 };

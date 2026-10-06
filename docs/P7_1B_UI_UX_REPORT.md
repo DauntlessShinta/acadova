@@ -87,3 +87,7 @@ Commands below run from `acadova-frontend`, except diff-check from repository ro
 ## Skill guidance actually used
 
 Installed UI/UX Pro Max local Python query: `python .agents/skills/ui-ux-pro-max/scripts/search.py 'chat scroll position new messages focus unread' --domain ux -n 3`. Returned error-announcement, smooth-scroll and stacking-context guidance. Applied labeled contextual errors/live statuses and disciplined overlay layout alongside existing MASTER tokens, keyboard/dialog conventions and responsive hierarchy. Smooth forced polling scroll was rejected because preserving an older-message reader's position is the explicit requirement. No palette/font replacement or new framework.
+
+## Subsequent final hardening note - 2026-10-06
+
+The later final hardening pass fixes repeated selection of the same Session/hash after switching to Details: each router navigation reactivates Chat while preserving the room and draft. The reusable P7.1B browser fixture now covers that case. Original P7.1B validation above remains historical; current results and broader backend/UI changes are recorded separately in [FINAL_DEFENSE_HARDENING_REPORT.md](FINAL_DEFENSE_HARDENING_REPORT.md).

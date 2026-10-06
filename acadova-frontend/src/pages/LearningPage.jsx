@@ -5,7 +5,7 @@ import WorkflowTabs from '../components/common/WorkflowTabs';
 import { useConfirm } from '../context/confirmAccess';
 import { useToast } from '../context/toastAccess';
 import React, { useEffect, useState } from 'react';
-import { Link, useLocation, useSearchParams } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { discoveryDestination, discoveryQueryError, filterLearningTopics, learningTopicTitle } from '../utils/discoverySearch';
 import learningService from '../services/learningService';
 import Alert from '../components/common/Alert';
@@ -21,71 +21,78 @@ export const LearningPage = () => {
   const confirm = useConfirm();
   const { user, refreshUser } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
-  const { key: navigationKey } = useLocation();
+  const topicId = searchParams.get('topic');
+  const moduleId = searchParams.get('module');
+  const resourceId = searchParams.get('resource');
+  const lessonQuery = searchParams.get('lesson');
+  const continueQuery = searchParams.has('continue');
   const topicQuery = searchParams.get('q') || '';
   const userId = user?._id || user?.id;
   const [topics, setTopics] = useState([]);
+  const [topicsAvailable, setTopicsAvailable] = useState(false);
   const [topic, setTopic] = useState(null);
   const [content, setContent] = useState(null);
-  const [lessonIndex, setLessonIndex] = useState(0);
+  const lessonIndex = Math.min(Math.max(0, Number.parseInt(lessonQuery, 10) || 0),
+    Math.max(0, (content?.resources || []).length - 1));
   const [resume] = useState(() => readLearningResume(userId));
   const [submission, setSubmission] = useState(emptySubmission);
   const [loading, setLoading] = useState(true);
   const [working, setWorking] = useState(false);
-  const [section, setSection] = useState('library');
+  const section = searchParams.get('view') === 'contribute' ? 'contribute' : 'library';
+  const setSection = (value) => {
+    const next = new URLSearchParams(searchParams);
+    if (value === 'contribute') next.set('view', value); else next.delete('view');
+    setSearchParams(next);
+  };
   const [error, setError] = useState('');
   const dirty = JSON.stringify(submission) !== JSON.stringify(emptySubmission);
   useUnsavedChanges(dirty);
   const matchingTopics = filterLearningTopics(topics, topicQuery);
   useEffect(() => {
-    if (topicQuery) Promise.resolve().then(() => { setTopic(null); setContent(null); setSection('library'); });
-  }, [topicQuery, navigationKey]);
-
-  useEffect(() => {
-    learningService.topics().then((response) => setTopics(response.data || []))
+    learningService.topics().then((response) => { setTopics(response.data || []); setTopicsAvailable(true); })
       .catch((err) => setError(err.message)).finally(() => setLoading(false));
   }, []);
   useEffect(() => {
-    if (!new URLSearchParams(window.location.search).has('continue') || !resume) return;
-    let active = true;
-    Promise.all([learningService.topic(resume.topicId), learningService.module(resume.moduleId)])
-      .then(([topicResult, moduleResult]) => {
-        if (!active) return;
-        setTopic(topicResult.data);
-        setContent(moduleResult.data);
-        setLessonIndex(Math.min(resume.lessonIndex, Math.max(0, (moduleResult.data.resources || []).length - 1)));
-      }).catch(() => { if (active) setError('Your saved module is unavailable. Browse current learning topics instead.'); });
-    return () => { active = false; };
-  }, [resume]);
+    if (!continueQuery) return;
+    const next = new URLSearchParams();
+    if (resume) {
+      next.set('topic', resume.topicId); next.set('module', resume.moduleId);
+      next.set('lesson', String(resume.lessonIndex));
+    }
+    setSearchParams(next, { replace: true });
+  }, [continueQuery, resume, setSearchParams]);
   useEffect(() => {
-    const id = new URLSearchParams(window.location.search).get('topic');
-    if (!id) return;
     let active = true;
-    learningService.topic(id).then((response) => { if (active) setTopic(response.data); })
-      .catch(() => { if (active) setError('This topic is unavailable. Browse current topics below.'); });
+    Promise.resolve().then(async () => {
+    if (!active) return;
+    setTopic(null); setContent(null); setError('');
+    if (!topicId || continueQuery) { setWorking(false); return; }
+    setWorking(true);
+    await Promise.all([learningService.topic(topicId), resourceId ? learningService.resource(resourceId)
+      : moduleId ? learningService.module(moduleId) : Promise.resolve(null)])
+      .then(([topicResult, detail]) => {
+        if (!active) return;
+        if (detail && String(detail.data.topic) !== String(topicId)) throw new Error('This content belongs to another topic.');
+        setTopic(topicResult.data); setContent(detail?.data || null);
+      }).catch((err) => { if (active) setError(err.message || 'This learning view is unavailable. Browse current topics instead.'); })
+      .finally(() => { if (active) setWorking(false); });
+    });
     return () => { active = false; };
-  }, []);
-  const load = async (request) => {
-    setWorking(true); setError(''); setContent(null);
-    try { const response = await request(); setContent(response.data); return response.data; }
-    catch (err) { toast('error', err.message || 'Learning content could not be opened.'); }
-    finally { setWorking(false); }
+  }, [topicId, moduleId, resourceId, continueQuery]);
+  const navigateLearning = (values) => {
+    const next = new URLSearchParams();
+    for (const [key, value] of Object.entries(values)) if (value != null) next.set(key, String(value));
+    setSearchParams(next);
   };
-  const openTopic = async (id) => {
-    setWorking(true); setError(''); setContent(null);
-    try { const response = await learningService.topic(id); setTopic(response.data); }
-    catch (err) { toast('error', err.message || 'This topic could not be opened.'); }
-    finally { setWorking(false); }
-  };
-  const openModule = async (item) => {
-    const module = await load(() => learningService.module(item.id));
-    if (!module) return;
-    setLessonIndex(0);
+  const openTopic = (id) => navigateLearning({ topic: id });
+  const openResource = (id) => navigateLearning({ topic: topic.id, resource: id });
+  const openModule = (item) => {
+    navigateLearning({ topic: topic.id, module: item.id, lesson: 0 });
     saveLearningResume(userId, { topicId: topic.id, moduleId: item.id,
       lessonIndex: 0, moduleTitle: item.title });
   };
   const selectLesson = (index) => {
-    setLessonIndex(index);
+    navigateLearning({ topic: topic.id, module: content.id, lesson: index });
     saveLearningResume(userId, { topicId: topic.id, moduleId: content.id,
       lessonIndex: index, moduleTitle: content.title });
   };
@@ -124,21 +131,22 @@ export const LearningPage = () => {
 
   return <div className="learning-page">
     <header className="learning-page-header">
-      {topic && <nav className="learning-breadcrumbs" aria-label="Learning breadcrumb"><ol>
-        <li><button type="button" className="text-action" onClick={() => { setTopic(null); setContent(null); }}>Learning</button></li>
-        {content && <li><button type="button" className="text-action" onClick={() => setContent(null)}>{learningTopicTitle(topic)}</button></li>}
+      {section === 'library' && topic && <nav className="learning-breadcrumbs" aria-label="Learning breadcrumb"><ol>
+        <li><button type="button" className="text-action" onClick={() => navigateLearning({})}>Learning</button></li>
+        {content && <li><button type="button" className="text-action" onClick={() => openTopic(topic.id)}>{learningTopicTitle(topic)}</button></li>}
         <li aria-current="page">{content?.title || learningTopicTitle(topic)}</li>
       </ol></nav>}
-      <h1>{content?.title || (topic ? learningTopicTitle(topic) : 'Learning')}</h1>
-      <p>{content ? content.description : topic ? topic.description : 'Browse approved topics, study free resources, and take assessments.'}</p>
-      {topic && !content && <p className="learning-item-meta">{topic.modules.length} {topic.modules.length === 1 ? 'module' : 'modules'} · {topic.resources.length} {topic.resources.length === 1 ? 'resource' : 'resources'}</p>}
+      <h1>{section === 'contribute' ? 'Share a resource' : content?.title || (topic ? learningTopicTitle(topic) : 'Learning')}</h1>
+      <p>{section === 'contribute' ? 'Submit teaching material for staff review before publication.' : content ? content.description : topic ? topic.description : 'Browse approved topics, study free resources, and take assessments.'}</p>
+      {section === 'library' && topic && !content && <p className="learning-item-meta">{topic.modules.length} {topic.modules.length === 1 ? 'module' : 'modules'} · {topic.resources.length} {topic.resources.length === 1 ? 'resource' : 'resources'}</p>}
     </header>
     <Alert type="danger" message={error} />
+    {working && <p role="status">Loading learning content...</p>}
     {loading ? <LoadingSpinner text="Loading topics..." /> : <>
       <WorkflowTabs id="learning" tabs={[['library', 'Browse learning'], ['contribute', 'Share a resource']]} active={section} onChange={setSection} />
       <section role="tabpanel" id="learning-panel-library" aria-labelledby="learning-tab-library" hidden={section !== 'library'}>
       {!topic && topicQuery && <div className="learning-search-summary"><p role="status">{matchingTopics.length} {matchingTopics.length === 1 ? 'published topic matches' : 'published topics match'} “{topicQuery}”.</p><button type="button" className="btn btn-secondary btn-sm" onClick={() => { const next = new URLSearchParams(searchParams); next.delete('q'); setSearchParams(next); }}>Clear search</button></div>}
-      {!topic ? <div className="assessment-list learning-topic-results">{topics.length === 0 ? <div className="card"><h2>No learning topics are available yet.</h2><p>You can still learn with a peer while staff prepare topics.</p><Link className="btn btn-primary" to="/tutors">Find a Tutor</Link></div>
+      {!topic ? <div className="assessment-list learning-topic-results">{!topicsAvailable ? <div className="card"><h2>Learning topics could not be loaded.</h2><p>Refresh to try again, or find a peer to learn with.</p><Link className="btn btn-primary" to="/tutors">Find a Tutor</Link></div> : topics.length === 0 ? <div className="card"><h2>No learning topics are available yet.</h2><p>You can still learn with a peer while staff prepare topics.</p><Link className="btn btn-primary" to="/tutors">Find a Tutor</Link></div>
         : matchingTopics.length === 0 ? <div className="card"><h2>No matching learning topics</h2><p>Try a shorter subject or clear the search to browse all published topics.</p><Link className="btn btn-secondary" to={discoveryQueryError('tutors', topicQuery) ? '/tutors' : discoveryDestination('tutors', topicQuery)}>Find a Tutor instead</Link></div>
         : matchingTopics.map((item) => <article className="card" key={item.id}><h2>{learningTopicTitle(item)}</h2><p>{item.description}</p>
           <button type="button" className="btn btn-primary btn-sm" disabled={working} onClick={() => openTopic(item.id)}>Explore topic</button>
@@ -149,6 +157,7 @@ export const LearningPage = () => {
             <button type="button" className="btn btn-primary btn-sm" disabled={working} onClick={unlock}>Unlock for {content.creditCost} credits</button></div>
             : content.resourceType ? resourceBody(content)
               : <><p className="learning-item-meta">{content.resources?.length || 0} learning resources</p>
+                  {content.unavailableResourceCount > 0 && <Alert type="warning" message="Some resources in this module are no longer available. The remaining published resources are shown below." />}
                   {(content.resources || []).length === 0 ? <p>This module doesn't have learning materials yet.</p>
                     : <div className="learning-module-layout">
                       <section aria-labelledby="learning-study-heading"><h2 id="learning-study-heading">Study</h2>
@@ -164,7 +173,7 @@ export const LearningPage = () => {
                         {content.resources[lessonIndex]?.locked
                           ? <><p>This resource requires {content.resources[lessonIndex].creditCost} credits.</p>
                             <button type="button" className="btn btn-secondary btn-sm" disabled={working}
-                              onClick={() => load(() => learningService.resource(content.resources[lessonIndex].id))}>
+                              onClick={() => openResource(content.resources[lessonIndex].id)}>
                               View unlock options</button></>
                           : resourceBody(content.resources[lessonIndex])}
                         <div className="learning-lesson-actions">
@@ -193,7 +202,7 @@ export const LearningPage = () => {
           </section>
           {topic.resources.length > 0 && <section className="learning-topic-section" aria-labelledby="learning-resources-heading"><h2 id="learning-resources-heading">Topic resources</h2>
             <p>Browse the available resources individually.</p><div className="learning-resource-list">{topic.resources.map((item) =>
-              <ResourceRow key={item.id} resource={item} disabled={working} onOpen={() => load(() => learningService.resource(item.id))} />
+              <ResourceRow key={item.id} resource={item} disabled={working} onOpen={() => openResource(item.id)} />
             )}</div></section>}
           {topic.assessments.length > 0 && <section className="learning-topic-section" aria-labelledby="learning-topic-assessments-heading"><h2 id="learning-topic-assessments-heading">Topic assessments</h2>
             {topic.assessments.map((item) => <p key={item.id}><Link to={`/assessments?open=${item.id}`}>{item.title}</Link> · {item.questionCount} questions</p>)}

@@ -1,5 +1,6 @@
 import { useConfirm } from '../../context/confirmAccess';
 import WorkflowTabs from '../../components/common/WorkflowTabs';
+import { useLocation } from 'react-router-dom';
 import React, { useEffect, useState } from 'react';
 import assessmentService from '../../services/assessmentService';
 import learningService from '../../services/learningService';
@@ -12,6 +13,8 @@ const initialDraft = () => ({ title: '', topic: '', passingScore: 60,
   questions: [emptyQuestion(), emptyQuestion(), emptyQuestion()] });
 
 export const ModeratorAssessmentsPage = () => {
+  const { pathname } = useLocation();
+  const staffLabel = pathname.startsWith('/admin') ? 'Administration' : 'Moderator';
   const confirm = useConfirm();
   const toast = useToast();
   const [section, setSection] = useState('drafts');
@@ -50,7 +53,7 @@ export const ModeratorAssessmentsPage = () => {
     finally { setWorking(false); }
   };
   const publish = async (id) => {
-    if (!await confirm('Publish this assessment for Students? Questions and answers cannot be changed afterward.', { title: 'Publish assessment', label: 'Publish assessment', destructive: false })) return;
+    if (!await confirm(`Publish "${review?.title || 'this assessment'}" for Students? Assessments are free to take. Questions and answers cannot be changed afterward.`, { title: 'Publish assessment', label: 'Publish assessment', destructive: false })) return;
     setWorking(true); setError('');
     try { await assessmentService.publish(id); toast('success', 'Assessment published.');
       setReview((current) => current?.id === id ? { ...current, status: 'published' } : current);
@@ -66,13 +69,13 @@ export const ModeratorAssessmentsPage = () => {
   };
 
   return <div className="staff-page">
-    <header className="staff-page-header"><div><span className="staff-eyebrow">Moderator / Learning</span>
+    <header className="staff-page-header"><div><span className="staff-eyebrow">{staffLabel} / Learning</span>
       <h1>Assessments</h1><p>Create a short multiple-choice assessment, then publish it for Students.</p></div></header>
     <Alert type="danger" message={error} />
-    <WorkflowTabs id="assessment-management" tabs={[['drafts', 'Drafts'], ['builder', 'Create / edit'], ['review', 'Review']]} active={section} onChange={setSection} />
-    <div role="tabpanel" id="assessment-management-panel-drafts" aria-labelledby="assessment-management-tab-drafts" hidden={section !== 'drafts'} className="card"><h2>Assessment drafts</h2>
+    <WorkflowTabs id="assessment-management" tabs={[['drafts', 'All assessments'], ['builder', 'Create / edit'], ['review', 'Review']]} active={section} onChange={setSection} />
+    <div role="tabpanel" id="assessment-management-panel-drafts" aria-labelledby="assessment-management-tab-drafts" hidden={section !== 'drafts'} className="card"><h2>Assessment library</h2>
       {loading ? <LoadingSpinner text="Loading assessments..." /> : assessments.length === 0
-        ? <p>No assessments yet.</p> : assessments.map((item) => <div key={item.id}
+        ? error ? <p>Assessment drafts are unavailable. <button type="button" className="btn btn-secondary btn-sm" onClick={load}>Retry</button></p> : <p>No assessments yet.</p> : assessments.map((item) => <div key={item.id}
           style={{ display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: 16, padding: '12px 0' }}>
           <div><strong>{item.title}</strong><p>{item.topic} · {item.questionCount} questions · {item.status}</p></div>
           <button type="button" className="btn btn-secondary btn-sm" disabled={working}

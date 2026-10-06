@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { Compass, Clock, Coins, Star, Zap, ShieldCheck, Database, BarChart3, CheckCircle2 } from 'lucide-react';
+import { Clock, Coins, Star, BarChart3 } from 'lucide-react';
 
 export const FeaturesPage = () => {
   return (
@@ -16,11 +16,11 @@ export const FeaturesPage = () => {
             display: 'block',
             marginBottom: '10px',
           }}>
-            Technical & Functional Capabilities
+            Learning and teaching
           </span>
           <h1 style={{ color: 'var(--navy-900)', marginBottom: '16px' }}>Platform Features</h1>
           <p style={{ color: 'var(--ink-600)', fontSize: '1.15rem' }}>
-            A deep dive into the architecture powering smart tutor matching, atomic transactions, and MapReduce analytics.
+            Find peers by teaching skill, coordinate tutoring, explore learning materials, and review completed sessions.
           </p>
         </div>
 
@@ -30,10 +30,10 @@ export const FeaturesPage = () => {
               <div style={{ width: 40, height: 40, borderRadius: 'var(--radius-sm)', background: 'var(--brass-100)', color: 'var(--brass-700)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                 <Coins size={20} />
               </div>
-              <h3 style={{ margin: 0, color: 'var(--navy-900)' }}>Atomic Credit Escrow Engine</h3>
+              <h3 style={{ margin: 0, color: 'var(--navy-900)' }}>Recorded credit transfers</h3>
             </div>
             <p>
-              Credit balances are never incremented or decremented casually. Acadova uses MongoDB multi-document transactions to ensure that credits deduct from the learner and credit to the tutor in a single atomic database operation upon session completion.
+              Verified session settlement deducts the stored Session cost from the Learner and credits the Tutor together, with a transaction history. Credits are not reserved when requesting; the Learner must still have enough at settlement.
             </p>
           </div>
 
@@ -42,10 +42,10 @@ export const FeaturesPage = () => {
               <div style={{ width: 40, height: 40, borderRadius: 'var(--radius-sm)', background: 'var(--brass-100)', color: 'var(--brass-700)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                 <BarChart3 size={20} />
               </div>
-              <h3 style={{ margin: 0, color: 'var(--navy-900)' }}>MapReduce Subject Analytics</h3>
+              <h3 style={{ margin: 0, color: 'var(--navy-900)' }}>Subject activity for Admins</h3>
             </div>
             <p>
-              Platform administrators can monitor real-time academic demand through a 3-stage MapReduce implementation (Map sessions to key-value pairs → Group identical subjects → Reduce sum totals) to identify high-demand curriculum subjects.
+              Administrators can view subject demand from recorded Session requests. Analytics update when loaded or refreshed; they are not a live activity feed.
             </p>
           </div>
 
@@ -54,10 +54,10 @@ export const FeaturesPage = () => {
               <div style={{ width: 40, height: 40, borderRadius: 'var(--radius-sm)', background: 'var(--brass-100)', color: 'var(--brass-700)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                 <Clock size={20} />
               </div>
-              <h3 style={{ margin: 0, color: 'var(--navy-900)' }}>Structured Session State Machine</h3>
+              <h3 style={{ margin: 0, color: 'var(--navy-900)' }}>Guided Session workflow</h3>
             </div>
             <p>
-              Sessions strictly transition through valid state boundaries (<span className="badge badge-pending">pending</span> → <span className="badge badge-navy">accepted</span> → <span className="badge badge-success">completed</span> or <span className="badge badge-danger">cancelled</span>). Strict ownership guards prevent unauthorized party manipulation.
+              New Sessions follow request, schedule, both check in, Tutor finishes, both confirm, then completed. Participants can explicitly dispute an awaiting-confirmation or no-show Session for Moderator review. Older Sessions retain their compatibility flow.
             </p>
           </div>
 
@@ -66,17 +66,17 @@ export const FeaturesPage = () => {
               <div style={{ width: 40, height: 40, borderRadius: 'var(--radius-sm)', background: 'var(--brass-100)', color: 'var(--brass-700)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                 <Star size={20} />
               </div>
-              <h3 style={{ margin: 0, color: 'var(--navy-900)' }}>Double-Blind Peer Rating System</h3>
+              <h3 style={{ margin: 0, color: 'var(--navy-900)' }}>Reviews tied to Sessions</h3>
             </div>
             <p>
-              Reviews require a completed session ID and enforce a unique compound index (session + rater), guaranteeing that scores cannot be spammed, artificially inflated, or forged without real participation.
+              Reviews require an eligible completed and settled Session. Each participant can submit one review per Session. Moderators can hide inappropriate reviews; hidden reviews do not contribute to public reputation.
             </p>
           </div>
         </div>
 
         <div style={{ textAlign: 'center' }}>
           <Link to="/register" className="btn btn-primary btn-lg">
-            Start Learning Today (+100 Credits after verification)
+            Start learning
           </Link>
         </div>
       </div>

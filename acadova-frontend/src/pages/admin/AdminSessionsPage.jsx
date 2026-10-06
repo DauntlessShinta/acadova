@@ -36,7 +36,7 @@ export const AdminSessionsPage = () => {
 
   return (
     <div className="staff-page">
-      <header className="staff-page-header"><div><span className="staff-eyebrow">Administration / Sessions</span><h1>Session management</h1><p>View session activity and progress. Participant messages remain private.</p></div></header>
+      <header className="staff-page-header"><div><span className="staff-eyebrow">Administration / Sessions</span><h1>Session directory</h1><p>View session activity and progress. Participant messages remain private.</p></div></header>
       <Alert type="danger" message={error} onClose={() => setError('')} />
       <div className="card staff-filter-bar"><label className="admin-search"><span className="sr-only">Search sessions by subject or participant</span><Search size={16} /><input type="search" className="form-input" placeholder="Search subject or participant" value={search} onChange={(event) => setSearch(event.target.value)} /></label><label className="staff-filter-select">Status <select className="form-select" value={filter} onChange={(event) => setFilter(event.target.value)}>{SESSION_STATUS_FILTERS.map(({ value, label }) => <option key={value} value={value}>{label}</option>)}</select></label></div>
       {loading ? <LoadingSpinner text="Loading sessions..." size={34} /> : !available ? <EmptyState icon={Calendar} title="Sessions unavailable" description="Session data could not be loaded." actionText="Retry" onAction={load} /> : visible.length === 0 ? <EmptyState icon={Calendar} title="No sessions match this view" description="Try another status or search term." /> : (

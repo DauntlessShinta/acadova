@@ -12,6 +12,7 @@ export const AssessmentsPage = () => {
   const openId = searchParams.get('open');
   const { refreshUser } = useAuth();
   const [list, setList] = useState([]);
+  const [listAvailable, setListAvailable] = useState(false);
   const [selected, setSelected] = useState(null);
   const [answers, setAnswers] = useState([]);
   const [result, setResult] = useState(null);
@@ -21,15 +22,19 @@ export const AssessmentsPage = () => {
   const [answerError, setAnswerError] = useState('');
 
   useEffect(() => {
-    assessmentService.list().then((response) => setList(response.data || []))
+    assessmentService.list().then((response) => { setList(response.data || []); setListAvailable(true); })
       .catch((err) => setError(err.message)).finally(() => setLoading(false));
   }, []);
 
   useEffect(() => {
     if (!openId) return;
+    let current = true;
     assessmentService.get(openId).then((response) => {
+      if (!current) return;
+      setResult(null); setAnswerError('');
       setSelected(response.data); setAnswers(Array(response.data.questions.length).fill(null));
-    }).catch((err) => setError(err.message));
+    }).catch((err) => { if (current) setError(err.message); });
+    return () => { current = false; };
   }, [openId]);
 
   const open = async (id) => {
@@ -45,7 +50,9 @@ export const AssessmentsPage = () => {
   const submit = async (event) => {
     event.preventDefault();
     if (answers.some((answer) => answer === null)) {
-      setAnswerError('Answer every question before submitting.'); return;
+      setAnswerError('Answer every question before submitting.');
+      document.querySelector(`input[name="question-${answers.findIndex((answer) => answer === null)}"]`)?.focus();
+      return;
     }
     setWorking(true); setError(''); setAnswerError('');
     try {
@@ -62,13 +69,13 @@ export const AssessmentsPage = () => {
     <p>Complete a published assessment to earn the current credit reward once per assessment.</p>
     <Alert type="danger" message={error} onClose={() => setError('')} />
     {loading ? <LoadingSpinner text="Loading assessments..." /> : list.length === 0
-      ? <div className="card"><p>No published assessments are available yet.</p></div>
+      ? <div className="card"><p>{!listAvailable ? 'Assessment list could not be loaded. Refresh to try again.' : 'No published assessments are available yet.'}</p></div>
       : !selected && <div className="assessment-list">{list.map((item) => <article className="card" key={item.id}>
         <h2>{item.title}</h2><p>{item.topic} · {item.questionCount} questions</p>
         <button type="button" className="btn btn-primary btn-sm" onClick={() => open(item.id)} disabled={working}>Open assessment</button>
       </article>)}</div>}
     {selected && <div className="card">
-      <button type="button" className="btn btn-secondary btn-sm" onClick={() => { setSelected(null); setResult(null); }}>Back to assessments</button>
+      <button type="button" className="btn btn-secondary btn-sm" disabled={working} onClick={() => { setSelected(null); setResult(null); }}>Back to assessments</button>
       <h2>{selected.title}</h2><p>{selected.topic}</p>
       {result ? <div role="status">
         <h3>{result.passed ? 'Passed' : 'Not passed yet'}</h3>
@@ -78,7 +85,7 @@ export const AssessmentsPage = () => {
         <Link to="/credits" className="btn btn-secondary btn-sm">View credit wallet</Link>
         <button type="button" className="btn btn-secondary btn-sm" onClick={() => { setResult(null); setAnswers(Array(selected.questions.length).fill(null)); }}>Try again</button>
       </div> : <form onSubmit={submit}>
-        {selected.questions.map((question, index) => <fieldset className="card" key={index} disabled={working}>
+        {selected.questions.map((question, index) => <fieldset className="card" key={index} disabled={working} aria-describedby={answerError && answers[index] === null ? 'assessment-answer-error' : undefined}>
           <legend><strong>{index + 1}. {question.prompt}</strong></legend>
           {question.options.map((option, optionIndex) => <label key={optionIndex} style={{ display: 'block', margin: '10px 0' }}>
             <input type="radio" name={`question-${index}`} checked={answers[index] === optionIndex}

@@ -19,6 +19,7 @@ export const DashboardPage = () => {
   const { user, credits, refreshUser } = useAuth();
   const toast = useToast();
   const resume = readLearningResume(user?._id || user?.id);
+  const [currentTime, setCurrentTime] = useState(() => Date.now());
   const [sessions, setSessions] = useState([]);
   const [topics, setTopics] = useState([]);
   const [recommendedPeers, setRecommendedPeers] = useState([]);
@@ -39,6 +40,7 @@ export const DashboardPage = () => {
       learningService.topics(),
     ]);
 
+    setCurrentTime(Date.now());
     setAvailability({
       sessions: sessionsResult.status === 'fulfilled',
       peers: peersResult.status === 'fulfilled',
@@ -68,12 +70,12 @@ export const DashboardPage = () => {
   }, [loadDashboardData]);
 
   const upcomingSessions = useMemo(() => sessions
-    .filter((session) => ['scheduled', 'in_progress', 'awaiting_validation'].includes(getSessionStatus(session).filterKey))
-    .sort((left, right) => {
-      const leftDate = left.scheduledAt ? new Date(left.scheduledAt).getTime() : Number.MAX_SAFE_INTEGER;
-      const rightDate = right.scheduledAt ? new Date(right.scheduledAt).getTime() : Number.MAX_SAFE_INTEGER;
-      return leftDate - rightDate;
-    }), [sessions]);
+    .filter((session) => ['accepted', 'scheduled'].includes(session.status)
+      && new Date(session.scheduledAt).getTime() >= currentTime)
+    .sort((left, right) => new Date(left.scheduledAt) - new Date(right.scheduledAt)), [sessions, currentTime]);
+  const attentionSessions = sessions.filter((session) => ['in_progress', 'awaiting_validation', 'disputed', 'no_show'].includes(session.status)
+    || (getSessionStatus(session).filterKey === 'awaiting_validation')
+    || (['accepted', 'scheduled'].includes(session.status) && new Date(session.scheduledAt).getTime() < currentTime));
 
   const pendingSessions = sessions.filter((session) => session.status === 'pending');
   const pendingTeachingRequests = pendingSessions.filter((session) => (
@@ -115,7 +117,7 @@ export const DashboardPage = () => {
       <Alert type="danger" message={error} onClose={() => setError('')} />
       <div className="home-context-grid">
         {upcomingSessions.length > 0 && <section aria-labelledby="next-session-heading">
-          <div className="student-section-heading"><h2 id="next-session-heading">Next session</h2><Link to="/sessions">All sessions</Link></div>
+          <div className="student-section-heading"><h2 id="next-session-heading">Upcoming session</h2><Link to="/sessions">All sessions</Link></div>
           <SessionCard session={upcomingSessions[0]} currentUser={user} compact />
         </section>}
         {resume && <section aria-labelledby="continue-learning-heading">
@@ -124,6 +126,7 @@ export const DashboardPage = () => {
             <Link to="/learning?continue=1" className="btn btn-primary">Continue learning</Link></div>
         </section>}
       </div>
+      {attentionSessions.length > 0 && <section aria-labelledby="attention-heading"><div className="student-section-heading"><h2 id="attention-heading">Needs your attention</h2><Link to="/sessions">All sessions</Link></div><div className="home-context-grid">{attentionSessions.slice(0, 3).map((session) => <SessionCard key={session._id} session={session} currentUser={user} compact />)}</div></section>}
       {pendingTeachingRequests.length > 0 && <section aria-labelledby="teaching-heading">
         <div className="student-section-heading"><h2 id="teaching-heading">Teaching requests ({pendingTeachingRequests.length})</h2><Link to="/sessions">All requests</Link></div>
         <div className="home-context-grid">{pendingTeachingRequests.slice(0, 3).map((session) => <SessionCard key={session._id} session={session} currentUser={user}

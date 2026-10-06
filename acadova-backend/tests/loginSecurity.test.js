@@ -207,3 +207,32 @@ test('registration and profile validation reject client-supplied login security 
     assert.equal(proceeded, false);
   }
 });
+
+// Keep the installed Mongoose Model/Query intact; intercept only the driver boundary.
+test('installed Mongoose constructs and executes the login pipeline at the collection boundary', async (t) => {
+  const mongoose = require('mongoose');
+  t.diagnostic('Installed Mongoose: ' + mongoose.version);
+  assert.throws(() => User.findOneAndUpdate({}, []), /updatePipeline/);
+  const old = User.collection.findOneAndUpdate;
+  t.after(() => { User.collection.findOneAndUpdate = old; });
+  const calls = [];
+  let failures = 0;
+  User.collection.findOneAndUpdate = async (filter, update, options) => {
+    calls.push({ filter, update, options });
+    failures = Array.isArray(update) ? failures + 1 : 0;
+    return { _id: new mongoose.Types.ObjectId(userId), password: 'hash',
+      role: 'student', failedLoginAttempts: failures };
+  };
+  for (let count = 1; count <= 4; count++) {
+    const result = await loginSecurity.recordFailedLogin({ _id: userId, password: 'hash' });
+    assert.deepEqual(result, { count, cooldownSeconds: cooldownSecondsFor(count) });
+  }
+  const reset = await loginSecurity.resetAfterSuccess({ _id: userId, password: 'hash' });
+  assert.equal(reset.failedLoginAttempts, 0);
+  assert.equal(calls.length, 5);
+  assert.ok(calls[0].filter._id instanceof mongoose.Types.ObjectId);
+  assert.ok(Array.isArray(calls[0].update));
+  assert.equal(calls[0].options.returnDocument, 'after');
+  assert.match(JSON.stringify(calls[0].update), /\$dateAdd/);
+  assert.equal(calls[4].update.$set.failedLoginAttempts, 0);
+});

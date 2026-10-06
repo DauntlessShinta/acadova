@@ -1,6 +1,7 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const mongoose = require('mongoose');
+const User = require('../models/User');
 const Notification = require('../models/Notification');
 const SessionMessage = require('../models/SessionMessage');
 const Session = require('../models/Session');
@@ -16,6 +17,18 @@ const messageId = '507f1f77bcf86cd799439014';
 const notificationId = '507f1f77bcf86cd799439015';
 const response = () => ({ statusCode: 200, status(code) { this.statusCode = code; return this; },
   json(body) { this.body = body; return this; } });
+
+const originalStart = mongoose.startSession;
+const originalLock = User.findOneAndUpdate;
+const originalExists = Session.exists;
+test.beforeEach(() => {
+  mongoose.startSession = async () => ({ withTransaction: async (fn) => fn(), endSession: async () => {} });
+  User.findOneAndUpdate = () => ({ select: async () => ({ _id: 'participant' }) });
+  Session.exists = () => ({ session: async () => null });
+});
+test.afterEach(() => {
+  mongoose.startSession = originalStart; User.findOneAndUpdate = originalLock; Session.exists = originalExists;
+});
 
 test('Notification model has recipient, unread, and unique event-key indexes', () => {
   const indexes = Notification.schema.indexes();

@@ -1,6 +1,6 @@
 # Production readiness and owner-run smoke checks
 
-Production state remains unverified. No production record, deployment, secret, index or account was changed during P7. The local fixtures must never run against production. Run this checklist only after remaining local visual checks pass and with owner-selected production test accounts.
+Current checklist: 2026-10-06. Production state remains unverified. Baseline `201bc07` is pushed; final hardening is an uncommitted, undeployed candidate. No database, index, deployment or secret was changed during this hardening. Current CODE FIXED evidence is documented in [the final stabilization report](FINAL_STABILIZATION_REPORT.md); all checks below REQUIRE LIVE PRODUCTION VERIFICATION with owner-selected disposable accounts. Never run local fixtures against production.
 
 Frontend: https://acadova-ze91.onrender.com
 
@@ -13,11 +13,18 @@ Backend: https://acadova-api.onrender.com (read-only health: `/api/health`).
 | Backend core | `NODE_ENV`, `PORT`, `MONGO_URI`, `JWT_SECRET`, `FRONTEND_URL`, `FRONTEND_ORIGIN` |
 | Verification/recovery mail | `BREVO_API_KEY`, `MAIL_FROM`; verify provider/domain delivery separately |
 | Frontend build | `VITE_API_URL` |
-| Optional Google | backend `GOOGLE_CLIENT_ID`, frontend `VITE_GOOGLE_CLIENT_ID`; matching audience, HTTPS origin and consent required |
+| Optional Google | backend `GOOGLE_CLIENT_ID`, frontend `VITE_GOOGLE_CLIENT_ID`; matching audience, HTTPS origin and consent required; Calendar API and calendar.events authorization are needed for optional Meet generation (no client secret/refresh-token architecture is introduced) |
 | Optional push | backend `ONESIGNAL_APP_ID`, `ONESIGNAL_REST_API_KEY`, `ONESIGNAL_IDENTITY_SECRET`; frontend `VITE_ONESIGNAL_APP_ID` |
+| Proxy identity | backend `TRUST_PROXY_CIDRS`, only operator-verified immediate proxy IPs/subnets; absent means direct socket identity |
 | Reminder tuning | `MESSAGE_PUSH_COOLDOWN_MINUTES`, `UNREAD_REMINDER_MINUTES`, `SESSION_REMINDER_MINUTES`; worker `DNS_SERVERS` when needed |
 
-Do not place server secrets in `VITE_*`. Build variables require a frontend rebuild. CORS uses `FRONTEND_ORIGIN`; email/reset links use `FRONTEND_URL`. Set both to the deployed HTTPS frontend. Transactions require a replica set; never infer deployed indexes from source declarations. API startup and reminder worker have different DNS handling, so check worker connectivity separately. Current hosting does not continuously schedule reminders; `npm run notifications:scan` remains an operator-run action.
+Do not place server secrets in `VITE_*`. Build variables require a frontend rebuild. CORS uses `FRONTEND_ORIGIN`; email/reset links use `FRONTEND_URL`. Set both to the deployed HTTPS frontend. Transactions require a replica set, including Session creation, request acceptance and accepted reschedule commitments after final stabilization; never infer deployed indexes from source declarations. API startup and reminder worker have different DNS handling, so check worker connectivity separately. Current hosting does not continuously schedule reminders; `npm run notifications:scan` remains an operator-run action.
+
+## Final stabilization transaction checks
+
+This pass adds no schema migration or correctness index. Do not create/drop production indexes for its duplicate/conflict checks. The existing User-record transaction serialization is authoritative; verify real replica-set write conflicts and driver transaction retries with disposable accounts before sign-off. Creation locks both eligible Students before matching same participant pair, normalized subject and exact agreed/proposed UTC instant. Acceptance/reschedule acceptance locks both participant records and checks both Learner/Tutor commitments at that exact time. Pending alternatives are allowed; no interval end time is inferred. Legacy missing-time acceptance remains compatible.
+
+Verify pre-check-in scheduled cancellation versus a concurrent check-in; it must not mutate a started/settled Session. Verify the installed Mongoose login pipeline against real MongoDB, persisted counters/cooldowns/reset and selected audit events. Local regression exercises actual Mongoose 9.9.3 query construction with a stubbed collection boundary; it is not proof of production pipeline execution.
 
 ## Database requirements
 
@@ -32,7 +39,22 @@ Verify keys, uniqueness and partial/sparse definitions using the existing rollou
 | Notification | `uniq_notification_event_key` |
 | Rating | unique Session/fromUser pair |
 
-Also review the documented AuditLog, recipient/read/push, skill-discovery and topic/module/resource query indexes for performance. Use existing guides under `acadova-backend/docs/`: phase3 credit verification, assessment reward, learning topic/unlock, Admin credit, AuditLog and P5 notification rollouts. P7 authentication revocation adds an optional hidden session-version field, with no new index or backfill. Deploy issuer and verifier changes together. Existing token-without-version remains valid only while the account's version is absent; password recovery revokes it. Google claiming an explicitly unverified account discards its untrusted local password/recovery state; the owner can use normal recovery later.
+Public reputation now aggregates visible reviews before discovery sorting; the current Rating schema has no toUser index. Verify representative production query performance and plan any approved index rollout separately. Also review the documented AuditLog, recipient/read/push, skill-discovery and topic/module/resource query indexes for performance. Use existing guides under `acadova-backend/docs/`: phase3 credit verification, assessment reward, learning topic/unlock, Admin credit, AuditLog and P5 notification rollouts. P7 authentication revocation adds an optional hidden session-version field, with no new index or backfill. Deploy issuer and verifier changes together. Existing token-without-version remains valid only while the account's version is absent; password recovery revokes it. Google claiming an explicitly unverified account discards its untrusted local password/recovery state; the owner can use normal recovery later.
+
+## Safe proxy/rate-limit verification (H2)
+
+- [ ] Obtain the actual immediate proxy socket addresses, forwarding-header behavior and permitted network path from the hosting configuration/operator. Repository evidence does not prove Render's hop topology; local loopback tests are not deployed proof.
+- [ ] Set `TRUST_PROXY_CIDRS` only to verified explicit IPs/non-global CIDRs. Never use boolean trust, guessed hop counts, names, wildcard or `/0`. Absent/blank leaves trust disabled; malformed configuration must fail before database bootstrap. Do not broadly trust a network that also admits arbitrary clients.
+- [ ] Ensure the trusted proxy overwrites or appends the true source to `X-Forwarded-For`, and direct access cannot present itself as a trusted proxy. Verify actual `req.ip` privately without logging credentials or publishing client addresses.
+- [ ] From two legitimate clients behind the proxy, verify distinct limiter identity. Prepending a forged forwarded address must not bypass the existing throttle. With an untrusted direct source, forwarded headers must not change identity. Keep existing thresholds; do not flood production.
+
+## Transaction/index and deployment gates
+
+- [ ] Inspect real replica-set transaction support. Test new request creation, settlement, grants, unlocks and Admin adjustments with rollback/idempotency using disposable accounts. Verify request-versus-promotion/suspension race behavior in the real candidate environment.
+- [ ] Inspect deployed index definitions, not just their names. In particular, a legacy unfiltered unique `session_1` CreditTransaction index can conflict with non-session transactions. Follow existing rollout guides and owner-reviewed migration planning; this checklist does not authorize creating/dropping indexes.
+- [ ] Verify the exact backend/frontend candidate revision after a separately authorized release. A pushed baseline or successful build is not evidence this uncommitted patch is deployed.
+- [ ] Refresh SPA deep routes (`/learning`, `/sessions/:id`, `/moderator/learning#manage-panel-resources`, `/admin/users`) on Render. Hash routing still requires the path to return the frontend document. Verify API health, CORS and configured HTTPS URLs independently.
+- [ ] Reminder delivery needs an explicit operator-run/scheduled `npm run notifications:scan`; API startup does not start a continuous reminder worker. Check worker DNS/connectivity and capped cooldown/reminder behavior without sending unintended real alerts.
 
 ## Owner-run smoke sequence
 
@@ -55,4 +77,4 @@ Also review the documented AuditLog, recipient/read/push, skill-discovery and to
 | 13 | Student/Moderator direct-route boundaries and unrelated Session access denied | Read only unless a forbidden write is attempted; expected no mutation |
 | 14 | Desktop, tablet/narrow, 390 px; toast, modal, chat, tables, focus and long-page navigation | Read only |
 
-Record actual deployment revision, configuration-name presence, index verification, observed outcome and screenshot for each step. Mail, OAuth, push, worker delivery and deployed database state must be verified on the real deployment; local mocked tests do not establish them. Do not label P7 complete until the local visual checklist and authorized production smoke results are recorded.
+Record actual deployment revision, configuration-name presence, index verification, observed outcome and screenshot for each step. Mail, OAuth, push, worker delivery and deployed database state must be verified on the real deployment; local mocked tests do not establish them. Do not declare production verified or final manual sign-off complete until the current [five-demo rehearsal](DEFENSE_CHECKLIST.md) and authorized production smoke outcomes are recorded. Historical P7/P7.1A/P7.1B reports retain their original validation counts.

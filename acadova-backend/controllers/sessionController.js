@@ -11,13 +11,15 @@ const { getEffectiveCreditRules } = require('../services/creditRuleService');
 const { isValidObjectId } = require('../middleware/validation');
 const notifications = require('../services/notificationService');
 const googleMeet = require('../services/googleMeetService');
+const { availableStudentFilter } = require('../utils/peerEligibility');
+const { rejectDuplicateRequest, commitSchedule } = require('../services/sessionRequestIntegrity');
 
 const ALLOWED_TRANSITIONS = {
   // Legacy inputs stay stored as-is so deployed React clients retain their
   // accepted -> completed action; canonical inputs store canonical values.
   pending: ['accepted', 'scheduled', 'rejected', 'declined', 'cancelled'],
   accepted: ['completed', 'cancelled'],
-  scheduled: [],
+  scheduled: ['cancelled'],
   rejected: [],
   declined: [],
   completed: [],
@@ -80,6 +82,7 @@ const isHttpsUrl = (value) => {
 };
 
 exports.createSession = async (req, res) => {
+  let dbSession;
   try {
     const { tutorId, subject, scheduledAt, meetingMethod, requestMessage } = req.body;
     const cleanSubject = typeof subject === 'string' ? subject.trim() : '';
@@ -107,33 +110,46 @@ exports.createSession = async (req, res) => {
     if (Number.isFinite(req.user.credits) && req.user.credits < tutoringSessionCost) {
       return res.status(400).json({ success: false, message: `You need ${tutoringSessionCost} credits to request a tutoring session.` });
     }
+    if (scheduledDate.getTime() <= Date.now()) {
+      return res.status(400).json({ success: false, message: 'Choose a future session date and time.' });
+    }
     if (sameUser(tutorId, req.user.id)) {
       return res.status(400).json({ success: false, message: 'You cannot request a session with yourself.' });
     }
 
-    const tutor = await User.findById(tutorId).select('_id role');
-    if (!tutor || tutor.role !== 'student') {
-      return res.status(404).json({ success: false, message: 'Peer student not found.' });
-    }
-
-    const session = await Session.create({
-      learner: req.user.id,
-      tutor: tutorId,
-      subject: cleanSubject,
-      scheduledAt: scheduledDate,
-      meetingMethod,
-      requestMessage: cleanMessage,
-      creditAmount: tutoringSessionCost,
+    dbSession = await mongoose.startSession();
+    let session;
+    await dbSession.withTransaction(async () => {
+      // Consistent lock order; actual timestamp writes serialize role/suspension
+      // changes with new requests, without new schema fields or credit reserves.
+      for (const participantId of [req.user.id, tutorId].map((id) => id.toLowerCase()).sort()) {
+        const participant = await User.findOneAndUpdate(
+          { _id: participantId, ...availableStudentFilter() },
+          { $currentDate: { updatedAt: true } },
+          { session: dbSession, timestamps: false, new: true }).select('_id');
+        if (!participant) throw Object.assign(new Error('This Student is unavailable for new sessions.'), { status: 409 });
+      }
+      await rejectDuplicateRequest(req.user.id, tutorId, cleanSubject, scheduledDate, dbSession);
+      [session] = await Session.create([{
+        learner: req.user.id,
+        tutor: tutorId,
+        subject: cleanSubject,
+        scheduledAt: scheduledDate,
+        meetingMethod,
+        requestMessage: cleanMessage,
+        creditAmount: tutoringSessionCost,
+      }], { session: dbSession });
     });
     await notifications.notifySession('session.requested', session, [tutorId]);
     await session.populate(SESSION_POPULATE);
     res.status(201).json({ success: true, message: 'Session requested.', data: session });
   } catch (error) {
+    if (error.status) return res.status(error.status).json({ success: false, message: error.message });
     if (error.name === 'ValidationError') {
       return res.status(400).json({ success: false, message: 'Check the session details and try again.' });
     }
     res.status(500).json({ success: false, message: 'Session request could not be created.' });
-  }
+  } finally { if (dbSession) await dbSession.endSession(); }
 };
 
 exports.getMySessions = async (req, res) => {
@@ -188,17 +204,27 @@ exports.updateSessionStatus = async (req, res) => {
       return res.status(400).json({ success: false, message: 'Add a meeting location before completing the in-person session.' });
     }
 
+    if (status === 'cancelled' && session.status === 'scheduled'
+      && (session.startedAt || session.learnerCheckedInAt || session.tutorCheckedInAt
+        || session.creditsSettledAt || session.confirmedAt)) {
+      return res.status(400).json({ success: false, message: 'This session has already started and cannot be cancelled.' });
+    }
+
     const changes = { status };
     if (status === 'completed') changes.completedAt = new Date();
     const update = { $set: changes };
-    if (session.status === 'accepted' && ['completed', 'cancelled'].includes(status)) {
+    if (reschedulableStatuses.includes(session.status) && ['completed', 'cancelled'].includes(status)) {
       update.$unset = rescheduleFields;
     }
-    const updatedSession = await Session.findOneAndUpdate(
-      { _id: session._id, status: session.status },
-      update,
-      { new: true, runValidators: true }
-    );
+    const filter = { _id: session._id, status: session.status };
+    if (status === 'cancelled' && session.status === 'scheduled') Object.assign(filter, {
+      startedAt: null, learnerCheckedInAt: null, tutorCheckedInAt: null,
+      creditsSettledAt: null, confirmedAt: null,
+    });
+    const write = (dbSession) => Session.findOneAndUpdate(filter, update,
+      { new: true, runValidators: true, ...(dbSession ? { session: dbSession } : {}) });
+    const updatedSession = ['accepted', 'scheduled'].includes(status)
+      ? await commitSchedule(session, session.scheduledAt, write) : await write();
     if (!updatedSession) {
       return res.status(409).json({ success: false, message: changedSessionMessage });
     }
@@ -222,7 +248,7 @@ exports.updateSessionStatus = async (req, res) => {
     }[status];
     res.json({ success: true, message, data: updatedSession });
   } catch (error) {
-    res.status(500).json({ success: false, message: 'Session status could not be updated.' });
+    res.status(error.status || 500).json({ success: false, message: error.status ? error.message : 'Session status could not be updated.' });
   }
 };
 
@@ -387,7 +413,7 @@ const decideReschedule = async (req, res, accept) => {
       // Attendance for the old agreed time cannot carry over to a new time.
       update.$unset = { ...rescheduleFields, learnerCheckedInAt: 1, tutorCheckedInAt: 1 };
     }
-    const updatedSession = await Session.findOneAndUpdate(
+    const write = (dbSession) => Session.findOneAndUpdate(
       {
         _id: session._id,
         status: session.status,
@@ -397,8 +423,9 @@ const decideReschedule = async (req, res, accept) => {
         rescheduleProposedBy: session.rescheduleProposedBy,
       },
       update,
-      { new: true, runValidators: true }
+      { new: true, runValidators: true, ...(dbSession ? { session: dbSession } : {}) }
     );
+    const updatedSession = accept ? await commitSchedule(session, session.proposedScheduledAt, write) : await write();
     if (!updatedSession) return res.status(409).json({ success: false, message: changedSessionMessage });
     await updatedSession.populate(SESSION_POPULATE);
     if (accept) await notifications.invalidateUpcoming(updatedSession);
@@ -410,7 +437,7 @@ const decideReschedule = async (req, res, accept) => {
       data: updatedSession,
     });
   } catch (error) {
-    return res.status(500).json({ success: false, message: 'Reschedule response could not be saved.' });
+    return res.status(error.status || 500).json({ success: false, message: error.status ? error.message : 'Reschedule response could not be saved.' });
   }
 };
 

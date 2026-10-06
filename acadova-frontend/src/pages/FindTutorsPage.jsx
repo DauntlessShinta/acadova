@@ -1,9 +1,10 @@
 import { useToast } from '../context/toastAccess';
-import React, { useCallback, useState, useEffect } from 'react';
+import React, { useCallback, useState, useEffect, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import userService from '../services/userService';
 import sessionService from '../services/sessionService';
+import { sessionRequestTimeError } from '../utils/sessionRequestTime';
 import Modal from '../components/common/Modal';
 import Alert from '../components/common/Alert';
 import LoadingSpinner from '../components/common/LoadingSpinner';
@@ -48,6 +49,8 @@ export const FindTutorsPage = () => {
   const [scheduledAt, setScheduledAt] = useState('');
   const [meetingMethod, setMeetingMethod] = useState('online');
   const [requestMessage, setRequestMessage] = useState('');
+  const submittingRef = useRef(false);
+  const [requestedSession, setRequestedSession] = useState(null);
   const [modalSubmitting, setModalSubmitting] = useState(false);
   const [modalError, setModalError] = useState('');
   const [fieldErrors, setFieldErrors] = useState({});
@@ -103,6 +106,8 @@ export const FindTutorsPage = () => {
   };
 
   const openRequestModal = (tutor) => {
+    if (submittingRef.current) return;
+    setRequestedSession(null);
     setSelectedTutor(tutor);
     setSessionSubject(tutor.skillsToTeach?.[0] || searchQuery || '');
     setScheduledAt('');
@@ -115,10 +120,12 @@ export const FindTutorsPage = () => {
 
   const handleCreateSession = async (e) => {
     e.preventDefault();
+    if (submittingRef.current || requestedSession) return;
     setModalError('');
     const errors = {};
     if (!sessionSubject.trim()) errors.subject = 'Choose a subject.';
-    if (!scheduledAt) errors.scheduledAt = 'Enter a preferred session date.';
+    const timeError = sessionRequestTimeError(scheduledAt);
+    if (timeError) errors.scheduledAt = timeError;
     if (!meetingMethod) errors.meetingMethod = 'Choose a session method.';
     if (!requestMessage.trim()) errors.requestMessage = 'Tell your peer what you would like help with.';
     if (requestMessage.trim().length > 500) errors.requestMessage = 'Your message must be 500 characters or fewer.';
@@ -134,8 +141,8 @@ export const FindTutorsPage = () => {
     }
 
     try {
-      setModalSubmitting(true);
-      await sessionService.createSession({
+      submittingRef.current = true; setModalSubmitting(true);
+      const result = await sessionService.createSession({
         tutorId: selectedTutor._id,
         subject: sessionSubject.trim(),
         scheduledAt: scheduledAt || undefined,
@@ -143,13 +150,13 @@ export const FindTutorsPage = () => {
         requestMessage: requestMessage.trim(),
       });
 
-      setIsModalOpen(false);
+      setRequestedSession(result.data);
       toast('success', `Session request sent to ${selectedTutor.name}. You can track it in Sessions.`);
       refreshUser();
     } catch (err) {
       toast('error', err.message || 'Failed to request session.');
     } finally {
-      setModalSubmitting(false);
+      submittingRef.current = false; setModalSubmitting(false);
     }
   };
 
@@ -158,10 +165,10 @@ export const FindTutorsPage = () => {
       {/* Header */}
       <div style={{ marginBottom: '32px' }}>
         <span style={{ fontSize: '0.85rem', color: 'var(--brass-600)', fontFamily: 'var(--font-mono)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
-          Peer Matching Hub
+          Peer tutoring
         </span>
         <h1 style={{ fontSize: '2rem', color: 'var(--navy-900)', margin: '4px 0 8px' }}>
-          Find Peers
+          Find Tutors
         </h1>
         <p style={{ color: 'var(--ink-600)', maxWidth: '640px' }}>
           Discover students who can help with the subjects you want to learn, then request a peer session using credits.
@@ -187,7 +194,7 @@ export const FindTutorsPage = () => {
             />
           </div>
           <button type="submit" className="btn btn-primary">
-            <Search size={16} /> Search Peers
+            <Search size={16} /> Search Tutors
           </button>
         </form>
 
@@ -221,19 +228,19 @@ export const FindTutorsPage = () => {
 
       {/* Tutor List */}
       {loading ? (
-        <LoadingSpinner text="Searching for available peers..." size={36} />
+        <LoadingSpinner text="Searching for available tutors..." size={36} />
       ) : error && tutors.length === 0 ? (
         <EmptyState
           icon={GraduationCap}
-          title="Peer discovery unavailable"
+          title="Tutor discovery unavailable"
           description="Refresh the page or try your search again."
         />
       ) : tutors.length === 0 ? (
         <EmptyState
           icon={GraduationCap}
-          title="No peers found matching your query"
+          title="No tutors match your search"
           description="Try a broader subject or clear the filter to browse students with teaching skills."
-          actionText="View All Peers"
+          actionText="View all tutors"
           onAction={() => handleFilterClick('All')}
         />
       ) : (
@@ -245,10 +252,10 @@ export const FindTutorsPage = () => {
       {/* REQUEST SESSION MODAL */}
       <Modal
         isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
+        onClose={() => { if (!submittingRef.current) setIsModalOpen(false); }}
         title={`Request Session with ${selectedTutor?.name || 'Peer'}`}
       >
-        <form onSubmit={handleCreateSession}>
+        {requestedSession ? <div className="session-request-success" role="status"><h2>Session request sent</h2><p>{selectedTutor?.name} will receive your proposed schedule.</p><Link className="btn btn-primary" to={`/sessions/${requestedSession._id || requestedSession.id}`}>View requested session</Link></div> : <form onSubmit={handleCreateSession}>
           <Alert type="danger" message={modalError} onClose={() => setModalError('')} />
 
           <div style={{
@@ -343,6 +350,7 @@ export const FindTutorsPage = () => {
             <button
               type="button"
               className="btn btn-ghost btn-sm"
+              disabled={modalSubmitting}
               onClick={() => setIsModalOpen(false)}
             >
               Cancel
@@ -355,7 +363,7 @@ export const FindTutorsPage = () => {
               {modalSubmitting ? 'Sending Request...' : 'Confirm & Request Session'}
             </button>
           </div>
-        </form>
+        </form>}
       </Modal>
     </div>
   );

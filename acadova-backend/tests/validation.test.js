@@ -213,11 +213,11 @@ test('finish and confirmation payloads reject unsupported negative responses or 
 });
 
 test('peer discovery treats allowed punctuation as literal text in the database filter', async () => {
-  const originalFind = User.find;
+  const originalAggregate = User.aggregate;
   let filter;
-  User.find = (value) => {
-    filter = value;
-    return { select: () => ({ sort: () => ({ limit: async () => [] }) }) };
+  User.aggregate = async (pipeline) => {
+    filter = pipeline[0].$match;
+    return [];
   };
   try {
     const res = {
@@ -230,7 +230,7 @@ test('peer discovery treats allowed punctuation as literal text in the database 
     assert.equal(filter.skillsToTeach.$regex, 'C\\+\\+');
     assert.equal(res.body.success, true);
   } finally {
-    User.find = originalFind;
+    User.aggregate = originalAggregate;
   }
 });
 

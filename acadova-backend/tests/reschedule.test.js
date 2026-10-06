@@ -1,12 +1,23 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
+const mongoose = require('mongoose');
+const User = require('../models/User');
 const Session = require('../models/Session');
 const controller = require('../controllers/sessionController');
 
+const originalStart = mongoose.startSession;
+const originalLock = User.findOneAndUpdate;
+const originalExists = Session.exists;
+test.beforeEach(() => {
+  mongoose.startSession = async () => ({ withTransaction: async (fn) => fn(), endSession: async () => {} });
+  User.findOneAndUpdate = () => ({ select: async () => ({ _id: 'participant' }) });
+  Session.exists = () => ({ session: async () => null });
+});
 const originalFindById = Session.findById;
 const originalFindOneAndUpdate = Session.findOneAndUpdate;
 
 test.afterEach(() => {
+  mongoose.startSession = originalStart; User.findOneAndUpdate = originalLock; Session.exists = originalExists;
   Session.findById = originalFindById;
   Session.findOneAndUpdate = originalFindOneAndUpdate;
 });

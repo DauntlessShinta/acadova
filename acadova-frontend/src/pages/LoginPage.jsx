@@ -7,9 +7,10 @@ import { focusInvalidField } from '../utils/focusInvalidField';
 import { getRoleHomeRoute } from '../config/roleNavigation';
 import { isVerificationRequired, loginErrorMessage, normalizeEmail } from '../utils/authForm';
 import GoogleSignInButton from '../components/auth/GoogleSignInButton';
+import Alert from '../components/common/Alert';
 
 export const LoginPage = () => {
-  const { login } = useAuth();
+  const { login, authNotice } = useAuth();
   const navigate = useNavigate();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -49,6 +50,7 @@ export const LoginPage = () => {
     <span className="auth-form-eyebrow">Welcome back</span>
     <h2>Log in to Acadova</h2>
     <p className="auth-form-intro">Continue your peer learning journey.</p>
+    <Alert type="danger" message={authNotice} />
     <form onSubmit={handleSubmit} noValidate>
       <div className="form-group"><label className="form-label" htmlFor="login-email">Email address</label><input id="login-email" type="email" className="form-input" autoComplete="email" inputMode="email" value={email} onChange={(event) => setEmail(event.target.value)} aria-invalid={Boolean(fields.email)} aria-describedby={fields.email ? 'login-email-error' : undefined} required autoFocus />{fields.email && <span className="form-error" id="login-email-error">{fields.email}</span>}</div>
       <div className="form-group"><label className="form-label" htmlFor="login-password">Password</label><div className="auth-password-field"><input id="login-password" type={showPassword ? 'text' : 'password'} className="form-input" autoComplete="current-password" value={password} onChange={(event) => setPassword(event.target.value)} aria-invalid={Boolean(fields.password)} aria-describedby={fields.password ? 'login-password-error' : undefined} required /><button type="button" onClick={() => setShowPassword((value) => !value)} aria-label={showPassword ? 'Hide password' : 'Show password'} aria-pressed={showPassword}>{showPassword ? <EyeOff size={19} /> : <Eye size={19} />}</button></div>{fields.password && <span className="form-error" id="login-password-error">{fields.password}</span>}</div>

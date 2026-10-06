@@ -3,6 +3,7 @@
  * Automatically handles authentication headers, baseUrl, JSON parsing, and 401 intercept.
  */
 
+import { authRecoveryReason } from '../utils/authRecovery';
 const API_BASE = import.meta.env.VITE_API_URL || '';
 
 let onUnauthorizedCallback = null;
@@ -38,12 +39,10 @@ export async function request(endpoint, options = {}) {
     const data = await response.json().catch(() => null);
 
     if (!response.ok) {
-      if (response.status === 401) {
-        // Public auth failures must not clear a separate, legitimate browser session.
-        const isAuthRoute = endpoint.startsWith('/api/auth/');
-        if (!isAuthRoute && onUnauthorizedCallback) {
-          onUnauthorizedCallback();
-        }
+      const reason = authRecoveryReason(endpoint, response.status, data);
+      // A delayed response from an older account must not clear a newer session.
+      if (reason && token && token === localStorage.getItem('acadova_token')) {
+        onUnauthorizedCallback?.(reason);
       }
 
       const errorMessage = data?.message || `Request failed with status ${response.status}`;

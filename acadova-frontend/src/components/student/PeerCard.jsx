@@ -1,7 +1,7 @@
 import React from 'react';
 import { BookOpen, UserRound } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import StarRating from '../common/StarRating';
+import PeerReputation from '../common/PeerReputation';
 
 export const PeerCard = ({ peer, onRequest, compact = false }) => (
   <article className={`peer-card ${compact ? 'peer-card-compact' : ''}`}>
@@ -9,10 +9,7 @@ export const PeerCard = ({ peer, onRequest, compact = false }) => (
       <div className="peer-avatar" aria-hidden="true">{peer.name?.charAt(0) || 'P'}</div>
       <div>
         <h3>{peer.name}</h3>
-        <div className="peer-rating" aria-label={`Rating ${Number(peer.rating ?? 0).toFixed(1)} out of 5`}>
-          <StarRating rating={peer.rating ?? 0} size={14} />
-          <span>{Number(peer.rating ?? 0).toFixed(1)}</span>
-        </div>
+        <PeerReputation peer={peer} />
       </div>
     </div>
 

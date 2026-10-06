@@ -83,7 +83,7 @@ Backend:
 3. sets the user's email as verified
 4. invalidates/removes the verification token
 
-Only verified users should be allowed to fully authenticate.
+New accounts must verify email before fully authenticating. Current compatibility permits historical accounts whose emailVerified field is absent; explicit false remains ineligible. Do not backfill or relax that distinction.
 
 ---
 
@@ -197,7 +197,7 @@ Sessions may use an external meeting link such as:
 
 For the current project, manually supplied meeting URLs are acceptable.
 
-Automatic Google Meet creation is a FUTURE enhancement unless explicitly requested.
+Optional Google Calendar-based Meet generation is implemented behind the existing configured OAuth/Calendar flow. It is not production-verified here. Manual HTTPS meeting links remain the reliable fallback. Opening a meeting link does not prove attendance.
 
 ---
 
@@ -209,25 +209,19 @@ Do NOT rely only on users answering:
 
 Acadova should use multiple verification signals.
 
-Current planned signals:
+Implemented evidence:
 
-1. valid scheduled session
-2. learner check-in
-3. tutor check-in
-4. join timestamps
-5. optional session verification code
-6. learner post-session confirmation
-7. tutor post-session confirmation
+1. agreed schedule and supported Session state
+2. Learner check-in timestamp
+3. Tutor check-in timestamp
+4. startedAt after both check-ins
+5. Tutor finish into awaiting_validation
+6. Learner positive confirmation
+7. Tutor positive confirmation
 
-If validation succeeds:
+The second positive confirmation completes and settles a canonical Session atomically. Disputes are submitted explicitly by a participant for an awaiting_validation or no_show Session; there is no automatic comparison of negative confirmation answers. Legacy accepted/completed compatibility remains documented in README.md.
 
-awaiting_validation
-→ completed
-
-If confirmations conflict:
-
-awaiting_validation
-→ disputed
+There is no provider attendance API, recorded Join-link attendance, or verification-code workflow in the current locked implementation.
 
 Only disputed or suspicious sessions require Moderator intervention.
 
@@ -368,7 +362,7 @@ Important notifications include:
 
 Messaging notifications should avoid excessive alerts.
 
-Planned behavior:
+Implemented behavior (in-app persistence remains authoritative):
 
 - first message triggers normal push notification
 - additional rapid messages within the cooldown window may be grouped/silenced
@@ -523,8 +517,8 @@ Login
 
 ## Demo 3 — Moderation
 
-Session validation conflict
-→ Session becomes disputed
+Participant explicitly disputes an awaiting-validation or no-show Session
+-> Session becomes disputed
 → Moderator reviews evidence
 → Moderator resolves dispute
 → Audit log created
@@ -539,7 +533,6 @@ Do not introduce major new features unless explicitly requested.
 
 The following are FUTURE ENHANCEMENTS:
 
-- automatic Google Meet creation
 - Google Meet attendance API
 - custom video conferencing
 - AI tutor recommendations
@@ -577,3 +570,10 @@ Before modifying code:
 When a requested feature conflicts with existing implementation, explain the conflict before making a large architectural change.
 
 The objective is to complete and stabilize Acadova for final defense, not continuously expand its scope.
+## Final hardening compatibility rules (2026-10-06)
+
+New peer discovery/requests require a non-suspended Student with emailVerified not explicitly false. New Session schedules must be in the future. Promotion to Moderator rejects in-flight participant Sessions, including disputable no-shows and unsettled legacy completion (a single matching historical payment proves terminal completion); terminal historical Sessions alone do not block it. New requests and promotion serialize through existing User records in transactions; do not replace this with frontend-only filtering.
+
+Public reputation is derived from visible review average/count; legacy stored rating defaults are not evidence of reviews. No visible reviews means unrated.
+
+TRUST_PROXY_CIDRS is an explicit operator-verified IP/CIDR allowlist, disabled by default. Never enable blanket trust or infer the live hosting topology. Deployment/index/provider verification and the current defense runbook are in docs/PRODUCTION_SMOKE_CHECKLIST.md and docs/DEFENSE_CHECKLIST.md.

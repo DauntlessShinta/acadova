@@ -44,7 +44,7 @@ export const ModeratorDisputesPage = () => {
     }
     setNoteErrors((current) => ({ ...current, [session._id]: '' }));
     const action = resolution === 'confirm_session' ? 'confirm this session and transfer credits' : 'reject this session without transferring credits';
-    if (!await confirm(`Resolve this dispute and ${action}? Your resolution note will be recorded in the audit log.`, { title: 'Resolve dispute', label: 'Resolve dispute' })) return;
+    if (!await confirm(`Resolve this dispute and ${action}? Your note stays with the Session resolution evidence. The audit log records the action and outcome.`, { title: 'Resolve dispute', label: 'Resolve dispute' })) return;
     setWorkingId(session._id);
     setError('');
     try {
@@ -99,8 +99,8 @@ export const ModeratorDisputesPage = () => {
               <textarea id={`resolution-note-${session._id}`} className="form-textarea" aria-invalid={Boolean(noteErrors[session._id])} aria-describedby={noteErrors[session._id] ? `resolution-error-${session._id}` : undefined} minLength={10} maxLength={500} rows={3} value={notes[session._id] || ''} onChange={(event) => setNotes((current) => ({ ...current, [session._id]: event.target.value }))} disabled={Boolean(workingId)} />
               {noteErrors[session._id] && <span id={`resolution-error-${session._id}`} className="form-error">{noteErrors[session._id]}</span>}
               <div className="session-dispute-actions">
-                <button type="button" className="btn btn-primary btn-sm" onClick={() => resolve(session, 'confirm_session')} disabled={Boolean(workingId)}>Confirm session and settle credits</button>
-                <button type="button" className="btn btn-secondary btn-sm" onClick={() => resolve(session, 'cancel_session')} disabled={Boolean(workingId)}>Mark session invalid</button>
+                <button type="button" className="btn btn-primary btn-sm" onClick={() => resolve(session, 'confirm_session')} disabled={Boolean(workingId) || session.reviewIndicators?.includes('prior_credit_transaction')}>Confirm session and settle credits</button>
+                <button type="button" className="btn btn-secondary btn-sm" onClick={() => resolve(session, 'cancel_session')} disabled={Boolean(workingId) || session.reviewIndicators?.includes('prior_credit_transaction')}>Mark session invalid</button>
               </div>
               </>}
             </article>

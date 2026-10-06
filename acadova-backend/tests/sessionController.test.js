@@ -12,6 +12,8 @@ const ratingController = require('../controllers/ratingController');
 
 const originals = {
   sessionFindById: Session.findById,
+  sessionFind: Session.find,
+  sessionExists: Session.exists,
   sessionFindOneAndUpdate: Session.findOneAndUpdate,
   sessionUpdateOne: Session.updateOne,
   sessionCreate: Session.create,
@@ -33,8 +35,16 @@ const originals = {
 
 CreditConfig.findById = () => ({ lean: async () => null });
 
+test.beforeEach(() => {
+  mongoose.startSession = async () => ({ withTransaction: async (fn) => fn(), endSession: async () => {} });
+  User.findOneAndUpdate = () => ({ select: async () => ({ _id: 'participant' }) });
+  Session.find = () => ({ session() { return this; }, lean: async () => [] });
+  Session.exists = () => ({ session: async () => null });
+});
 test.afterEach(() => {
   Session.findById = originals.sessionFindById;
+  Session.find = originals.sessionFind;
+  Session.exists = originals.sessionExists;
   Session.findOneAndUpdate = originals.sessionFindOneAndUpdate;
   Session.updateOne = originals.sessionUpdateOne;
   Session.create = originals.sessionCreate;
@@ -97,7 +107,7 @@ test('a request to the exact or uppercase equivalent of the learner ID is reject
   for (const tutorId of [learnerId, learnerId.toUpperCase()]) {
     const res = response();
     await controller.createSession({ user: { id: learnerId }, body: {
-      tutorId, subject: 'Java', scheduledAt: '2026-09-25T06:30:00.000Z',
+      tutorId, subject: 'Java', scheduledAt: new Date(Date.now() + 86400000).toISOString(),
       meetingMethod: 'online', requestMessage: 'Help with arrays.', creditAmount: 1,
     } }, res);
     assert.equal(res.statusCode, 400);
@@ -146,13 +156,14 @@ test('new Session price is server-owned even when a legacy client submits anothe
   const fixture = sessionDoc();
   CreditConfig.findById = () => ({ lean: async () => ({ startingCreditGrant: 120,
     tutoringSessionCost: 25, assessmentReward: 30, version: 1 }) });
-  User.findById = () => ({ select: async () => ({ _id: fixture.tutor, role: 'student' }) });
+  mongoose.startSession = async () => ({ withTransaction: async (fn) => fn(), endSession: async () => {} });
+  User.findOneAndUpdate = () => ({ select: async () => ({ _id: fixture.tutor, role: 'student' }) });
   const stored = [];
-  Session.create = async (data) => { stored.push(data); return { ...data, async populate() {} }; };
+  Session.create = async ([data]) => { stored.push(data); return [{ ...data, async populate() {} }]; };
   for (const offered of [undefined, 1, 2, 100, 0, -1, 1.5, NaN]) {
     const res = response();
     await controller.createSession({ user: { id: fixture.learner, credits: 100 }, body: {
-      tutorId: fixture.tutor, subject: 'Java', scheduledAt: '2026-09-25T06:30:00.000Z',
+      tutorId: fixture.tutor, subject: 'Java', scheduledAt: new Date(Date.now() + 86400000).toISOString(),
       meetingMethod: 'online', requestMessage: 'Help with arrays.',
       ...(offered === undefined ? {} : { creditAmount: offered }),
     } }, res);
@@ -161,7 +172,7 @@ test('new Session price is server-owned even when a legacy client submits anothe
   }
   const insufficient = response();
   await controller.createSession({ user: { id: fixture.learner, credits: 24 }, body: {
-    tutorId: fixture.tutor, subject: 'Java', scheduledAt: '2026-09-25T06:30:00.000Z',
+    tutorId: fixture.tutor, subject: 'Java', scheduledAt: new Date(Date.now() + 86400000).toISOString(),
     meetingMethod: 'online', requestMessage: 'Help with arrays.',
   } }, insufficient);
   assert.equal(insufficient.statusCode, 400);
@@ -230,7 +241,7 @@ test('canonical and legacy request decisions require a session participant', asy
 });
 
 test('canonical request decisions do not reopen terminal P2.4 states', async () => {
-  for (const initial of ['scheduled', 'declined', 'cancelled', 'rejected']) {
+  for (const initial of ['declined', 'cancelled', 'rejected']) {
     const session = sessionDoc({ status: initial });
     Session.findById = async () => session;
     Session.findOneAndUpdate = async () => assert.fail('Unsupported transition must not write');
@@ -339,15 +350,17 @@ for (const meetingMethod of ['online', 'in-person']) {
   test(`fresh ${meetingMethod} request with ${decision} preserves its UTC instant and supports coordination and messages`, async () => {
     const fixture = sessionDoc();
     let session;
-    User.findById = () => ({ select: async () => ({ _id: fixture.tutor, role: 'student' }) });
-    Session.create = async (data) => { session = sessionDoc({ ...data, status: 'pending', meetingLink: undefined }); return session; };
+    mongoose.startSession = async () => ({ withTransaction: async (fn) => fn(), endSession: async () => {} });
+  User.findOneAndUpdate = () => ({ select: async () => ({ _id: fixture.tutor, role: 'student' }) });
+    Session.create = async ([data]) => { session = sessionDoc({ ...data, status: 'pending', meetingLink: undefined }); return [session]; };
+    const futureInstant = new Date(Date.now() + 86400000).toISOString();
     const created = response();
     await controller.createSession({ user: { id: fixture.learner }, body: {
-      tutorId: fixture.tutor, subject: 'Java demo', scheduledAt: '2026-09-25T06:30:00.000Z',
+      tutorId: fixture.tutor, subject: 'Java demo', scheduledAt: futureInstant,
       meetingMethod, requestMessage: 'Please help with arrays.', creditAmount: 1,
     } }, created);
     assert.equal(created.statusCode, 201);
-    assert.equal(session.scheduledAt.toISOString(), '2026-09-25T06:30:00.000Z');
+    assert.equal(session.scheduledAt.toISOString(), futureInstant);
     assert.equal(session.meetingMethod, meetingMethod);
     assert.equal(session.requestMessage, 'Please help with arrays.');
     Session.findById = async () => session;

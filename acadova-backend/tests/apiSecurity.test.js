@@ -29,6 +29,8 @@ test('API protection and role boundaries work without a database connection', as
   const originalFindById = User.findById;
   const originalFindOne = User.findOne;
   const originalFind = User.find;
+  const originalAggregate = User.aggregate;
+  User.aggregate = async () => [];
   const originalResetLogin = loginSecurity.resetAfterSuccess;
   const originalSessionFindById = Session.findById;
   const originalRatingFind = Rating.find;
@@ -326,6 +328,7 @@ test('API protection and role boundaries work without a database connection', as
     User.findById = originalFindById;
     User.findOne = originalFindOne;
     User.find = originalFind;
+    User.aggregate = originalAggregate;
     loginSecurity.resetAfterSuccess = originalResetLogin;
     Session.findById = originalSessionFindById;
     Rating.find = originalRatingFind;

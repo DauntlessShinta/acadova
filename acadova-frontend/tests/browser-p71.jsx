@@ -24,7 +24,7 @@ window.fetch = async (url, options = {}) => {
   if (options.method && options.method !== 'GET') writes++;
   const peer = { _id: 'peer', name: 'Mary-Jane O’Connor', role: 'student', skillsToTeach: ['Programming'], rating: 5 };
   const sessions = [
-    { _id: 'next', learner: user, tutor: peer, subject: 'Programming', status: 'scheduled', scheduledAt: '2026-10-10T08:00:00Z', creditAmount: 50 },
+    { _id: 'next', learner: user, tutor: peer, subject: 'Programming', status: 'scheduled', scheduledAt: new Date(Date.now() + 86400000).toISOString(), creditAmount: 50 },
     { _id: 'incoming', learner: peer, tutor: user, subject: 'Databases', status: 'pending', creditAmount: 50 },
   ];
   const data = String(url).includes('unread-count') ? { count: 0 }
@@ -89,7 +89,7 @@ try {
   assert(document.activeElement === document.querySelector('.staff-content button'), 'Focus not restored');
   established = true;
   render('/dashboard');
-  await until(() => document.querySelector('#next-session-heading'), 'Established next Session missing');
+  await until(() => document.querySelector('#next-session-heading'), 'Established upcoming Session missing');
   assert(document.querySelector('#teaching-heading'), 'Incoming teaching requests missing');
   assert(document.querySelector('#featured-learning-heading'), 'Approved topics missing');
   assert(document.documentElement.scrollWidth <= innerWidth, 'Established Home overflow');

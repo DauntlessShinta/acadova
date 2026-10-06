@@ -34,6 +34,9 @@ async function recordAudit({ actor, action, targetType, targetId, summary, metad
     || !targetId || typeof summary !== 'string') throw new Error('Invalid audit event');
   const safe = Object.fromEntries(Object.entries(metadata).filter(([key, value]) =>
     SAFE_FIELDS.has(key) && ['string', 'number', 'boolean'].includes(typeof value)));
+  if (action === ACTIONS.suspended && typeof metadata.suspensionReason === 'string') {
+    safe.suspensionReason = metadata.suspensionReason.trim().slice(0, 500);
+  }
   const [entry] = await AuditLog.create([{ actor: actor.id, actorRole: actor.role, action,
     targetType, targetId: String(targetId), summary: summary.slice(0, 200), metadata: safe }],
   session ? { session } : {});

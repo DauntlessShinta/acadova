@@ -1,6 +1,9 @@
 const User = require('../models/User');
 const Rating = require('../models/Rating');
 const { isValidObjectId, escapeRegExp } = require('../middleware/validation');
+const mongoose = require('mongoose');
+const { availableStudentFilter } = require('../utils/peerEligibility');
+const { publicReputation, reputationStages } = require('../utils/ratingReputation');
 
 // GET /api/users/me - the logged-in user's own profile.
 exports.getMe = async (req, res) => {
@@ -10,7 +13,9 @@ exports.getMe = async (req, res) => {
     if (!user) {
       return res.status(404).json({ success: false, message: 'User not found' });
     }
-    res.json({ success: true, message: 'Profile retrieved', data: user });
+    const profile = user.toObject ? user.toObject() : user;
+    const reputation = user.role === 'student' ? await publicReputation(user._id) : {};
+    res.json({ success: true, message: 'Profile retrieved', data: { ...profile, ...reputation } });
   } catch (error) {
     res.status(500).json({ success: false, message: 'Server error while retrieving profile' });
   }
@@ -56,17 +61,18 @@ exports.searchTutors = async (req, res) => {
   try {
     const { subject } = req.validatedQuery;
     const filter = {
-      role: 'student',
-      _id: { $ne: req.user.id },
+      ...availableStudentFilter(),
+      _id: { $ne: new mongoose.Types.ObjectId(req.user.id) },
       skillsToTeach: subject
         ? { $regex: escapeRegExp(subject), $options: 'i' }
         : { $exists: true, $ne: [] },
     };
 
-    const tutors = await User.find(filter)
-      .select('name skillsToTeach rating role')
-      .sort({ rating: -1 })
-      .limit(50);
+    const tutors = await User.aggregate([
+      { $match: filter }, ...reputationStages(),
+      { $sort: { rating: -1, ratingCount: -1, _id: 1 } }, { $limit: 50 },
+      { $project: { name: 1, skillsToTeach: 1, rating: 1, ratingCount: 1, role: 1 } },
+    ]);
 
     res.json({ success: true, message: 'Tutors retrieved', data: tutors });
   } catch (error) {
@@ -82,13 +88,14 @@ exports.getUserById = async (req, res) => {
       return res.status(400).json({ success: false, message: 'Invalid user id' });
     }
 
-    const user = await User.findOne({ _id: id, role: 'student' })
+    const user = await User.findOne({ _id: id, ...availableStudentFilter() })
       .select('name rating skillsToTeach skillsToLearn role createdAt');
     if (!user) {
       return res.status(404).json({ success: false, message: 'Peer profile not found' });
     }
 
-    res.json({ success: true, message: 'User profile retrieved', data: user });
+    const profile = user.toObject ? user.toObject() : user;
+    res.json({ success: true, message: 'User profile retrieved', data: { ...profile, ...await publicReputation(id) } });
   } catch (error) {
     res.status(500).json({ success: false, message: 'Server error while retrieving user profile' });
   }
@@ -109,9 +116,9 @@ exports.finishOnboarding = async (req, res) => {
 
 exports.getUserReviews = async (req, res) => {
   try {
-    const peer = await User.exists({ _id: req.params.id, role: 'student' });
+    const peer = await User.exists({ _id: req.params.id, ...availableStudentFilter() });
     if (!peer) return res.status(404).json({ success: false, message: 'Peer profile not found' });
-    const rows = await Rating.find({ toUser: req.params.id, isHidden: false })
+    const rows = await Rating.find({ toUser: req.params.id, isHidden: { $ne: true } })
       .select('rating comment fromUser createdAt').populate('fromUser', 'name')
       .sort({ createdAt: -1 }).limit(20).lean();
     return res.json({ success: true, data: rows.map((row) => ({

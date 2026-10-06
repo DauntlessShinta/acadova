@@ -13,6 +13,7 @@ const { securityHeaders, corsMiddleware } = require('./middleware/httpSecurity')
 const { apiNotFound, notFound, unexpectedError } = require('./middleware/apiErrors');
 
 const app = express();
+require('./utils/proxyTrust').configureProxyTrust(app);
 
 app.use(securityHeaders);
 app.use(corsMiddleware);

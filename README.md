@@ -1,6 +1,6 @@
 # Acadova
 
-Acadova is a peer-to-peer academic learning platform. This README distinguishes the current implementation from the locked final scope that remains to be built.
+Acadova is a peer-to-peer academic learning platform. This README distinguishes the current implementation from remaining operational verification and intentionally excluded scope.
 
 ## Canonical architecture
 
@@ -62,4 +62,22 @@ Google Meet attendance API, custom video conferencing, AI recommendations or fra
 
 For local development, see the package scripts in the repository root and the frontend/backend package files. In a deployed frontend, set `VITE_API_URL` to the backend API origin. Deployment URLs and service state must be confirmed in the hosting configuration, not inferred from this repository alone.
 
-P7 stabilization adds atomic authentication-session revocation after password recovery and discards untrusted local passwords/recovery state when Google claims an explicitly unverified registration. Verified and historical accounts retain their legitimate linking behavior; Google remains optional. P7 also fixes client-navigation onboarding rendering and page scroll reset while preserving hash links. Automated regression passes, but final visual sign-off remains pending: see [defense and local browser handoff](docs/DEFENSE_CHECKLIST.md), [production smoke checklist](docs/PRODUCTION_SMOKE_CHECKLIST.md), and [P7 validation report](docs/P7_VALIDATION_REPORT.md). The guarded `acadova-backend/scripts/prepareP7Local.js` operator tool requires the isolated loopback replica set and never loads application dotenv configuration or runs in production; it is not part of API startup.
+P7 stabilization adds atomic authentication-session revocation after password recovery and discards untrusted local passwords/recovery state when Google claims an explicitly unverified registration. Verified and historical accounts retain their legitimate linking behavior; Google remains optional. P7 also fixes client-navigation onboarding rendering and page scroll reset while preserving hash links. P7.1A and P7.1B UX hardening are committed through 201bc07. The final hardening working tree has local regression/browser coverage, but real-data visual sign-off and production verification remain pending: see [defense and local browser handoff](docs/DEFENSE_CHECKLIST.md), [production smoke checklist](docs/PRODUCTION_SMOKE_CHECKLIST.md), and [P7 validation report](docs/P7_VALIDATION_REPORT.md). The guarded `acadova-backend/scripts/prepareP7Local.js` operator tool requires the isolated loopback replica set and never loads application dotenv configuration or runs in production; it is not part of API startup.
+
+## Final defense hardening (working tree, 2026-10-06)
+
+The current hardening closes the eight confirmed gap-audit defects: eligible peer discovery/request enforcement, configurable safe proxy trust, same-conversation Chat navigation, staff Learning deep links, in-flight Session promotion protection, authoritative suspension recovery, future request schedules, and visible-review-derived reputation. The existing blue/white MASTER shell and locked business workflows remain intact. New Session requests now require transaction-capable MongoDB to serialize participant eligibility with promotion; no escrow, balance reserve, schema migration or index mutation is introduced.
+
+A Student must be active and must not have emailVerified explicitly false to be discoverable/requestable. Missing verification retains historical compatibility. Reputation uses visible review count/average; zero reviews is unrated even if a stored legacy default is five. Credits are not reserved when requesting: settlement still requires the current Learner balance. Archived module materials are withheld and identified as unavailable in accessible module views; no refund/entitlement migration is performed.
+
+TRUST_PROXY_CIDRS defaults to no proxy trust. Set only verified proxy IPs/CIDRs after the production checks below; do not use true, a hop count, or arbitrary forwarded headers. Local fixture tests do not prove Render's real forwarding chain.
+
+See [final hardening evidence and remaining risks](docs/FINAL_DEFENSE_HARDENING_REPORT.md), the [current defense runbook](docs/DEFENSE_CHECKLIST.md), the [MASTER design system](docs/ACADOVA_MASTER_DESIGN_SYSTEM.md), and [production verification](docs/PRODUCTION_SMOKE_CHECKLIST.md). Earlier phase reports retain their original dates and test results.
+
+## Final implementation / stabilization candidate (2026-10-06)
+
+The final pass fixes Mongoose login pipeline construction, exact in-flight Session request replays, exact-time commitments at acceptance/reschedule acceptance, pre-start canonical scheduled cancellation, Learning query/history state, standalone resource access within accessible modules, and bounded Admin-only suspension audit history. A duplicate means the same Learner/Tutor, NFKC/case/whitespace-normalized subject, and exact agreed or proposed UTC instant in an in-flight interaction; settled completion and declined/cancelled/resolved history permit new requests. Pending alternatives remain allowed. No Session duration or interval overlap is inferred. These checks use the existing participant transaction/locking pattern and require transaction-capable MongoDB; no new schema fields or indexes are introduced.
+
+All roles share a visible account disclosure and shared Sign out confirmation. Desktop navigation is width-based at 1025px and above, with controlled staff sidebar scrolling on short screens. Module entitlement permits in-module access only; standalone resource entitlement is also respected inside an accessible module and is never created by viewing a module. Legacy accepted/completed API compatibility remains available. Message send-retry deduplication and the GET/read-boundary race remain documented limitations.
+
+See [final stabilization report](docs/FINAL_STABILIZATION_REPORT.md) for this pass's exact changes, fresh test/browser evidence, duplicate/confirmation matrices and manual sign-off gates. Earlier reports retain their original results. No production deployment, database/index changes, staging or commits were performed.

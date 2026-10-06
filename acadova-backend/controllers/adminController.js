@@ -9,6 +9,7 @@ const { ACTIONS, recordAudit } = require('../services/auditService');
 const notifications = require('../services/notificationService');
 
 const MANAGEABLE_ROLES = new Set(['student', 'moderator']);
+const { hasInFlightSessions } = require('../utils/sessionRoleGuard');
 
 // GET /api/admin/users - lists platform accounts for user management.
 exports.listUsers = async (req, res) => {
@@ -81,6 +82,14 @@ exports.updateUserRole = async (req, res) => {
       if (!target) throw Object.assign(new Error('User not found'), { status: 404 });
       if (target.role === 'admin') throw Object.assign(new Error('Admin roles cannot be changed'), { status: 403 });
       if (target.role === role) throw Object.assign(new Error('Role is already set'), { status: 409 });
+      // Lock the participant before checking Sessions. Request creation takes the
+      // same existing User document lock, so a concurrent request cannot slip in.
+      await User.updateOne({ _id: id, role: target.role }, { $currentDate: { updatedAt: true } },
+        { session: dbSession, timestamps: false });
+      if (target.role === 'student' && role === 'moderator'
+        && await hasInFlightSessions(id, dbSession)) {
+        throw Object.assign(new Error('Active Sessions must be completed, cancelled, or resolved before promoting this Student to Moderator.'), { status: 409 });
+      }
       updatedUser = await User.findOneAndUpdate({ _id: id, role: target.role }, { $set: { role } },
         { new: true, runValidators: true, session: dbSession })
         .select('name email role credits rating skillsToTeach skillsToLearn emailVerified suspendedAt suspensionReason createdAt +failedLoginAttempts +loginCooldownUntil');
@@ -127,7 +136,8 @@ exports.updateUserStatus = async (req, res) => {
       await recordAudit({ actor: req.user, action: suspend ? ACTIONS.suspended : ACTIONS.reactivated,
         targetType: 'User', targetId: id, summary: suspend ? 'Account suspended' : 'Account reactivated',
         metadata: { previousStatus: suspend ? 'active' : 'suspended',
-          newStatus: suspend ? 'suspended' : 'active' }, session: dbSession });
+          newStatus: suspend ? 'suspended' : 'active',
+          ...(suspend ? { suspensionReason: req.body.reason } : {}) }, session: dbSession });
     });
     logSecurityEvent(suspend ? 'admin.user_suspended' : 'admin.user_reactivated', req, { targetId: id });
     await notifications.notifySafely({ recipient: id,

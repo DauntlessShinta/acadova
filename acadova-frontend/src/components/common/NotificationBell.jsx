@@ -62,7 +62,7 @@ export default function NotificationBell({ label }) {
       </button>
       {error && <p role="alert" className="notification-error">{error}</p>}
       {loadingItems ? <p className="notification-empty">Loading notifications...</p> :
-        items.length === 0 ? <p className="notification-empty">No notifications yet.</p> :
+        items.length === 0 ? <p className="notification-empty">{error ? 'Notifications are unavailable. Try again.' : 'No notifications yet.'}{error && <button type="button" className="text-action" onClick={() => void refresh()}>Retry</button>}</p> :
         <ul className="notification-list">{items.map((item) => <li key={item.id}>
           <button type="button" className={item.readAt ? '' : 'is-unread'} onClick={() => follow(item)}>
             <strong>{item.title}</strong><span>{item.message}</span>

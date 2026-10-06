@@ -81,6 +81,10 @@ export const getSessionStatus = (session) => {
   };
 };
 
+export const canCancelSession = (session) => session?.status === 'pending' || session?.status === 'accepted'
+  || (session?.status === 'scheduled' && !session.startedAt && !session.learnerCheckedInAt
+    && !session.tutorCheckedInAt && !session.creditsSettledAt && !session.confirmedAt);
+
 export const getSessionTimeline = (session) => {
   const status = session?.status;
   const accepted = ['accepted', 'scheduled', 'in_progress', 'awaiting_validation',
@@ -90,6 +94,8 @@ export const getSessionTimeline = (session) => {
     || Boolean(session?.confirmedAt && !session?.awaitingValidationAt);
   const completed = Boolean(session?.creditsSettledAt
     && (status === 'completed' || session?.resolution === 'confirm_session'));
+  const stopped = ['cancelled', 'declined', 'rejected'].includes(status)
+    || (status === 'resolved' && session.resolution === 'cancel_session');
   return [
     { label: 'Request sent', state: 'done' },
     { label: 'Tutor accepted', state: accepted ? 'done' : status === 'pending' ? 'current' : 'stopped' },
@@ -101,7 +107,7 @@ export const getSessionTimeline = (session) => {
     { label: 'Confirm session', state: bothConfirmed ? 'done'
       : status === 'awaiting_validation' ? 'current' : 'waiting' },
     { label: 'Completed', state: completed ? 'done' : 'waiting' },
-  ];
+  ].map((step) => stopped && step.state !== 'done' ? { ...step, state: 'stopped' } : step);
 };
 
 export const getSessionNextStep = (session, isTeaching, counterpartName = 'your peer') => {

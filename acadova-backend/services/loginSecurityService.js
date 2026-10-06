@@ -27,7 +27,7 @@ async function recordFailedLogin(user, now = new Date()) {
         { $dateAdd: { startDate: now, unit: 'second', amount: { $toLong: duration } } },
         null,
       ] },
-    } }], { new: true }).select('+failedLoginAttempts +loginCooldownUntil');
+    } }], { new: true, updatePipeline: true }).select('+failedLoginAttempts +loginCooldownUntil');
   if (!updated) return null;
   const count = updated.failedLoginAttempts;
   return { count, cooldownSeconds: cooldownSecondsFor(count) };

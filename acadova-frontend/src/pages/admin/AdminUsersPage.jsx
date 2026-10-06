@@ -46,7 +46,7 @@ export const AdminUsersPage = () => {
     if (account.role === 'admin') return;
     const nextRole = account.role === 'moderator' ? 'student' : 'moderator';
     const prompt = nextRole === 'moderator'
-      ? `Promote ${account.name} to Moderator? They will gain review moderation access.`
+      ? `Promote ${account.name} to Moderator? They will gain review moderation access. Active Sessions must be completed, cancelled, or resolved first.`
       : `Return ${account.name} to Student? They will lose review moderation access.`;
     if (!await confirm(prompt, { title: 'Change account role', label: nextRole === 'moderator' ? 'Promote to Moderator' : 'Remove Moderator role', destructive: nextRole !== 'moderator' })) return;
     try {
@@ -56,6 +56,7 @@ export const AdminUsersPage = () => {
       setUsers((current) => current.map((item) => item._id === account._id ? response.data : item));
       toast('success', nextRole === 'moderator' ? 'User promoted to Moderator.' : 'Moderator returned to Student.');
     } catch (err) {
+      setError(err.message || 'User role could not be updated.');
       toast('error', err.message || 'User role could not be updated.');
     } finally {
       setUpdatingId('');
@@ -92,7 +93,7 @@ export const AdminUsersPage = () => {
         <label className="staff-filter-select">Role <select className="form-select" value={role} onChange={(event) => setRole(event.target.value)}><option value="all">All roles</option><option value="student">Students</option><option value="moderator">Moderators</option><option value="admin">Administrators</option></select></label>
       </div>
       {loading ? <LoadingSpinner text="Loading users..." size={34} /> : !available ? <EmptyState icon={Users} title="User directory unavailable" description="User data could not be loaded." actionText="Retry" onAction={load} /> : filtered.length === 0 ? <EmptyState icon={Search} title="No users match your filters" description="Try a different name, email address, or role." /> : (
-        <div className="table-responsive"><table className="table admin-user-table"><thead><tr><th>Name</th><th>Email</th><th>Role</th><th>Verified</th><th>Status</th><th>Security</th><th>Joined</th><th>Actions</th></tr></thead><tbody>
+        <div className="table-responsive" tabIndex={0} role="region" aria-label="User directory. Scroll horizontally to view all columns."><table className="table admin-user-table"><thead><tr><th>Name</th><th>Email</th><th>Role</th><th>Verified</th><th>Status</th><th>Security</th><th>Joined</th><th>Actions</th></tr></thead><tbody>
           {filtered.map((account) => <tr key={account._id}><td><strong>{account.name}</strong></td><td className="admin-user-email">{account.email}</td><td><Badge status={account.role}>{account.role === 'admin' ? 'Administrator' : account.role === 'moderator' ? 'Moderator' : 'Student'}</Badge></td><td>{account.emailVerified === false ? 'No' : account.emailVerified === true ? 'Yes' : 'Legacy / unknown'}</td><td>{account.suspendedAt ? 'Suspended' : 'Active'}</td><td><span>{account.failedLoginAttempts || 0} recent failures</span><br /><span>{account.loginCooldownUntil && new Date(account.loginCooldownUntil) > new Date() ? `Cooldown until ${new Date(account.loginCooldownUntil).toLocaleString()}` : 'No active cooldown'}</span></td><td>{account.createdAt ? new Date(account.createdAt).toLocaleDateString() : 'Unavailable'}</td><td>{account.role === 'admin' ? <span className="protected-label"><ShieldCheck size={14} /> Protected</span> : <div className="session-dispute-actions"><button type="button" className={`btn btn-sm ${account.role === 'moderator' ? 'btn-secondary' : 'btn-primary'}`} disabled={updatingId === account._id} onClick={() => changeRole(account)}>{updatingId === account._id ? 'Updating...' : account.role === 'moderator' ? 'Return to Student' : 'Promote to Moderator'}</button><button type="button" className="btn btn-secondary btn-sm" disabled={updatingId === account._id} onClick={() => changeStatus(account)}>{account.suspendedAt ? 'Reactivate' : 'Suspend'}</button></div>}</td></tr>)}
         </tbody></table></div>
       )}

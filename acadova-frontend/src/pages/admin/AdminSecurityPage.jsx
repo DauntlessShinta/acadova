@@ -38,7 +38,7 @@ export default function AdminSecurityPage() {
       <form onSubmit={(event) => { event.preventDefault(); setSearchAccount(account.trim()); }}><label htmlFor="security-account">Account ID (optional)</label>
         <div className="staff-inline-search"><input id="security-account" className="form-input" value={account} onChange={(event) => setAccount(event.target.value)} placeholder="Exact account ID" /><button className="btn btn-secondary btn-sm">Search</button></div></form>
     </div>
-    {loading ? <LoadingSpinner text="Loading security activity..." /> : data && <>
+    {loading ? <LoadingSpinner text="Loading security activity..." /> : error ? <p className="staff-data-note">Security activity is unavailable. <button type="button" className="btn btn-secondary btn-sm" onClick={load}>Retry</button></p> : data && <>
       <section className="staff-queue-summary card" aria-label="Platform-wide security counts for the last 24 hours">
         <strong>{data.counts.cooldownStarted} cooldowns started</strong>
         <strong>{data.counts.cooldownExtended} cooldowns extended</strong>

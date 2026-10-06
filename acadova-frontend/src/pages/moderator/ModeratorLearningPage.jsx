@@ -2,7 +2,8 @@ import { useConfirm } from '../../context/confirmAccess';
 import WorkflowTabs from '../../components/common/WorkflowTabs';
 import ExternalResourceLink from '../../components/common/ExternalResourceLink';
 import React, { useEffect, useState } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { staffLearningHash, staffLearningSection } from '../../utils/staffLearningNavigation';
 import learningService from '../../services/learningService';
 import assessmentService from '../../services/assessmentService';
 import Alert from '../../components/common/Alert';
@@ -10,10 +11,12 @@ import LoadingSpinner from '../../components/common/LoadingSpinner';
 import { useToast } from '../../context/toastAccess';
 
 export const ModeratorLearningPage = () => {
-  const { pathname } = useLocation();
+  const { pathname, search, hash } = useLocation();
+  const navigate = useNavigate();
   const staffBase = pathname.startsWith('/admin') ? '/admin' : '/moderator';
   const toast = useToast();
-  const [section, setSection] = useState('topics');
+  const section = staffLearningSection(hash);
+  const setSection = (value) => navigate(`${pathname}${search}${staffLearningHash(value)}`);
   const confirm = useConfirm();
   const [topics, setTopics] = useState([]);
   const [resources, setResources] = useState([]);
@@ -47,7 +50,7 @@ export const ModeratorLearningPage = () => {
   const act = async (operation, message) => {
     if (/archived|rejected/i.test(message) && !await confirm(message.includes('rejected')
       ? 'Reject this resource with the entered feedback? The creator will be notified and can submit a corrected resource.'
-      : 'Archive this content? Students will no longer be able to discover it for new learning.',
+      : 'Archive this content? Students will no longer be able to access it. Archived resources also disappear from published modules; existing unlock records are preserved.',
       { title: message.includes('rejected') ? 'Reject resource' : 'Archive content', label: message.includes('rejected') ? 'Reject resource' : 'Archive' })) return false;
     setWorking(true);
     try { await operation(); toast('success', message); await load(); return true; }
@@ -55,6 +58,12 @@ export const ModeratorLearningPage = () => {
     finally { setWorking(false); }
   };
   const hasPublishedTopic = topics.some((item) => item.status === 'published');
+  const publishContent = async (kind, item, operation, price = null) => {
+    const cost = price === null ? '' : `\nPrice: ${price === 0 ? 'free' : price + ' credits'}.`;
+    if (!await confirm(`Publish "${item.name || item.title}" for Students?${cost}\nThis content becomes available in Learning. Published content cannot be edited through the draft editor.`,
+      { title: `Publish ${kind}`, label: `Publish ${kind}`, destructive: false })) return;
+    await act(operation, `${kind.charAt(0).toUpperCase() + kind.slice(1)} published.`);
+  };
   const priceFor = (id) => Number(prices[id] ?? 0);
   const available = resources.filter((item) => item.topic === moduleDraft.topic && item.reviewStatus === 'published');
   const resetTopic = () => { setTopicDraft({ name: '', description: '' }); setEditingTopic(null); };
@@ -68,19 +77,19 @@ export const ModeratorLearningPage = () => {
     setEditingModule(null);
   };
 
-  return <div className="staff-page"><header className="staff-page-header"><div><span className="staff-eyebrow">Moderator / Learning</span>
+  return <div className="staff-page"><header className="staff-page-header"><div><span className="staff-eyebrow">{staffBase === '/admin' ? 'Administration' : 'Moderator'} / Learning</span>
     <h1>Learning Management</h1><p>Prepare topics, lessons, modules, and assessments without editing the database.</p></div></header>
     <WorkflowTabs id="manage" tabs={[['topics', 'Topics'], ['resources', 'Resources'], ['modules', 'Modules']]} active={section} onChange={setSection} /><Link to={`${staffBase}/assessments`}>Manage assessments</Link>
     <Alert type="danger" message={error} />
-    {loading ? <LoadingSpinner text="Loading learning content..." /> : <>
-      <section className="card" id="manage-panel-topics" role="tabpanel" aria-labelledby="manage-tab-topics" hidden={section !== 'topics'}><h2>Topics</h2>{!topics.length && <p>No topics yet. <a href="#topic-name">Create First Topic</a>, then publish it to enable resources and modules.</p>}{topics.map((item) => <div key={item.id} style={{ marginBottom: 14 }}>
+    {loading ? <LoadingSpinner text="Loading learning content..." /> : error ? <p className="staff-data-note">Learning management is unavailable. <button type="button" className="btn btn-secondary btn-sm" onClick={() => { setLoading(true); void load(); }}>Retry</button></p> : <>
+      <section className="card" id="manage-panel-topics" role="tabpanel" aria-labelledby="manage-tab-topics" hidden={section !== 'topics'}><h2>Topics</h2>{!topics.length && <p>No topics yet. <button type="button" className="text-action" onClick={() => { document.querySelector('#manage-panel-topics .learning-staff-editor').open = true; document.getElementById('topic-name')?.focus(); }}>Create first topic</button>, then publish it to enable resources and modules.</p>}{topics.map((item) => <div key={item.id} style={{ marginBottom: 14 }}>
         <strong>{item.name}</strong> · {item.status}<p>{item.description}</p>
-        {item.status === 'draft' && <button type="button" className="btn btn-secondary btn-sm" disabled={working} onClick={() => act(() => learningService.publishTopic(item.id), 'Topic published.')}>Publish</button>}
+        {item.status === 'draft' && <button type="button" className="btn btn-secondary btn-sm" disabled={working} onClick={() => publishContent('topic', item, () => learningService.publishTopic(item.id))}>Publish</button>}
         {item.status === 'draft' && <button type="button" className="btn btn-secondary btn-sm" disabled={working}
           onClick={() => { setEditingTopic(item.id); setTopicDraft({ name: item.name, description: item.description }); }}>Edit draft</button>}
         {item.status === 'published' && <button type="button" className="btn btn-secondary btn-sm" disabled={working} onClick={() => act(() => learningService.archiveTopic(item.id), 'Topic archived.')}>Archive</button>}
       </div>)}
-        <form onSubmit={async (event) => { event.preventDefault();
+        <details className="learning-staff-editor" open={editingTopic ? true : undefined}><summary>{editingTopic ? 'Edit topic draft' : 'Create topic draft'}</summary><form onSubmit={async (event) => { event.preventDefault();
           if (await act(() => editingTopic
             ? learningService.updateTopic(editingTopic, topicDraft) : learningService.createTopic(topicDraft),
           editingTopic ? 'Topic draft updated.' : 'Topic draft created.')) {
@@ -93,15 +102,15 @@ export const ModeratorLearningPage = () => {
           <label className="form-label" htmlFor="topic-description">Description</label>
           <textarea id="topic-description" className="form-input" required minLength={3} maxLength={500} value={topicDraft.description} onChange={(event) => setTopicDraft({ ...topicDraft, description: event.target.value })} />
           <button className="btn btn-primary" disabled={working}>{editingTopic ? 'Save draft' : 'Create draft'}</button>
-        </form>
+        </form></details>
       </section>
       <section className="card" id="manage-panel-resources" role="tabpanel" aria-labelledby="manage-tab-resources" hidden={section !== 'resources'} style={{ marginTop: 20 }}>
         <h2>Resources and lessons</h2><p>Create a text lesson or HTTPS link, then review and publish it.</p>
         {resources.length === 0 && <p>No resources yet.</p>}
         {resources.map((item) => <article key={item.id} style={{ borderTop: '1px solid var(--border-subtle)', padding: '16px 0' }}>
           <h3>{item.title}</h3><p>{item.description} · {item.reviewStatus}</p><p>Submitted by: {item.submittedBy}</p>
-          {item.resourceType === 'text' ? <p style={{ whiteSpace: 'pre-wrap' }}>{item.textContent}</p>
-            : <ExternalResourceLink href={item.externalUrl}>Review external resource</ExternalResourceLink>}
+          <details><summary>Review resource content</summary>{item.resourceType === 'text' ? <p style={{ whiteSpace: 'pre-wrap' }}>{item.textContent}</p>
+            : <ExternalResourceLink href={item.externalUrl}>Review external resource</ExternalResourceLink>}</details>
           {item.reviewNote && <p>Review note: {item.reviewNote}</p>}
           {item.reviewStatus === 'submitted' && <button type="button" className="btn btn-secondary btn-sm"
             disabled={working} onClick={() => {
@@ -112,7 +121,7 @@ export const ModeratorLearningPage = () => {
             }}>Edit submission</button>}
           {item.reviewStatus === 'submitted' && <><label className="form-label" htmlFor={`resource-price-${item.id}`}>Approved cost (0 = free)</label>
             <input id={`resource-price-${item.id}`} className="form-input" type="number" min="0" max="1000" step="1" value={prices[item.id] ?? 0} onChange={(event) => setPrices({ ...prices, [item.id]: event.target.value })} />
-            <button type="button" className="btn btn-primary btn-sm" disabled={working} onClick={() => act(() => learningService.publishResource(item.id, priceFor(item.id)), 'Resource published.')}>Publish</button>
+            <button type="button" className="btn btn-primary btn-sm" disabled={working} onClick={() => publishContent('resource', item, () => learningService.publishResource(item.id, priceFor(item.id)), priceFor(item.id))}>Publish</button>
             <label className="form-label" htmlFor={`reason-template-${item.id}`}>Optional review note template</label>
             <select id={`reason-template-${item.id}`} className="form-select" defaultValue=""
               onChange={(event) => setReasons({ ...reasons, [item.id]: event.target.value })}>
@@ -129,7 +138,7 @@ export const ModeratorLearningPage = () => {
           {item.reviewStatus === 'published' && <button type="button" className="btn btn-secondary btn-sm" disabled={working} onClick={() => act(() => learningService.archiveResource(item.id), 'Resource archived.')}>Archive</button>}
         </article>)}
         {!hasPublishedTopic && <p>Create and publish a topic before adding resources.</p>}
-        <fieldset disabled={!hasPublishedTopic} className="prerequisite-fields"><form className="learning-staff-form" onSubmit={async (event) => {
+        <details className="learning-staff-editor" open={editingResource ? true : undefined}><summary>{editingResource ? 'Edit resource submission' : 'Create resource'}</summary><fieldset disabled={!hasPublishedTopic} className="prerequisite-fields"><form className="learning-staff-form" onSubmit={async (event) => {
           event.preventDefault();
           const body = { topic: resourceDraft.topic, title: resourceDraft.title,
             description: resourceDraft.description, resourceType: resourceDraft.resourceType,
@@ -176,7 +185,7 @@ export const ModeratorLearningPage = () => {
           </>}
           <button className="btn btn-primary" disabled={working}>
             {editingResource ? 'Save submission' : 'Create resource'}</button>
-        </form></fieldset>
+        </form></fieldset></details>
       </section>
       <section className="card" id="manage-panel-modules" role="tabpanel" aria-labelledby="manage-tab-modules" hidden={section !== 'modules'} style={{ marginTop: 20 }}><h2>Modules</h2>{modules.map((item) => <article key={item.id} style={{ marginBottom: 16 }}>
         <strong>{item.title}</strong> · {item.status}<p>{item.description}</p>
@@ -188,11 +197,11 @@ export const ModeratorLearningPage = () => {
           }}>Edit draft</button>}
         {item.status === 'draft' && <><label className="form-label" htmlFor={`module-price-${item.id}`}>Approved cost (0 = free)</label>
           <input id={`module-price-${item.id}`} className="form-input" type="number" min="0" max="1000" step="1" value={prices[item.id] ?? 0} onChange={(event) => setPrices({ ...prices, [item.id]: event.target.value })} />
-          <button type="button" className="btn btn-primary btn-sm" disabled={working} onClick={() => act(() => learningService.publishModule(item.id, priceFor(item.id)), 'Module published.')}>Publish</button></>}
+          <button type="button" className="btn btn-primary btn-sm" disabled={working} onClick={() => publishContent('module', item, () => learningService.publishModule(item.id, priceFor(item.id)), priceFor(item.id))}>Publish</button></>}
         {item.status === 'published' && <button type="button" className="btn btn-secondary btn-sm" disabled={working} onClick={() => act(() => learningService.archiveModule(item.id), 'Module archived.')}>Archive</button>}
       </article>)}
         {!hasPublishedTopic && <p>Create and publish a topic before adding a module.</p>}
-        <fieldset disabled={!hasPublishedTopic} className="prerequisite-fields"><form onSubmit={async (event) => { event.preventDefault();
+        <details className="learning-staff-editor" open={editingModule ? true : undefined}><summary>{editingModule ? 'Edit module draft' : 'Create module draft'}</summary><fieldset disabled={!hasPublishedTopic} className="prerequisite-fields"><form onSubmit={async (event) => { event.preventDefault();
           const body = { ...moduleDraft, ...(moduleDraft.assessment ? {} : { assessment: undefined }) };
           if (await act(() => editingModule
             ? learningService.updateModule(editingModule, body) : learningService.createModule(body),
@@ -217,7 +226,7 @@ export const ModeratorLearningPage = () => {
               && item.topic === topics.find((topic) => topic.id === moduleDraft.topic)?.name).map((item) => <option key={item.id} value={item.id}>{item.title}</option>)}
           </select><button type="submit" className="btn btn-primary" disabled={working || !moduleDraft.resources.length || !hasPublishedTopic}>
             {editingModule ? 'Save draft' : 'Create module'}</button>
-        </form></fieldset>
+        </form></fieldset></details>
       </section>
     </>}
   </div>;

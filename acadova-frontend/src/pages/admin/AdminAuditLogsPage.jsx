@@ -10,7 +10,10 @@ const actions = ['session.dispute_resolved', 'credit.rules_changed', 'credit.adm
   'learning.assessment_created', 'learning.assessment_published',
   'review.moderated', 'user.suspended', 'user.reactivated', 'user.role_changed',
   'security.login_cooldown_started', 'security.login_cooldown_extended',
-  'security.login_success_after_failures'];
+  'security.login_success_after_failures', 'security.suspended_account_login_attempt',
+  'learning.topic_updated', 'learning.resource_created', 'learning.resource_updated',
+  'learning.module_updated', 'learning.assessment_updated'];
+const actionLabel = (value) => value.replace(/^[^.]+\./, '').replaceAll('_', ' ');
 
 export default function AdminAuditLogsPage() {
   const [rows, setRows] = useState([]);
@@ -23,6 +26,7 @@ export default function AdminAuditLogsPage() {
   const [loading, setLoading] = useState(true);
   const [actorError, setActorError] = useState('');
   const [error, setError] = useState('');
+  const [attempt, setAttempt] = useState(0);
   useEffect(() => {
     let active = true;
     Promise.resolve().then(async () => {
@@ -36,7 +40,7 @@ export default function AdminAuditLogsPage() {
       finally { if (active) setLoading(false); }
     });
     return () => { active = false; };
-  }, [page, action, actor, targetType]);
+  }, [page, action, actor, targetType, attempt]);
   const updateFilter = (setter) => (event) => { setter(event.target.value.trim()); setPage(1); };
   return <div className="staff-page">
     <header className="staff-page-header"><div><span className="staff-eyebrow">Administration / Audit</span>
@@ -44,7 +48,7 @@ export default function AdminAuditLogsPage() {
     <Alert type="danger" message={error} />
     <div className="card staff-filter-bar">
       <label>Action <select className="form-select" value={action} onChange={updateFilter(setAction)}>
-        <option value="">All actions</option>{actions.map((value) => <option key={value}>{value}</option>)}
+        <option value="">All actions</option>{actions.map((value) => <option key={value} value={value}>{actionLabel(value)}</option>)}
       </select></label>
       <label>Actor ID <input id="audit-actor" aria-invalid={Boolean(actorError)} aria-describedby={actorError ? 'audit-actor-error' : undefined} className="form-input" value={actorDraft} onChange={(event) => setActorDraft(event.target.value)} placeholder="User ID" />{actorError && <span className="form-error" id="audit-actor-error">{actorError}</span>}</label>
       <button type="button" className="btn btn-secondary btn-sm" onClick={() => {
@@ -57,12 +61,12 @@ export default function AdminAuditLogsPage() {
           'LearningModule', 'Assessment', 'CreditConfig', 'CreditTransaction'].map((type) => <option key={type}>{type}</option>)}
       </select></label>
     </div>
-    {loading ? <LoadingSpinner text="Loading audit logs..." size={30} /> : <>
+    {loading ? <LoadingSpinner text="Loading audit logs..." size={30} /> : error ? <p className="staff-data-note">Audit records are unavailable. <button type="button" className="btn btn-secondary btn-sm" onClick={() => setAttempt((value) => value + 1)}>Retry</button></p> : <>
       <div className="table-responsive"><table className="table"><thead><tr>
         <th>Time</th><th>Actor</th><th>Role</th><th>Action</th><th>Target</th><th>Summary</th>
       </tr></thead><tbody>{rows.map((row) => <tr key={row._id}>
         <td>{new Date(row.createdAt).toLocaleString()}</td><td>{row.actorRole === 'system' ? 'System' : row.actor?.name || row.actor?._id || 'Former account'}</td>
-        <td>{row.actorRole}</td><td>{row.action}</td><td>{row.targetType} · {row.targetId}</td><td>{row.summary}</td>
+        <td>{row.actorRole}</td><td>{row.action}</td><td>{row.targetType} · {row.targetId}</td><td>{row.summary}{row.metadata?.suspensionReason && <details><summary>Suspension reason</summary><p>{row.metadata.suspensionReason}</p></details>}</td>
       </tr>)}</tbody></table></div>
       {rows.length === 0 && <p className="staff-data-note">No matching audit records.</p>}
       <div className="session-dispute-actions">

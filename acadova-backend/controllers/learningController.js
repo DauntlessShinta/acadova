@@ -93,10 +93,14 @@ exports.getModule = async (req, res) => {
     const resources = module.creditCost === 0 || owned
       ? await LearningResource.find({ _id: { $in: module.resources }, topic: module.topic,
         reviewStatus: 'published' }).lean() : [];
+    const standalone = await LearningUnlock.find({ student: req.user.id,
+      resource: { $in: resources.map((row) => row._id) } }).select('resource').lean();
+    const ownedResources = new Set(standalone.map((row) => id(row.resource)));
     const byId = new Map(resources.map((row) => [id(row._id), row]));
     return res.json({ success: true, data: { ...moduleView(module, false, Boolean(owned)),
-      ...(module.creditCost === 0 || owned ? { resources: module.resources.map((resourceId) => byId.get(id(resourceId)))
-        .filter(Boolean).map((row) => resourceView(row, false, Boolean(owned))) } : {}) } });
+      ...(module.creditCost === 0 || owned ? { unavailableResourceCount: module.resources.filter((resourceId) => !byId.has(id(resourceId))).length,
+        resources: module.resources.map((resourceId) => byId.get(id(resourceId)))
+        .filter(Boolean).map((row) => resourceView(row, false, Boolean(owned) || ownedResources.has(id(row._id)))) } : {}) } });
   } catch { return failure(res); }
 };
 

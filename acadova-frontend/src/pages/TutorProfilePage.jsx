@@ -1,11 +1,12 @@
 import { useToast } from '../context/toastAccess';
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useParams, Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import userService from '../services/userService';
 import sessionService from '../services/sessionService';
 import creditService from '../services/creditService';
-import StarRating from '../components/common/StarRating';
+import PeerReputation from '../components/common/PeerReputation';
+import { sessionRequestTimeError } from '../utils/sessionRequestTime';
 import Alert from '../components/common/Alert';
 import LoadingSpinner from '../components/common/LoadingSpinner';
 import {
@@ -20,6 +21,7 @@ export const TutorProfilePage = () => {
 
   const [tutor, setTutor] = useState(null);
   const [reviews, setReviews] = useState([]);
+  const [reviewError, setReviewError] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -28,6 +30,8 @@ export const TutorProfilePage = () => {
   const [scheduledAt, setScheduledAt] = useState('');
   const [meetingMethod, setMeetingMethod] = useState('online');
   const [requestMessage, setRequestMessage] = useState('');
+  const submittingRef = useRef(false);
+  const [requestedSession, setRequestedSession] = useState(null);
   const [submitting, setSubmitting] = useState(false);
   const [fieldErrors, setFieldErrors] = useState({});
   const [sessionCost, setSessionCost] = useState(null);
@@ -36,12 +40,13 @@ export const TutorProfilePage = () => {
     const fetchTutor = async () => {
       try {
         setLoading(true);
-        setError('');
+        setError(''); setRequestedSession(null);
         const res = await userService.getUserById(id);
         if (res?.data?.role === 'student') {
           setTutor(res.data);
+          setReviews([]); setReviewError('');
           userService.getUserReviews(id).then((reviewResult) => setReviews(reviewResult.data || []))
-            .catch(() => setReviews([]));
+            .catch(() => setReviewError('Reviews could not be loaded. Please refresh to try again.'));
           if (res.data.skillsToTeach?.length > 0) {
             setSessionSubject(res.data.skillsToTeach[0]);
           }
@@ -68,12 +73,14 @@ export const TutorProfilePage = () => {
 
   const handleRequestSession = async (e) => {
     e.preventDefault();
+    if (submittingRef.current || requestedSession) return;
     setError('');
 
 
     const errors = {};
     if (!sessionSubject.trim()) errors.subject = 'Choose a subject.';
-    if (!scheduledAt) errors.scheduledAt = 'Enter a preferred session date.';
+    const timeError = sessionRequestTimeError(scheduledAt);
+    if (timeError) errors.scheduledAt = timeError;
     if (!meetingMethod) errors.meetingMethod = 'Choose a session method.';
     if (!requestMessage.trim()) errors.requestMessage = 'Tell your peer what you would like help with.';
     if (requestMessage.trim().length > 500) errors.requestMessage = 'Your message must be 500 characters or fewer.';
@@ -89,8 +96,8 @@ export const TutorProfilePage = () => {
     }
 
     try {
-      setSubmitting(true);
-      await sessionService.createSession({
+      submittingRef.current = true; setSubmitting(true);
+      const result = await sessionService.createSession({
         tutorId: id,
         subject: sessionSubject.trim(),
         scheduledAt: scheduledAt || undefined,
@@ -98,12 +105,13 @@ export const TutorProfilePage = () => {
         requestMessage: requestMessage.trim(),
       });
 
-      toast('success', `Session requested successfully with ${tutor.name}!`);
+      setRequestedSession(result.data);
+      toast('success', 'Session request sent.');
       refreshUser();
     } catch (err) {
       toast('error', err.message || 'Failed to request session.');
     } finally {
-      setSubmitting(false);
+      submittingRef.current = false; setSubmitting(false);
     }
   };
 
@@ -115,7 +123,7 @@ export const TutorProfilePage = () => {
     return (
       <div>
         <Link to="/tutors" className="btn btn-secondary btn-sm" style={{ marginBottom: 20 }}>
-          <ArrowLeft size={14} /> Back to Peers
+          <ArrowLeft size={14} /> Back to Find Tutors
         </Link>
         <Alert type="danger" message={error || 'Peer not found.'} />
       </div>
@@ -125,7 +133,7 @@ export const TutorProfilePage = () => {
   return (
     <div className="container-narrow tutor-profile-page">
       <Link to="/tutors" className="btn btn-secondary btn-sm" style={{ marginBottom: 24, display: 'inline-flex', gap: 6 }}>
-        <ArrowLeft size={14} /> Back to All Peers
+        <ArrowLeft size={14} /> Back to Find Tutors
       </Link>
 
       <Alert type="danger" message={error} onClose={() => setError('')} />
@@ -153,7 +161,7 @@ export const TutorProfilePage = () => {
             </div>
             <h1 style={{ fontSize: '1.6rem', color: 'var(--navy-900)', marginBottom: '6px' }}>{tutor.name}</h1>
             <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 8 }}>
-            <StarRating rating={tutor.rating ?? 0} size={18} />
+            <PeerReputation peer={tutor} size={18} />
             </div>
           </div>
 
@@ -192,10 +200,10 @@ export const TutorProfilePage = () => {
             Request a Study Session
           </h3>
           <p style={{ fontSize: '0.88rem', color: 'var(--ink-600)', marginBottom: '20px' }}>
-            Book a 1-on-1 collaborative study room with {tutor.name}. Credits transfer only after you confirm completion.
+            Book a 1-on-1 collaborative study room with {tutor.name}. Credits transfer after both participants confirm a verified session, or after a valid Moderator resolution.
           </p>
 
-          <form onSubmit={handleRequestSession}>
+          {requestedSession ? <div className="session-request-success" role="status"><h2>Session request sent</h2><p>{tutor.name} will receive your request and proposed schedule.</p><Link className="btn btn-primary" to={`/sessions/${requestedSession._id || requestedSession.id}`}>View requested session</Link></div> : <form onSubmit={handleRequestSession}>
             <div className="form-group">
               <label className="form-label" htmlFor="subject">Subject / Topic</label>
               <input
@@ -220,10 +228,11 @@ export const TutorProfilePage = () => {
               value={scheduledAt}
               onChange={(e) => setScheduledAt(e.target.value)}
               aria-invalid={Boolean(fieldErrors.scheduledAt)}
+              aria-describedby={fieldErrors.scheduledAt ? 'request-time-error' : undefined}
               required
             />
               <span className="form-hint">Enter your local date and time. Each participant sees it in their own timezone.</span>
-              {fieldErrors.scheduledAt && <span className="form-error">{fieldErrors.scheduledAt}</span>}
+              {fieldErrors.scheduledAt && <span className="form-error" id="request-time-error">{fieldErrors.scheduledAt}</span>}
             </div>
 
             <div className="form-group">
@@ -278,12 +287,12 @@ export const TutorProfilePage = () => {
             >
               {submitting ? 'Sending Request...' : 'Send Session Request'}
             </button>
-          </form>
+          </form>}
         </div>
       </div>
       <section className="card peer-reviews" aria-labelledby="peer-reviews-heading">
         <h2 id="peer-reviews-heading">Peer reviews</h2>
-        {reviews.length === 0 ? <p>No visible reviews yet.</p>
+        {reviewError ? <Alert type="danger" message={reviewError} /> : reviews.length === 0 ? <p>No visible reviews yet.</p>
           : reviews.map((review) => <article key={review.id}>
             <strong>{review.reviewerName}</strong> · {review.rating} out of 5
             {review.comment && <p>{review.comment}</p>}

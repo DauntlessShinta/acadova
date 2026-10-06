@@ -13,14 +13,14 @@ Prioritize three Home choices: Find someone to teach me, Explore learning, Share
 ## Navigation architecture
 
 - Desktop: a compact sticky utility bar above the content plus a fixed 224px left primary sidebar. Utility height is 64px. This hybrid pattern is a synthesis supported by sticky-navigation, hierarchy and keyboard guidance; the tool did not prescribe this exact shell.
-- Sidebar: Acadova identity; Home, Find Tutors, Learning, Sessions, Messages, Credits, Profile; Help near the bottom. Use icon plus text and a distinct active state. Fit normal laptop heights without independent sidebar scrolling.
-- Utilities: scoped discovery search, Messages shortcut, Notifications, compact Credits, avatar/account. Avoid a second full primary navigation row. Notifications appear once in the current responsive header; the hidden desktop/mobile variant is not mounted to create redundant polling.
-- Tablet/mobile at widths of 1024 CSS pixels or less: compact identity/search/Notifications/More header, four bottom destinations, other pages/account inside More. No desktop sidebar. Student navigation uses width only; short desktop viewports retain the sidebar and utility bar. Header height is reserved in normal flow with a shared 24px content gap.
+- Sidebar: Acadova identity; Home, Find Tutors, Learning, Sessions, Messages, Credits, Profile; Help near the bottom. Use icon plus text and a distinct active state. Fit normal laptop heights; permit controlled vertical sidebar scrolling on short desktop screens without replacing primary navigation.
+- Utilities: compact Find Tutors shortcut and search disclosure, Messages shortcut, Notifications, compact Credits, and visible account disclosure with avatar/name/role/chevron. Avoid a second full primary navigation row. Notifications appear once in the current responsive header; the hidden desktop/mobile variant is not mounted to create redundant polling.
+- Tablet/mobile at widths of 1024 CSS pixels or less: compact identity/search/Notifications/account/More header, four bottom destinations, and other pages inside More. No desktop sidebar. Student navigation uses width only; short desktop viewports retain the sidebar and utility bar. Header height is reserved in normal flow with a shared 24px content gap.
 - Staff: preserve the separate compact management shell and existing authorized destinations. Do not add Student links for visual symmetry.
 
 ## Search contract
 
-Use one prominent discovery control with explicit scopes: Tutors by skill and Learning topics. Do not suggest people-name or combined ranked search support.
+On /tutors, use the page search as the single prominent discovery control. Optional utility search opens the existing Modal with explicit Tutors by skill and Learning topics scopes. Do not suggest people-name or combined ranked search support.
 
 Tutor search routes to the existing /tutors?subject= endpoint, which matches teaching skills and returns at most 50 Students. Learning search routes to /learning?q= and filters the existing published-topic response by title (with legacy name fallback)/description; the API returns at most 100 topics. It does not search resource bodies or the entire database. Encode query values, limit supported query length, and preserve the existing Tutor search-symbol restrictions. Empty queries browse the selected scope.
 
@@ -69,3 +69,31 @@ Fetch the current messages endpoint only with Chat selected in a visible, focuse
 Global Messages opens a 420px desktop conversation drawer or full-width compact-screen picker at 1024px and below. The picker uses existing Session records plus recent notifications without reading message bodies. Selecting a conversation opens the single full Session Room Chat. The existing full-page Messages route uses the same picker. Display peer, subject and honest notification activity; never fabricate snippets or unread totals. Recent activity is limited to the latest 50 notifications.
 
 Use one authenticated, account-keyed notification provider for the Bell, picker and optional audio; keep backend notifications and OneSignal delivery intact. Poll notifications every 60 seconds while visible, on focus and after relevant read actions. Sound defaults off, requires a user gesture, excludes initial history, own sends and the visible active thread, and has a 10-second cooldown. Persist the opt-in separately per account in local storage. Audio is supplemental; browser restrictions and storage failures must not prevent normal messaging or in-app feedback.
+
+## Final hardening audit decisions (2026-10-06)
+
+Retain the P7.1A/B palette, typography, widths, shell spacing and 1024px breakpoint. A repeated conversation navigation must reopen Chat even at the same pathname/hash, without remounting the room or discarding its draft. Staff Learning tabs use canonical #manage-panel-topics/resources/modules URLs and restore on history navigation; older queue hashes are accepted for compatibility.
+
+Use visible-review-derived reputation: no reviews means "No ratings yet"; unavailable counts must not borrow the stored five-star default. Display actual average/count once. Read-only stars are an image with a text alternative; interactive rating buttons expose their selected state.
+
+Authoritative protected ACCOUNT_SUSPENDED responses clear auth and return to Login with persistent context. Ordinary 403 responses retain the session. A stale account response must not clear a newer token.
+
+Future-date errors belong beside the request date field and move focus there. Incomplete assessment submission focuses the first unanswered question. Failed Learning, wallet, assessment and staff loads must not pretend the database is empty or manufacture zero totals. Show missing published module materials explicitly without exposing archived bodies. Admin role conflicts persist with the backend explanation.
+
+Staff tables may scroll within their own region. The Users table retains readable name/identifier widths, a keyboard-focusable labeled scroll region and reachable action columns; never compress identifiers into one-character columns or force page overflow. Existing confirmation and link conventions remain: consequential writes confirm; reading, tabs, Chat, profile and Join actions do not.
+
+Focused UI/UX Pro Max local searches informed this audit (focus visibility, inline errors, deep links/history, accessible React queries). Its palette/font/style suggestions did not initiate another design system or redesign. The final report records commands and validation limits.
+
+## Final implementation / stabilization decisions (2026-10-06)
+
+Use one shared AccountMenu for all roles. Student desktop account lives in the utility bar with avatar, name, Student role and chevron; its menu contains Profile and Sign out. Staff desktop account lives at sidebar bottom, with the actual Administrator/Moderator label and Sign out only. Compact headers expose an account trigger directly. Remove duplicate noninteractive identity displays. Every Sign out opens the shared Confirm dialog: **Sign out of Acadova?** / **You'll need to sign in again to continue using your account.** / **Stay signed in** / **Sign out**. If drafts exist, explain their loss in the same dialog. Cancel preserves auth and drafts.
+
+Use width, never desktop height or browser zoom, to choose navigation. Desktop begins at 1025 CSS px; compact begins at 1024 and below. Staff short desktop sidebars may scroll vertically; keep their account actions within reach. Group Student Home/Find Tutors/Learning, Sessions/Messages/Credits, then Profile. Put How Acadova works directly after the secondary group, avoiding a stranded link. Keep the blue/white tokens and existing destinations.
+
+Profile and Tutor Profile use a maximum 1040px desktop wrapper with two readable columns and a single compact column. Associate skill labels with stable IDs; keep the input present, disabled at the existing tag-count limit, and enforce the backend's 50-character skill length. Staff workspace headers and headings are compact, plain surfaces. Tables scroll only inside their own region. Audit filters form a deliberate grid and expose readable action labels. Analytics use existing data and place shorter panels together.
+
+Learning uses topic/module/resource/lesson query parameters as navigation state and view=contribute for its existing contribution tab; Continue resolves the local resume pointer into that query. Topic/library breadcrumbs and actual browser Back/Forward update both URL and content, with stale asynchronous responses ignored. Within an accessible module, resource access is module entitlement OR standalone resource entitlement OR free resource. Module access never creates standalone ownership. An unowned paid module remains locked; independently owned resources remain accessible through the standalone route.
+
+Topic, Resource, Module and Assessment publication all use shared confirmation with title, Student audience, applicable price and draft-edit limitation. Draft saves remain direct. Staff editors and long resource bodies use disclosure. Unavailable queue sources/notifications are never authoritative zeros/empty states. Home separates Upcoming session from Needs your attention. Cancelled/declined/resolved-invalid Progress marks unachievable later steps Not applicable, preserving recorded evidence.
+
+Canonical scheduled cancellation is available only before either check-in, start or settlement evidence; use **Cancel this session?** and explain cancellation for both participants. Chat retains its bounded history/composer and P7.1B behavior with one fewer decorative outer card boundary. Message send retry and the whole-thread read race remain deferred, as recorded in FINAL_STABILIZATION_REPORT.md. Legacy accepted/completed compatibility remains an explicit backend exception to the stronger canonical workflow.

@@ -2,6 +2,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const mongoose = require('mongoose');
 const User = require('../models/User');
+const Session = require('../models/Session');
 const AuditLog = require('../models/AuditLog');
 const Rating = require('../models/Rating');
 const moderator = require('../controllers/moderatorController');
@@ -35,9 +36,12 @@ test('audit writer persists only whitelisted metadata and rejects unauthenticate
 
 test('Admin role and status changes are stale-safe, audited, and preserve account data', async () => {
   const original = { start: mongoose.startSession, findById: User.findById,
-    update: User.findOneAndUpdate, auditCreate: AuditLog.create };
+    update: User.findOneAndUpdate, lock: User.updateOne, sessionExists: Session.exists, sessionFind: Session.find, auditCreate: AuditLog.create };
   const user = { _id: studentId, name: 'Student', email: 'student@example.test', role: 'student',
     credits: 88, emailVerified: true, suspendedAt: null, sessions: ['historical-session'] };
+  User.updateOne = async () => ({ matchedCount: 1 });
+  Session.exists = () => ({ session: async () => null });
+  Session.find = () => ({ select() { return this; }, session() { return this; }, lean: async () => [] });
   const logs = [];
   mongoose.startSession = async () => ({ async withTransaction(callback) {
     const before = { ...user }; const count = logs.length;
@@ -66,20 +70,22 @@ test('Admin role and status changes are stale-safe, audited, and preserve accoun
       reason: 'Repeated verified abuse' }), suspend);
     assert.equal(suspend.statusCode, 200); assert.ok(user.suspendedAt);
     assert.equal(logs[2].action, ACTIONS.suspended);
-    assert.equal(JSON.stringify(logs).includes('Repeated verified abuse'), false);
+    assert.equal(logs[2].metadata.suspensionReason, 'Repeated verified abuse');
     const self = response(); await admin.updateUserStatus(request({ status: 'suspended',
       reason: 'Repeated verified abuse' }, adminId), self);
     assert.equal(self.statusCode, 400);
     const reactivate = response(); await admin.updateUserStatus(request({ status: 'active' }), reactivate);
     assert.equal(reactivate.statusCode, 200); assert.equal(user.suspendedAt, null);
     assert.equal(logs[3].action, ACTIONS.reactivated);
+    assert.equal(logs[2].metadata.suspensionReason, 'Repeated verified abuse');
+    assert.equal(user.suspensionReason, null);
     assert.equal(user.credits, 88); assert.deepEqual(user.sessions, ['historical-session']);
     AuditLog.create = async () => { throw new Error('Audit unavailable'); };
     const failed = response(); await admin.updateUserRole(request({ role: 'moderator' }), failed);
     assert.equal(failed.statusCode, 503); assert.equal(user.role, 'student');
   } finally {
     mongoose.startSession = original.start; User.findById = original.findById;
-    User.findOneAndUpdate = original.update; AuditLog.create = original.auditCreate;
+    User.findOneAndUpdate = original.update; User.updateOne = original.lock; Session.exists = original.sessionExists; Session.find = original.sessionFind; AuditLog.create = original.auditCreate;
   }
 });
 

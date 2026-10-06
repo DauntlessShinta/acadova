@@ -110,6 +110,13 @@ try {
   assert(innerWidth > 1024 ? drawer.getBoundingClientRect().width <= 420 : drawer.getBoundingClientRect().width >= document.documentElement.clientWidth - 2, 'Responsive Messages drawer');
   const pickerReads = reads; await pause(250); assert(reads === pickerReads, 'Conversation picker read messages');
   document.querySelector('.conversation-link').click(); await until(() => !document.querySelector('.messages-drawer') && visible('#room-panel-messages').length, 'Single full-room Chat');
+  await tab('details');
+  assert(document.querySelector('#route-probe').dataset.path === '/sessions/test', 'Same Session route');
+  openMessages(); await until(() => document.querySelector('.conversation-link'), 'Same conversation picker');
+  document.querySelector('.conversation-link').click();
+  await until(() => !document.querySelector('.messages-drawer') && visible('#room-panel-messages').length, 'Same URL/hash must reactivate Chat');
+  assert(document.querySelector('#session-message').value === 'Preserve this draft', 'Same conversation navigation lost draft');
+  checks.push('Same conversation/hash after Details always opens Chat and retains the draft');
   assert(document.querySelectorAll('.message-composer').length === 1, 'Duplicate chat state');
   openMessages(); await until(() => document.querySelector('.messages-drawer'), 'Covered Chat picker');
   await pause(250); const coveredReads = reads; await pause(400); assert(reads === coveredReads, 'Modal-covered Chat cleared unread');

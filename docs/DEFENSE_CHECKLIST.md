@@ -1,3 +1,83 @@
+# Acadova final defense rehearsal and manual sign-off
+
+Current runbook: 2026-10-06. Branch `p7-ux-hardening`, pushed baseline `201bc07`; final hardening changes remain uncommitted and undeployed. P7.1A/P7.1B are completed historical work. The [final stabilization report](FINAL_STABILIZATION_REPORT.md) records current code validation; this checklist records the remaining live evidence.
+
+Automated Chrome checks use real React/layout with mocked HTTP, at 1648x920, 1440x900, 1366x768, 1366x600, 1280x800, 1025x920, 1024x920, 768x1024 and 390x844, device scale 1 and baseline 100% zoom. They do not prove MongoDB persistence, provider delivery or a completed multi-account live session. No existing runtime, account balance or earlier fixture checkpoint is assumed current. The archived P7 handoff below is historical reference only.
+
+## Final stabilization sign-off additions
+
+- [ ] At browser zoom 100%, use all nine sizes above. On 1366x600, retain desktop staff navigation and scroll the sidebar if needed; open account actions and keep them visible. Check table actions via the table's own keyboard-scroll region. No page overflow or 90% zoom workaround.
+- [ ] For Student, Moderator and Admin, open the visible account disclosure, choose Sign out, then Stay signed in: token/account/drafts remain intact. Repeat and confirm Sign out: existing logout clears auth and returns to Login. Staff have no fabricated Profile route.
+- [ ] In a disposable replica set, submit equivalent Session requests concurrently and retry a lost response while the request remains in flight. Expect one record/notification and one 409. Try another date, another Tutor, a different subject, and a new request after settled completion/decline/cancellation/resolution: legitimate requests remain allowed.
+- [ ] Accept pending alternatives at the exact same UTC instant with a shared participant, including Learner on one Session and Tutor on the other. Only one acceptance commits; the other returns 409. Test accepted reschedule conflict: original time/proposal remain intact. Do not claim interval-overlap prevention.
+- [ ] Cancel a canonical scheduled Session as either participant before any check-in: shared confirmation, cancelled for both, no ledger transfer, peer notification, old reminder invalidated. Cancel the dialog: no mutation. After either check-in/start/settlement evidence, action disappears and API rejects it. Race cancellation with check-in: one valid conditional outcome, no partial state.
+- [ ] Verify Learning query selections, library breadcrumb, same-route navigation, actual browser Back/Forward and Continue. Query removal must clear old Topic/Module state; stale responses must not restore a departed view.
+- [ ] Buy a standalone paid Resource, then view it inside a free Module without module ownership: its body is accessible; another unpaid Resource stays locked. Paid Module ownership allows in-module access without new standalone entitlements. An unowned paid Module itself stays locked.
+- [ ] Publish each Topic/Resource/Module/Assessment: dialog identifies content, Student audience, applicable price and edit limitation. Cancel writes nothing; Confirm publishes once. Draft edits remain direct. Check Admin context and All assessments library label.
+- [ ] Suspend a disposable account with a non-sensitive reason, then reactivate. Admin Audit Logs retains the reason on the historical suspension event; public peer responses never expose it. Older historical reasons are not backfilled.
+- [ ] Verify wrong-password known/unknown ordinary failures both return generic 401; persisted failure count, third-failure cooldown and recovery/reset work with real MongoDB. Existing cooldown responses remain 429. Confirm audit events and unchanged IP limiter.
+- [ ] Explain deferred message retry/read race, absent interval duration, non-reserved credits and legacy completion compatibility honestly. Rehearse all three core demo flows plus Admin/security checks against this exact candidate.
+
+## Preparation
+
+- [ ] Use an owner-approved disposable test environment/accounts: Students A/B/C, Moderator, Admin. Verify deployed/source revision and transaction-capable MongoDB first. Do not repoint local scripts at production.
+- [ ] Privately record effective credit rules and initial balances. Credits have no monetary value; request costs are not escrowed/reserved. Use a future time in the viewer's timezone, and record the corresponding UTC instant.
+- [ ] Confirm email verification/recovery, API origin and optional provider configuration using [production smoke checks](PRODUCTION_SMOKE_CHECKLIST.md). Never save credentials, tokens, secrets or personal records in this repository.
+
+## A. Peer tutoring
+
+- [ ] Register, review policies, verify once, login, finish/skip onboarding; refresh and logout/login to verify profile/setup persistence and exactly one configured initial grant.
+- [ ] Find eligible Student B by teaching skill. Suspended/explicitly unverified Students are unavailable. Historical missing-verification compatibility is deliberate. Unrated B says **No ratings yet**; completed legitimate reviews later show actual average/count.
+- [ ] Request a session with a future local date/time, supported meeting method and message. Try past/invalid time, self-request and unavailable target; verify clear errors and no new Session. Record request cost; no debit/reservation at request/acceptance.
+- [ ] B receives in-app notification and accepts. Propose/accept/decline a reschedule: proposer cannot accept; agreed schedule changes only on acceptance. Inspect both participant views.
+- [ ] Tutor saves a valid HTTPS meeting URL or face-to-face location through Details. First save is direct; replacing meaningful existing data confirms. Invalid input preserves previous data. Learner can Join but cannot overwrite tutor-owned details. Opening a meeting link does not establish attendance or automatically check in.
+- [ ] Open global Messages, select this Session, switch to Details, select the same conversation again: Chat activates. Wait three 5-second polls, preserve draft and scroll position, send once, safely test failed-send draft retention. Check other participant delivery/read state, drawer keyboard focus and notification behavior.
+- [ ] Both explicitly check in within the supported window (15 minutes before through 4 hours after agreed start). Finish; both positively confirm. Verify Completed, exactly one configured transfer/ledger and no repeat transfer after refresh/retry. Record insufficient-funds failure honestly if exercised; no escrow guarantee.
+- [ ] Learner reviews only after legitimate completed/settled session. Hide the last visible review through Moderator, verify unrated discovery/profile, restore and verify actual reputation.
+- [ ] Student C cannot read/write unrelated Session or messages. Historical accepted/completed compatibility remains supported; demonstrate canonical workflow rather than inventing attendance proof.
+
+## B. Self-paced learning
+
+- [ ] Browse published Topic -> ordered Module -> text/HTTPS Resource. Check real titles, compact cards, breadcrumbs, previous/next and empty/loading/error states.
+- [ ] Leave and resume in the same browser/account. Explain this is a local resume pointer, not durable backend completion or cross-device progress.
+- [ ] Try incomplete assessment: focus moves to the first unanswered question. Try failed/pass/retry; only a qualifying pass awards the configured reward, once, with ledger history.
+- [ ] For approved paid Resource and Module, inspect price/confirmation, unlock once, refresh/reopen; check entitlement and one debit. Module access does not grant standalone ownership of every paid resource. Insufficient credits cannot expose protected content.
+- [ ] With owner-approved archived/missing module resource, verify the accessible module warns that some resources are unavailable; no archived body appears. Existing entitlement persists. No refund or dependency-blocking policy is implemented.
+
+## C. Moderation
+
+- [ ] Review dispute queue and detail with actual schedule/check-in/confirmation evidence. Ordinary successful sessions do not need Moderator approval. Conflicting confirmations do not automatically dispute; a participant explicitly disputes supported awaiting-validation/no-show state.
+- [ ] Resolve a disposable unsettled dispute with explicit outcome/reason. Confirm settlement once or cancellation without transfer; inspect audit and participant notifications. A prior credit transaction disables both resolution actions and explains the existing backend restriction.
+- [ ] From Needs Attention open Topics, Resources and Modules: destination tab matches the canonical URL; switch tabs, refresh and use browser Back/Forward. Review publication/rejection/archive with meaningful confirmation and truthful impact text.
+- [ ] Review Assessments and Reviews, including empty/error/retry states. Flags recommend review rather than claiming proven fraud. Moderator cannot access Admin Users, Audit Logs, Security or credit configuration.
+
+## D. Admin
+
+- [ ] Review Overview/analytics, Users, Credits, Audit Logs and Security at all nine current viewport sizes. On narrow Users table, keyboard-focus its scroll region and reach role/status actions by horizontal scrolling without page overflow.
+- [ ] Attempt Student -> Moderator with active Session as Learner and Tutor: clear 409, role unchanged, no partial audit. Test each supported in-flight state; terminal history alone permits promotion. Legacy unsettled completed and disputable no-show remain guarded; a single matching legacy payment permits promotion even without newer confirmation fields. Wrong/duplicate legacy payments remain guarded.
+- [ ] In an owner-approved disposable database, verify real concurrent request-versus-promotion and request-versus-suspension races. Either serialized outcome must preserve eligibility and avoid stranded newly-created sessions. Mocked tests are not a real transaction/race proof.
+- [ ] Suspend disposable signed-in C with reason. Its next authoritative protected API denial clears frontend token/shell and shows suspension notice at Login. Generic forbidden response must retain authentication. A stale prior-account response must not clear a newer login. Reactivate C and verify normal login.
+- [ ] Exercise approved credit-rule change and referenced manual correction; confirm prospective effects, ledger/audit, retry/idempotency and sufficient-balance guards. No direct balance editing without a recorded reason.
+- [ ] Verify Audit/Security/credit initial-load failures show unavailable/retry, not false empty data or invented balances.
+
+## E. Security and operations
+
+- [ ] Verify Student/Moderator/Admin direct-route/API boundaries, unrelated Session access, protected learning bodies and safe returned fields. Verify password recovery invalidates prior tokens; invalid/expired/reused links remain clear.
+- [ ] On disposable C, exercise limited consecutive wrong-password cooldown and successful recovery without flooding or permanent account lock. Verify selected security audit events; Security Center is not a generalized SIEM.
+- [ ] Follow production proxy verification: actual trusted socket/forwarding topology, two distinct clients and spoofed headers. Do not infer Render topology from local tests.
+- [ ] Verify required deployed indexes, legacy conflicts, SPA deep-link refresh, CORS, received production email URL and actual deployed revision. Health alone does not establish database/provider readiness.
+- [ ] If enabled, verify Google audience/origin/consent and Calendar Meet independently. Manual HTTPS meeting links remain fallback; no attendance API. Verify push delivery and explicitly scheduled reminder scan separately from durable MongoDB notifications.
+
+## Final visual/accessibility sign-off
+
+- [ ] At 1648x920, 1024x920, 1025x920 and 390x844, 100% zoom: auth entry, Home, discovery/profile, Learning/topic/module/resource, Assessments, Credits, Sessions/Room, Messages, notification/account menus, Help, all Moderator and Admin pages.
+- [ ] Sidebar/mobile navigation are exclusive, headings below utility bar, desktop scoped search visible; no clipped actions, covered composer, drawer/modal overlap or unintended whole-page overflow. Staff tables may scroll inside their labeled region.
+- [ ] Keyboard Tab/Shift-Tab, visible focus, first-invalid focus, labels/error associations, Escape/focus return, status text, external links, long names, loading/empty/error states and viewport-visible toasts. Test real screen reader, contrast, touch input, text zoom and reduced-motion settings; these are MANUAL REQUIRED.
+- [ ] Confirm consequential changes, never harmless open/tab/Chat/Join/profile/notification actions. Record private screenshots and observed outcomes against the exact candidate revision. Repair/retest any genuine failure before final sign-off.
+
+<details>
+<summary>Archived P7 handoff (historical; not current runtime instructions)</summary>
+
 # Acadova P7 defense and browser handoff
 
 P7 visual sign-off remains **pending**. Automated regression is green; this document is the remaining manual proof checklist, not a claim that these flows were observed. The agent's built-in browser became unavailable on 2026-10-04. Continue from the prepared local records; do not repeat environment setup or baseline auditing.
@@ -95,3 +175,5 @@ Two visual defects were reproduced and changed: onboarding could become blank on
 - [ ] Record observations/screenshots and any failure in the original isolated runtime's `.p7-local/progress.md`; fix/retest concrete defects before declaring P7 complete.
 
 Automatic Google sign-in/Calendar Meet is optional and unconfigured locally. Manual external meeting links are the current reliable path. OneSignal/email delivery is disabled for fixtures; durable in-app notifications remain available. Reminder scanning is a separate manual command, not continuously scheduled on current hosting. Acadova Credits have **no real-money value**.
+
+</details>

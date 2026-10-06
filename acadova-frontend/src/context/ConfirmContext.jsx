@@ -21,7 +21,7 @@ export function ConfirmProvider({ children }) {
   return <ConfirmContext.Provider value={confirm}>
     {children}
     <Modal isOpen={Boolean(decision)} onClose={() => finish(false)} title={decision?.title}
-      footer={<><button type="button" className="btn btn-secondary" onClick={() => finish(false)}>Cancel</button>
+      footer={<><button type="button" className="btn btn-secondary" onClick={() => finish(false)}>{decision?.cancelLabel || 'Cancel'}</button>
         <button type="button" className={`btn ${decision?.destructive ? 'btn-danger' : 'btn-primary'}`}
           disabled={decision?.input && input.trim().length < (decision.minLength || 1)}
           onClick={() => finish(decision?.input ? input.trim() : true)}>{decision?.label}</button></>}>

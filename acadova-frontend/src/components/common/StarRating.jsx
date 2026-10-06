@@ -6,6 +6,7 @@ export const StarRating = ({
   maxStars = 5,
   size = 18,
   readOnly = true,
+  showValue = true,
   onChange = () => {},
 }) => {
   const [hoverRating, setHoverRating] = useState(0);
@@ -13,7 +14,7 @@ export const StarRating = ({
   const displayRating = hoverRating || rating;
 
   return (
-    <div className="star-rating" role="radiogroup" aria-label={`Rating: ${rating} out of ${maxStars}`}>
+    <div className="star-rating" role={readOnly ? 'img' : 'group'} aria-label={`Rating: ${rating} out of ${maxStars}`}>
       {Array.from({ length: maxStars }, (_, index) => {
         const starValue = index + 1;
         const isFilled = starValue <= displayRating;
@@ -21,6 +22,7 @@ export const StarRating = ({
         if (readOnly) {
           return (
             <Star
+              aria-hidden="true"
               key={index}
               size={size}
               style={{
@@ -40,8 +42,10 @@ export const StarRating = ({
             onMouseEnter={() => setHoverRating(starValue)}
             onMouseLeave={() => setHoverRating(0)}
             aria-label={`${starValue} star`}
+            aria-pressed={rating === starValue}
           >
             <Star
+              aria-hidden="true"
               size={size}
               style={{
                 fill: isFilled ? 'var(--brass-500)' : 'transparent',
@@ -53,7 +57,7 @@ export const StarRating = ({
           </button>
         );
       })}
-      {readOnly && (
+      {readOnly && showValue && (
         <span className="mono" style={{ fontSize: '0.85rem', fontWeight: 600, marginLeft: 4, color: 'var(--ink-700)' }}>
           {Number(rating).toFixed(1)}
         </span>
@@ -63,4 +67,3 @@ export const StarRating = ({
 };
 
 export default StarRating;
-

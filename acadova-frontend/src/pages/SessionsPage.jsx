@@ -117,7 +117,7 @@ export const SessionsPage = () => {
       ) : !sessionsAvailable ? (
         <EmptyState icon={Clock} title="Sessions unavailable" description="Sessions could not be loaded. Try again." actionText="Retry" onAction={() => fetchSessions()} />
       ) : filteredSessions.length === 0 ? (
-        <EmptyState icon={Clock} title="No sessions in this view" description={emptyDescription} actionText={roleFilter !== 'teaching' ? 'Find Peers' : undefined} onAction={roleFilter !== 'teaching' ? () => navigate('/tutors') : undefined} />
+        <EmptyState icon={Clock} title="No sessions in this view" description={emptyDescription} actionText={roleFilter !== 'teaching' ? 'Find Tutors' : undefined} onAction={roleFilter !== 'teaching' ? () => navigate('/tutors') : undefined} />
       ) : (
         <div className="student-session-list">
           {filteredSessions.map((session) => <SessionCard key={session._id} session={session} currentUser={user} actionLoading={actionLoading} onStatusChange={handleUpdateStatus} />)}

@@ -11,7 +11,7 @@ test('peer reviews expose only visible review fields and require a Student profi
   const peerId = '507f1f77bcf86cd799439011';
   let filter;
   User.exists = async (query) => {
-    assert.deepEqual(query, { _id: peerId, role: 'student' });
+    assert.deepEqual(query, { _id: peerId, role: 'student', suspendedAt: null, emailVerified: { $ne: false } });
     return true;
   };
   Rating.find = (query) => {
@@ -26,7 +26,7 @@ test('peer reviews expose only visible review fields and require a Student profi
     json(body) { this.body = body; return this; } };
   await getUserReviews({ params: { id: peerId } }, res);
   assert.equal(res.statusCode, 200);
-  assert.deepEqual(filter, { toUser: peerId, isHidden: false });
+  assert.deepEqual(filter, { toUser: peerId, isHidden: { $ne: true } });
   assert.deepEqual(res.body.data, [{ id: peerId, rating: 5,
     comment: 'Helpful', reviewerName: 'A peer', createdAt: undefined }]);
   User.exists = async () => false;

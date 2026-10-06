@@ -5,7 +5,7 @@ import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import userService from '../services/userService';
 import TagInput from '../components/common/TagInput';
-import StarRating from '../components/common/StarRating';
+import PeerReputation from '../components/common/PeerReputation';
 import { Save, Mail } from 'lucide-react';
 
 export const ProfilePage = () => {
@@ -110,7 +110,7 @@ const ProfileEditor = () => {
 
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.9rem' }}>
               <span style={{ color: 'var(--ink-600)' }}>Peer Rating:</span>
-              <StarRating rating={user?.rating || 5.0} size={15} />
+              <PeerReputation peer={user} size={15} />
             </div>
 
             {user?.createdAt && (
@@ -148,10 +148,11 @@ const ProfileEditor = () => {
             </div>
 
             <div className="form-group">
-              <label className="form-label">
+              <label className="form-label" htmlFor="profile-skills-teach">
                 Skills You Can Teach
               </label>
               <TagInput
+                id="profile-skills-teach"
                 tags={skillsToTeach}
                 onChange={setSkillsToTeach}
                 placeholder="Add skill (e.g. React, Java, Database)..."
@@ -160,15 +161,16 @@ const ProfileEditor = () => {
             </div>
 
             <div className="form-group">
-              <label className="form-label">
-                Skills You Want to Learn (Learner Role)
+              <label className="form-label" htmlFor="profile-skills-learn">
+                Skills You Want to Learn
               </label>
               <TagInput
+                id="profile-skills-learn"
                 tags={skillsToLearn}
                 onChange={setSkillsToLearn}
                 placeholder="Add skill (e.g. Python, Calculus)..."
               />
-              <span className="form-hint">Used to recommend relevant student peers.</span>
+              <span className="form-hint">Describe the skills you want to study.</span>
             </div>
 
             <button

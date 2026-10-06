@@ -11,7 +11,7 @@ import './CreditsPage.css';
 export const CreditsPage = () => {
   const { credits, refreshUser } = useAuth();
   const [history, setHistory] = useState([]);
-  const [summary, setSummary] = useState({ recordedEarned: 0, recordedSpent: 0 });
+  const [summary, setSummary] = useState(null);
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -28,6 +28,7 @@ export const CreditsPage = () => {
       setHasMore(Boolean(res?.pagination?.hasMore));
       await refreshUser();
     } catch (err) {
+      setSummary(null);
       setError(err.message || 'Failed to load credit activity');
     } finally {
       setLoading(false);
@@ -55,9 +56,9 @@ export const CreditsPage = () => {
       <div className="stat-grid credit-wallet-balance">
         <StatCard title="Available credits" value={`${credits} credits`}
           subtitle="Current spendable balance" icon={Coins} color="var(--brass-600)" />
-        <StatCard title="Recorded earned" value={`${summary.recordedEarned} credits`}
+        <StatCard title="Recorded earned" value={summary ? `${summary.recordedEarned} credits` : 'Unavailable'}
           subtitle="Incoming ledger activity" icon={ArrowUpRight} color="var(--success-text)" />
-        <StatCard title="Recorded spent" value={`${summary.recordedSpent} credits`}
+        <StatCard title="Recorded spent" value={summary ? `${summary.recordedSpent} credits` : 'Unavailable'}
           subtitle="Outgoing ledger activity" icon={ArrowDownLeft} color="var(--brass-700)" />
       </div>
       <p className="credit-wallet-note">
@@ -71,7 +72,7 @@ export const CreditsPage = () => {
           <h2 id="credit-history-heading">Credit activity</h2>
         </div>
         {loading && page === 1 ? <LoadingSpinner text="Loading credit activity..." size={32} />
-          : <CreditActivityList history={history} />}
+          : error && history.length === 0 ? <p>Credit activity is unavailable. Use Refresh to try again.</p> : <><CreditActivityList history={history} />{error && <p>These are previously loaded entries. Use Refresh for current activity.</p>}</>}
         {hasMore && <button type="button" className="btn btn-secondary btn-sm"
           onClick={() => fetchCreditHistory(page + 1)} disabled={loading}>
           {loading ? 'Loading...' : 'Load more activity'}

@@ -351,7 +351,7 @@ export const LandingPage = () => {
               </div>
               <div className="landing-example-balance">
                 <span>Example credit balance</span>
-                <strong>2 credits</strong>
+                <strong>20 credits (example)</strong>
               </div>
             </div>
 

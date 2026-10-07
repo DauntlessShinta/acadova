@@ -161,34 +161,33 @@ export const FindTutorsPage = () => {
   };
 
   return (
-    <div>
+    <div className="tutor-discovery-page">
       {/* Header */}
-      <div style={{ marginBottom: '32px' }}>
-        <span style={{ fontSize: '0.85rem', color: 'var(--brass-600)', fontFamily: 'var(--font-body)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+      <header className="student-page-header"><div>
+        <span className="student-eyebrow">
           Peer tutoring
         </span>
-        <h1 style={{ fontSize: '2rem', color: 'var(--navy-900)', margin: '4px 0 8px' }}>
+        <h1>
           Find Tutors
         </h1>
-        <p style={{ color: 'var(--ink-600)', maxWidth: '640px' }}>
+        <p>
           Discover students who can help with the subjects you want to learn, then request a peer session using credits.
         </p>
-      </div>
+      </div></header>
 
       <Alert type="danger" message={error} onClose={() => setError('')} />
 
       {/* Search & Subject Chips Bar */}
-      <div className="card" style={{ marginBottom: '16px', padding: '16px' }}>
-        <form onSubmit={handleSearchSubmit} style={{ display: 'flex', gap: '12px', marginBottom: '18px', flexWrap: 'wrap' }}>
-          <div style={{ position: 'relative', flex: 1, minWidth: '240px' }}>
+      <div className="card discovery-filters">
+        <form onSubmit={handleSearchSubmit} className="discovery-search-form" role="search" aria-label="Find tutors">
+          <div className="search-input-wrap">
             <label className="sr-only" htmlFor="tutor-search">Search by skill or subject</label>
-            <Search size={18} style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)', color: 'var(--ink-400)' }} />
+            <Search size={18} aria-hidden="true" />
             <input
               id="tutor-search"
-              type="text"
+              type="search"
               className="form-input"
-              style={{ paddingLeft: '40px' }}
-              placeholder="Search by subject, technology, or topic (e.g. Java, React, SQL)..."
+              placeholder="Subject or skill, e.g. Java"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
             />
@@ -199,26 +198,17 @@ export const FindTutorsPage = () => {
         </form>
 
         {/* Filter Chips */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-          <span style={{ fontSize: '0.82rem', fontWeight: 600, color: 'var(--ink-500)', display: 'flex', alignItems: 'center', gap: 4 }}>
-            <Filter size={14} /> Quick Filter:
+        <div className="discovery-subject-filters" role="group" aria-label="Filter tutors by subject">
+          <span className="discovery-filter-label">
+            <Filter size={14} aria-hidden="true" /> Subjects
           </span>
           {POPULAR_SUBJECTS.map((subj) => (
             <button
               key={subj}
               type="button"
               onClick={() => handleFilterClick(subj)}
-              style={{
-                background: selectedSubjectFilter === subj ? 'var(--navy-900)' : 'var(--bg-subtle)',
-                color: selectedSubjectFilter === subj ? '#ffffff' : 'var(--ink-700)',
-                border: `1px solid ${selectedSubjectFilter === subj ? 'var(--navy-900)' : 'var(--border-subtle)'}`,
-                padding: '5px 12px',
-                borderRadius: 'var(--radius-full)',
-                fontSize: '0.82rem',
-                fontWeight: 500,
-                cursor: 'pointer',
-                transition: 'all 0.15s ease',
-              }}
+              className="subject-filter-chip"
+              aria-pressed={selectedSubjectFilter === subj}
             >
               {subj}
             </button>
@@ -233,7 +223,9 @@ export const FindTutorsPage = () => {
         <EmptyState
           icon={GraduationCap}
           title="Tutor discovery unavailable"
-          description="Refresh the page or try your search again."
+          description="Tutors could not be loaded. Try your search again."
+          actionText="Retry search"
+          onAction={() => fetchTutors(currentSubjectQuery)}
         />
       ) : tutors.length === 0 ? (
         <EmptyState
@@ -346,7 +338,7 @@ export const FindTutorsPage = () => {
               && <p><Link to="/assessments">Explore qualifying assessments</Link> to earn credits.</p>}
           </div>
 
-          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '24px' }}>
+          <div className="form-actions">
             <button
               type="button"
               className="btn btn-ghost btn-sm"

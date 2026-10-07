@@ -21,6 +21,7 @@ export const Badge = ({ status, children, variant }) => {
       badgeClass = 'badge-pending';
       break;
     case 'rejected':
+    case 'danger':
     case 'declined':
     case 'cancelled':
     case 'no_show':

@@ -57,14 +57,14 @@ const ProfileEditor = () => {
 
   return (
     <div className="container-narrow profile-page" data-unsaved={dirty}>
-      <div style={{ marginBottom: '28px' }}>
-        <span style={{ fontSize: '0.85rem', color: 'var(--brass-600)', fontFamily: 'var(--font-body)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+      <header className="student-page-header"><div>
+        <span className="student-eyebrow">
           Account & Academic Preferences
         </span>
-        <h1 style={{ fontSize: '2rem', color: 'var(--navy-900)', margin: '4px 0 0' }}>
+        <h1>
           My Profile
         </h1>
-      </div>
+      </div></header>
 
       <div className="grid-2 profile-layout">
         {/* Left Card: Account Overview & Badges */}
@@ -88,8 +88,8 @@ const ProfileEditor = () => {
               {user?.name?.charAt(0) || 'U'}
             </div>
             <h3 style={{ margin: '0 0 4px', color: 'var(--navy-900)' }}>{user?.name}</h3>
-            <div style={{ fontSize: '0.85rem', color: 'var(--ink-500)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
-              <Mail size={14} /> {user?.email}
+            <div className="profile-contact">
+              <Mail size={14} aria-hidden="true" /> <span>{user?.email}</span>
             </div>
           </div>
 

@@ -1,5 +1,7 @@
 # Acadova MASTER design-system recommendation
 
+Current frontend refinement: [UI/UX audit](ui-ux-audit.md) and [October 7 polish report](ui-ux-polish-report.md). This pass preserves the existing layouts, blue/white identity and workflows, with calmer shared controls and a static Landing illustration.
+
 2026-10-05 · P7.1A refinement · React/Vite web application
 
 This is a reviewed synthesis of the installed UI/UX Pro Max Python output and the existing Acadova implementation. It is a project-specific recommendation, not the unmodified CLI output or a new component framework. Exact queries and accepted/rejected results are recorded in P7_1A_REFINEMENT_REPORT.md.

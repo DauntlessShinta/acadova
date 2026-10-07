@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { Layers, Menu, X } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
@@ -23,6 +23,7 @@ export const Navbar = () => {
   const { user, isAuthenticated, credits } = useAuth();
   const location = useLocation();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const menuTrigger = useRef(null);
   const role = normalizeRole(user?.role);
   const isStudent = role === 'student';
   const homeRoute = isAuthenticated ? getRoleHomeRoute(role) : '/';
@@ -30,12 +31,12 @@ export const Navbar = () => {
 
   useEffect(() => {
     const closeOnEscape = (event) => {
-      if (event.key === 'Escape') setMobileMenuOpen(false);
+      if (event.key === 'Escape' && mobileMenuOpen) { setMobileMenuOpen(false); menuTrigger.current?.focus(); }
     };
 
     window.addEventListener('keydown', closeOnEscape);
     return () => window.removeEventListener('keydown', closeOnEscape);
-  }, []);
+  }, [mobileMenuOpen]);
 
   useEffect(() => {
     if (location.hash) {
@@ -68,7 +69,8 @@ export const Navbar = () => {
               key={link.to}
               to={link.to}
               onClick={() => setMobileMenuOpen(false)}
-              className={`site-nav-link ${isAuthenticated && isLinkActive(link.to) ? 'is-active' : ''}`}
+              aria-current={isLinkActive(link.to) ? 'page' : undefined}
+              className={`site-nav-link ${isLinkActive(link.to) ? 'is-active' : ''}`}
             >
               {link.label}
             </Link>
@@ -91,6 +93,7 @@ export const Navbar = () => {
         </div>
 
         <button
+          ref={menuTrigger}
           type="button"
           className="site-menu-button"
           aria-label="Toggle navigation menu"
@@ -122,7 +125,8 @@ export const Navbar = () => {
                   key={link.to}
                   to={link.to}
                   onClick={() => setMobileMenuOpen(false)}
-                  className={isAuthenticated && isLinkActive(link.to) ? 'is-active' : ''}
+                  aria-current={isLinkActive(link.to) ? 'page' : undefined}
+                  className={isLinkActive(link.to) ? 'is-active' : ''}
                 >
                   {link.label}
                 </Link>

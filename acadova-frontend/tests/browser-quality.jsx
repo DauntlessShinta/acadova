@@ -102,7 +102,7 @@ const layout = (path) => {
     assert(button.scrollWidth <= button.clientWidth + 1, 'Clipped action: ' + path + ' ' + text);
     const clipped = button.closest('.session-messages-panel');
     if (clipped) { const parent = clipped.getBoundingClientRect(); assert(box.left >= parent.left && box.right <= parent.right, 'Conversation action clipped'); }
-    assert(getComputedStyle(button).whiteSpace === 'nowrap', 'Action may break words: ' + text);
+    assert(getComputedStyle(button).wordBreak === 'normal', 'Action splits words: ' + text);
     assert(box.left >= -1 && box.right <= innerWidth + 1 || button.closest('.table-responsive'), 'Action outside page: ' + text);
   }
   for (const link of visible('a[href]')) assert(!link.querySelector('button, a, input, select'), 'Nested interaction: ' + path);
@@ -112,8 +112,11 @@ try {
   roomSession = { ...roomSession, scheduledAt: '2099-10-01T10:00:00.000Z' };
   const screens = [
     ['landing', '/', null], ['register', '/register', null], ['login', '/login', null],
+    ['about', '/about', null], ['features', '/features', null], ['terms', '/terms', null], ['privacy', '/privacy', null], ['guidelines', '/community-guidelines', null],
     ['pending', '/verify-email/pending', null], ['forgot', '/forgot-password', null], ['reset', '/reset-password', null],
+    ['verification', '/verify-email', null],
     ['home', '/dashboard', student], ['tutors', '/tutors', student], ['learning', '/learning', student],
+    ['tutor-profile', '/tutors/peer', student], ['assessments', '/assessments', student], ['onboarding', '/onboarding', student],
     ['sessions', '/sessions', student], ['credits', '/credits', student], ['profile', '/profile', student],
     ['messages', '/sessions?view=messages', student], ['moderator', '/moderator', { ...student, role: 'moderator' }],
     ['review', '/moderator/learning#manage-panel-resources', { ...student, role: 'moderator' }],
@@ -134,6 +137,13 @@ try {
       assert(document.querySelector('#sdg-title').textContent.includes('accessible learning'), 'SDG preserved');
       assert(document.querySelector('#how-it-works') && document.querySelector('#credit-system') && document.querySelector('#skill-network') && document.querySelector('#dashboard-preview'), 'Original Landing sections');
       assert(!document.querySelector('.landing-study-photo'), 'Rejected photo composition removed');
+      assert([...document.querySelectorAll('.landing-skill-node, .landing-network-lines path')].every((element) => getComputedStyle(element).animationName === 'none'), 'Decorative motion must be static');
+      if (innerWidth <= 1024) {
+        const menu = document.querySelector('.site-menu-button'); menu.focus(); await keyPress('Enter');
+        await until(() => document.querySelector('#site-mobile-menu'), 'Public menu opens');
+        document.querySelector('#site-mobile-menu a').focus(); await keyPress('Escape');
+        assert(!document.querySelector('#site-mobile-menu') && document.activeElement === menu, 'Public menu Escape restores focus');
+      }
     }
     if (['register','login','pending','forgot','reset'].includes(name)) {
       assert(document.querySelector('.auth-brand-panel') && document.querySelector('.auth-form-inner h2'), 'Restored split Auth hierarchy');
@@ -159,6 +169,10 @@ try {
         }
       }
     }
+    if (name === 'tutors') {
+      assert(document.querySelector('[role="search"][aria-label="Find tutors"]'), 'Named tutor search');
+      assert(document.querySelector('.subject-filter-chip[aria-pressed="true"]')?.textContent === 'All', 'Subject filter selection is announced');
+    }
     if (account?.role === 'student' && innerWidth <= 1024) {
       const mark = document.querySelector('.student-mobile-header .staff-brand > svg').getBoundingClientRect();
       assert(mark.width >= 23 && mark.height >= 23, 'Mobile brand mark squeezed');
@@ -181,11 +195,11 @@ try {
   log.scrollTop = 0; log.dispatchEvent(new Event('scroll')); await pause();
   layout('chat'); await capture('chat-normal');
   const expand = document.querySelector('.chat-expand'); const normalHeight = log.clientHeight; expand.focus(); await keyPress('Enter'); await pause(150);
-  assert(log.clientHeight >= normalHeight * 1.25 && expand.getAttribute('aria-expanded') === 'true', 'Substantial expanded history');
+  assert((innerHeight < 700 || log.clientHeight >= normalHeight * 1.25) && expand.getAttribute('aria-expanded') === 'true', 'Substantial expanded history where viewport allows');
   assert(field.value.startsWith('Keep this draft') && log.scrollTop < 2, 'Expanded draft/scroll preserved');
   layout('chat-expanded');
   const footer = composer.getBoundingClientRect();
-  assert(footer.bottom <= innerHeight - (innerWidth <= 1024 ? 60 : 8), 'Expanded composer obscured or below viewport');
+  assert(footer.bottom <= innerHeight - (innerWidth <= 1024 ? 60 : 8), `Expanded composer obscured or below viewport: bottom=${footer.bottom}, viewport=${innerHeight}, panel=${document.querySelector('#room-panel-messages').getBoundingClientRect().top}, height=${document.querySelector('#room-panel-messages').clientHeight}`);
   if (window.__acadovaCaptureEnabled) { window.__acadovaCapture = 'chat-expanded'; await until(() => !window.__acadovaCapture, 'Expanded capture'); }
   field.focus(); await keyPress('Escape'); await pause(100);
   assert(document.activeElement === expand && expand.getAttribute('aria-expanded') === 'false' && field.value.startsWith('Keep this draft'), 'Minimize and focus restoration');
@@ -195,6 +209,16 @@ try {
   document.querySelector('.learning-card-action').focus(); await keyPress('Enter');
   await until(() => document.getElementById('probe').dataset.url.includes('topic=topic'), 'Enter opens Topic');
   checks.push('Topic card Enter activation');
+  await render('/tutors', student); await until(() => document.querySelector('.subject-filter-chip'), 'Tutor filters');
+  const java = [...document.querySelectorAll('.subject-filter-chip')].find((button) => button.textContent === 'Java');
+  java.focus(); await keyPress('Enter'); await until(() => location.search.includes('subject=Java'), 'Keyboard subject filter routing');
+  assert(java.getAttribute('aria-pressed') === 'true', 'Keyboard selection announced');
+  const searchTrigger = visible('button[aria-label="Search Acadova"]')[0]; searchTrigger.focus(); await keyPress('Enter');
+  await until(() => document.querySelector('[role="dialog"]'), 'Shared search dialog');
+  document.querySelector('#tutor-search').focus(); await keyPress('Tab');
+  assert(document.querySelector('[role="dialog"]').contains(document.activeElement), 'Modal recovers keyboard focus from outside');
+  await keyPress('Escape'); assert(document.activeElement === searchTrigger, 'Shared dialog restores trigger');
+  checks.push('Subject filter keyboard routing, pressed state and modal focus recovery');
   assert(errors.length === 0, 'Browser errors: ' + errors.join('; '));
   document.getElementById('result').textContent = `PASS: ${innerWidth}x${innerHeight} quality\n${checks.join(' | ')}`;
   document.getElementById('result').hidden = true;

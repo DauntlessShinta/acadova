@@ -11,7 +11,7 @@ export const EmptyState = ({
   return (
     <div className="empty-state">
       <div className="empty-state-icon">
-        <Icon size={44} style={{ margin: '0 auto', strokeWidth: 1.5 }} />
+        <Icon size={28} strokeWidth={1.5} aria-hidden="true" />
       </div>
       <h3>{title}</h3>
       <p>{description}</p>

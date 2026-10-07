@@ -138,7 +138,7 @@ export const TutorProfilePage = () => {
 
       <Alert type="danger" message={error} onClose={() => setError('')} />
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '28px' }}>
+      <div className="tutor-profile-layout">
         {/* Left Column: Peer Profile Info */}
         <div className="card">
           <div style={{ textAlign: 'center', marginBottom: '24px' }}>
@@ -174,7 +174,7 @@ export const TutorProfilePage = () => {
                 </span>
               ))}
               {(tutor.skillsToTeach || []).length === 0 && (
-                <span style={{ fontSize: '0.88rem', color: 'var(--ink-400)' }}>No specific teaching skills listed.</span>
+                <span className="form-hint">No specific teaching skills listed.</span>
               )}
             </div>
           </div>
@@ -188,7 +188,7 @@ export const TutorProfilePage = () => {
                 </span>
               ))}
               {(tutor.skillsToLearn || []).length === 0 && (
-                <span style={{ fontSize: '0.88rem', color: 'var(--ink-400)' }}>None listed.</span>
+                <span className="form-hint">None listed.</span>
               )}
             </div>
           </div>

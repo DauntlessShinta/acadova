@@ -67,9 +67,9 @@ export const ModeratorDisputesPage = () => {
     <div className="staff-page">
       <header className="staff-page-header"><div><span className="staff-eyebrow">Moderator / Sessions</span><h1>Session disputes</h1><p>Review attendance and confirmation evidence before resolving an exception.</p></div></header>
       <Alert type="danger" message={error} />
-      <label className="staff-filter-select">View <select className="form-select" value={viewStatus}
+      <div className="card staff-filter-bar"><label className="staff-filter-select">View <select className="form-select" value={viewStatus}
         onChange={(event) => setViewStatus(event.target.value)}><option value="open">Open disputes</option><option value="resolved">Resolved cases</option></select></label>
-      <button type="button" className="btn btn-secondary btn-sm" onClick={load} disabled={Boolean(workingId)}>Refresh disputes</button>
+      <button type="button" className="btn btn-secondary btn-sm" onClick={load} disabled={loading || Boolean(workingId)}>Refresh disputes</button></div>
       {loading ? <LoadingSpinner text="Loading disputes..." size={30} /> : sessions === null ? <p className="staff-data-note">Cases could not be loaded. Try Refresh.</p> : sessions.length === 0 ? <p className="staff-data-note">{viewStatus === 'open' ? 'No disputed sessions need review.' : 'No resolved cases yet.'}</p> : (
         <div className="session-dispute-list">
           {sessions.map((session) => (

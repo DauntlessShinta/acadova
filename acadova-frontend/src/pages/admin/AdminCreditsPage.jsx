@@ -108,7 +108,7 @@ export const AdminCreditsPage = () => {
   return <div className="staff-page">
     <header className="staff-page-header"><div><span className="staff-eyebrow">Administration / Credits</span><h1>Credit administration</h1><p>Manage rules for new activity and make documented Student balance corrections.</p></div></header>
     <Alert type="danger" message={error} onClose={() => setError('')} />
-    <div className="grid-2 admin-analytics-grid">
+    <div className="grid-2 admin-credit-grid">
       <section className="card"><h2>Credit rules</h2><p>Changes apply only to future activity.</p><form onSubmit={saveRules}>
         {fields.map(([key, label]) => <div className="form-group" key={key}><label className="form-label" htmlFor={key}>{label}</label><input className="form-input" id={key} type="number" min="1" max="1000" step="1" required value={draft[key] ?? ''} onChange={(event) => setDraft({ ...draft, [key]: event.target.value })} /></div>)}
         <button className="btn btn-primary" disabled={busy || !rules}>Save credit rules</button>

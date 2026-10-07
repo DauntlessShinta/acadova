@@ -54,7 +54,7 @@ export default function NotificationBell({ label }) {
     </button>
     {open && <section id={panelId} className="notification-panel" aria-label="Notifications">
       <div className="notification-panel-header"><strong>Notifications</strong>
-        <button type="button" aria-label="Close notifications" onClick={() => setOpen(false)}><X size={18} /></button>
+        <button type="button" aria-label="Close notifications" onClick={() => { setOpen(false); trigger.current?.focus(); }}><X size={18} /></button>
         <button type="button" className="text-action" disabled={busy || count === 0} onClick={markAll}>Mark all read</button>
       </div>
       <button type="button" className="notification-sound text-action" aria-pressed={soundEnabled} onClick={toggleSound}>

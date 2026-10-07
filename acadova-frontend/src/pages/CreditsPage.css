@@ -4,7 +4,7 @@
   gap: 12px;
 }
 .credit-wallet-heading { justify-content: space-between; flex-wrap: wrap; margin-bottom: 28px; }
-.credit-wallet-heading h1 { font-size: 2rem; color: var(--navy-900); margin: 4px 0 0; }
+.credit-wallet-heading h1 { font-size: var(--page-heading-size); color: var(--navy-900); margin: 4px 0 0; }
 .credit-wallet-eyebrow { color: var(--brass-600); font-family: var(--font-body); font-size: .85rem; text-transform: uppercase; }
 .credit-wallet-balance { margin-bottom: 12px; }
 .credit-wallet-note { color: var(--ink-600); font-size: .88rem; margin-bottom: 28px; }
@@ -16,7 +16,8 @@
 .credit-activity-main { min-width: 0; color: var(--ink-700); }
 .credit-activity-main strong { color: var(--navy-900); }
 .credit-activity-main time, .credit-activity-amount span { color: var(--ink-500); font-size: .82rem; }
-.credit-activity-amount { text-align: right; white-space: nowrap; }
+.credit-activity-amount { text-align: right; flex-shrink: 0; }
+.credit-activity-amount strong { white-space: nowrap; }
 .credit-activity-amount strong { font-family: var(--font-body); }
 .credit-activity-earned strong { color: var(--success-text); }
 .credit-activity-spent strong { color: var(--brass-700); }

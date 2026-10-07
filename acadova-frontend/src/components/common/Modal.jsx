@@ -10,7 +10,8 @@ export const Modal = ({ isOpen, onClose, title, children, footer, maxWidth = '54
     if (!isOpen) return undefined;
     const previousFocus = document.activeElement;
     const previousOverflow = document.body.style.overflow;
-    dialogRef.current?.querySelector('button, input, select, textarea, a[href]')?.focus();
+    const firstControl = dialogRef.current?.querySelector('button:not(:disabled), input:not(:disabled), select:not(:disabled), textarea:not(:disabled), a[href]');
+    (firstControl || dialogRef.current)?.focus();
     const handleKeyDown = (e) => {
       if ([...document.querySelectorAll('[role="dialog"][aria-modal="true"]')].at(-1) !== dialogRef.current) return;
       if (e.key === 'Escape' && isOpen) {
@@ -22,6 +23,8 @@ export const Modal = ({ isOpen, onClose, title, children, footer, maxWidth = '54
         const controls = [...dialogRef.current.querySelectorAll('button, input, select, textarea, a[href], [tabindex="0"]')]
           .filter((control) => !control.disabled && control.getClientRects().length);
         const first = controls[0]; const last = controls.at(-1);
+        if (!first) { e.preventDefault(); dialogRef.current.focus(); return; }
+        if (document.activeElement === dialogRef.current || !dialogRef.current.contains(document.activeElement)) { e.preventDefault(); (e.shiftKey ? last : first).focus(); return; }
         if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last?.focus(); }
         if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first?.focus(); }
       }
@@ -42,7 +45,7 @@ export const Modal = ({ isOpen, onClose, title, children, footer, maxWidth = '54
   return (
     <div className="modal-backdrop" onClick={onClose}>
       <div
-        ref={dialogRef} role="dialog" aria-modal="true" aria-labelledby={titleId}
+        ref={dialogRef} role="dialog" aria-modal="true" aria-labelledby={titleId} tabIndex={-1}
         className={`modal-dialog ${className}`}
         style={{ maxWidth }}
         onClick={(e) => e.stopPropagation()}

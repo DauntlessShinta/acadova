@@ -182,8 +182,6 @@ export const LandingPage = () => {
   return (
     <div className="landing-page">
       <header className="landing-hero" id="hero">
-        <div className="landing-orb landing-orb-one" aria-hidden="true" />
-        <div className="landing-orb landing-orb-two" aria-hidden="true" />
         <div className="container landing-hero-grid">
           <div className="landing-hero-copy">
             <div className="landing-badge-row">
@@ -234,7 +232,6 @@ export const LandingPage = () => {
             </svg>
 
             <div className="landing-network-hub">
-              <div className="landing-network-pulse" aria-hidden="true" />
               <div className="landing-network-hub-icon"><Layers size={26} /></div>
               <strong>Acadova</strong>
               <span>Skill exchange</span>

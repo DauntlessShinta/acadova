@@ -209,11 +209,30 @@ const SessionRoom = ({ id }) => {
       followMessages.current = snapshot.follow;
       chatScrollSnapshot.current = null;
     }
-    if (chatExpanded) {
-      const top = chatPanel.current?.getBoundingClientRect().top;
-      if (top != null) window.scrollTo({ top: window.scrollY + top - 88, behavior: 'instant' });
-    }
-  }, [chatExpanded]);
+    if (!chatExpanded) { chatPanel.current?.style.removeProperty('--chat-expanded-height'); return undefined; }
+    if (activeSection !== 'messages') return undefined;
+    const fitChat = () => {
+      const panel = chatPanel.current;
+      if (!panel) return;
+      const header = [...document.querySelectorAll('.student-utility-bar, .student-mobile-header')].find((element) => element.getClientRects().length);
+      const bottomNav = document.querySelector('.student-mobile-bottom');
+      const offset = (header?.getBoundingClientRect().bottom || 0) + 12;
+      const bottomSpace = bottomNav?.getClientRects().length ? bottomNav.getBoundingClientRect().height : 0;
+      const viewportHeight = window.visualViewport?.height || window.innerHeight;
+      const available = viewportHeight - offset - bottomSpace - 16;
+      panel.style.setProperty('--chat-expanded-height', `${Math.max(240, available)}px`);
+      window.scrollTo({ top: window.scrollY + panel.getBoundingClientRect().top - offset, behavior: 'instant' });
+    };
+    fitChat();
+    const frame = requestAnimationFrame(fitChat);
+    window.addEventListener('resize', fitChat);
+    window.visualViewport?.addEventListener('resize', fitChat);
+    return () => {
+      cancelAnimationFrame(frame);
+      window.removeEventListener('resize', fitChat);
+      window.visualViewport?.removeEventListener('resize', fitChat);
+    };
+  }, [chatExpanded, activeSection]);
   const resizeChat = (expanded) => {
     chatScrollSnapshot.current = { top: messagesRef.current?.scrollTop || 0, follow: followMessages.current };
     setChatExpanded(expanded);

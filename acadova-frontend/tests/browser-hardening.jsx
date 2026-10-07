@@ -360,7 +360,7 @@ try {
   assert(!document.querySelector('.landing-study-photo'), 'Rejected photo design removed');
   if (window.__acadovaFontsLoaded) checks.push('Canonical Inter, Plus Jakarta Sans and JetBrains Mono loaded before UI checks');
   if (matchMedia('(prefers-reduced-motion: reduce)').matches) {
-    assert(Number.parseFloat(getComputedStyle(document.querySelector('.landing-network-pulse')).animationDuration) < .001, 'Reduced-motion hero entrance');
+    assert(getComputedStyle(document.querySelector('.landing-skill-node')).animationName === 'none', 'Hero remains static with reduced motion');
     assert(Number.parseFloat(getComputedStyle(document.querySelector('.btn')).transitionDuration) < .001, 'Reduced-motion interactions');
   }
   await render('/register', null);

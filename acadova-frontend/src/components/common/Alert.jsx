@@ -28,13 +28,13 @@ export const Alert = ({ type = 'info', message, onClose, children }) => {
       aria-live={type === 'danger' || type === 'error' ? 'assertive' : 'polite'}
     >
       {getIcon()}
-      <div style={{ flex: 1 }}>{message || children}</div>
+      <div className="alert-content">{message || children}</div>
       {onClose && (
         <button
           type="button"
           onClick={onClose}
           aria-label="Dismiss message"
-          style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'inherit', padding: 2 }}
+          className="alert-dismiss"
         >
           <X size={16} />
         </button>

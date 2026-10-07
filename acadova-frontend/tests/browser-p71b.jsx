@@ -15,6 +15,7 @@ let session = { ...original }; let currentUser = me;
 let messages = Array.from({ length: 35 }, (_, index) => ({ _id: 'm' + index, sender: index % 2 ? me : peer, body: 'Study note ' + index + '\nA useful explanation for this Session.', createdAt: new Date(Date.now() - (40 - index) * 1000).toISOString() }));
 let notifications = [{ id: 'historical', type: 'message.new', href: '/sessions/test', title: 'New session message', message: 'You have a new message.', readAt: null, createdAt: new Date(Date.now() - 60_000).toISOString() }];
 let reads = 0; let sends = 0; let coordinationWrites = 0; let checkIns = 0; let sounds = 0; let failSend = false;
+let deferSend = false; let releaseSend;
 let focused = true; let visibility = 'visible';
 document.hasFocus = () => focused;
 Object.defineProperty(document, 'visibilityState', { configurable: true, get: () => visibility });
@@ -37,6 +38,7 @@ window.fetch = async (url, options = {}) => {
     if (options.method === 'POST') {
       sends++;
       if (failSend) return new Response(JSON.stringify({ message: 'Connection unavailable. Your draft is still here.' }), { status: 503 });
+      if (deferSend) await new Promise((resolve) => { releaseSend = resolve; });
       const body = JSON.parse(options.body).body;
       data = { _id: 'own-' + sends, body, sender: currentUser, createdAt: new Date().toISOString() }; messages.push(data);
     } else { reads++; notifications.forEach((item) => { if (item.href === '/sessions/test' && item.type.startsWith('message.')) item.readAt = new Date().toISOString(); }); data = messages; }
@@ -101,7 +103,14 @@ try {
   assert(expand.getAttribute('aria-expanded') === 'false' && document.activeElement === expand, 'Escape minimizes and restores trigger focus');
   assert(log.scrollTop < 2 && composerBefore.value === 'My useful reply' && document.querySelectorAll('.message-composer').length === 1, 'Minimize lost state or duplicated composer');
   checks.push('Expanded in-page Chat preserves mounted log/composer, draft, older-message position, polling and new hint; Escape restores trigger focus');
+  deferSend = true;
   document.querySelector('.message-composer').dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+  await until(() => releaseSend && document.querySelector('.message-composer[aria-busy="true"]'), 'Message pending feedback');
+  const pendingSend = document.querySelector('.message-composer button[type="submit"]');
+  assert(pendingSend.disabled && pendingSend.getAttribute('aria-busy') === 'true' && pendingSend.textContent.includes('Sending'), 'Readable, guarded message pending state');
+  assert(composerBefore.value === 'My useful reply', 'Pending message keeps the draft');
+  assert(getComputedStyle(pendingSend, '::after').animationName === (matchMedia('(prefers-reduced-motion: reduce)').matches ? 'none' : 'waiting-progress'), 'Message progress respects reduced motion');
+  deferSend = false; releaseSend();
   await until(() => document.querySelectorAll('.session-message').length === 39, 'Send success'); await pause();
   assert(atBottom() && document.querySelector('#session-message').value === '' && sounds === 0, 'Own send scroll/draft/sound');
   failSend = true; fill('#session-message', 'Preserve this draft'); await pause();

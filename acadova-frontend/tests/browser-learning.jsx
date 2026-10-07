@@ -27,6 +27,7 @@ const module = { id: 'm', topic: 'db', title: 'Database fundamentals and guided 
 const paidModule = { id: 'paid-m', topic: 'db', title: 'Additional practice', description: 'Paid materials with a separate entitlement.', creditCost: 30, locked: true };
 let failList = false; let failTopics = false; let failAssessment = false; let failDetail = false;
 let slowDetail = false; let releaseDetail; let writes = 0; let resultKind = 'pass';
+let deferSubmit = false; let releaseSubmit;
 const requests = [];
 const response = (data, status = 200, message) => new Response(JSON.stringify({ success: status < 400, data, message }), { status });
 window.fetch = async (url, options = {}) => {
@@ -36,8 +37,9 @@ window.fetch = async (url, options = {}) => {
     writes++;
     const body = JSON.parse(options.body);
     if (body.answers.length !== 3) throw new Error('Unexpected answer contract');
-    return response({ score: resultKind === 'fail' ? 33 : 100, passed: resultKind !== 'fail',
+    const result = response({ score: resultKind === 'fail' ? 33 : 100, passed: resultKind !== 'fail',
       rewardIssued: resultKind === 'pass', creditsAwarded: resultKind === 'pass' ? 17 : 0 });
+    return deferSubmit ? new Promise((resolve) => { releaseSubmit = () => resolve(result); }) : result;
   }
   if (options.method && options.method !== 'GET') throw new Error('Unexpected fixture write: ' + path);
   if (path === '/api/assessments') return failList ? response(null, 503, 'Assessment list unavailable.') : response(assessments);
@@ -103,6 +105,11 @@ try {
   assert(window.visualViewport.scale === 1 && devicePixelRatio === 1, '100% zoom');
   await render('/learning'); await until(() => document.querySelector('.learning-card-action'), 'Topic list');
   assert(document.querySelectorAll('.learning-section-nav a').length === 3 && !document.querySelector('.learning-section-nav [role="tab"]'), 'Section routes must be semantic navigation');
+  for (const link of document.querySelectorAll('.learning-section-nav a')) {
+    const range = document.createRange(); range.selectNodeContents(link);
+    if (!link.textContent.trim().includes(' ')) assert(range.getClientRects().length === 1, 'Navigation must not split a word: ' + link.textContent);
+    assert(getComputedStyle(link).overflowWrap === 'normal', 'Section navigation wraps at word boundaries');
+  }
   await capture('learning-library');
   const hubLink = document.querySelector('#learning-tab-assessments'); hubLink.focus(); await keyPress('Enter');
   await until(() => url() === '/assessments' && document.querySelectorAll('.assessment-card').length === 3, 'Learning to hub');
@@ -153,10 +160,22 @@ try {
   document.querySelector('.assessment-card a[aria-label^="Take assessment"]').click(); await until(() => document.querySelector('.assessment-workspace form'), 'Direct access without viewing materials');
   document.querySelector('form button[type="submit"]').click(); await until(() => document.querySelector('#assessment-answer-error'), 'Incomplete answers');
   assert(document.activeElement.name === 'question-0' && writes === 0, 'First unanswered focus and no submit');
+  const firstOption = document.querySelector('.assessment-option'); const beforeSelection = firstOption.getBoundingClientRect();
   for (const radio of document.querySelectorAll('input[type="radio"]')) if (radio.value && radio.parentElement.textContent.includes('First answer')) radio.click();
+  await pause(220); const afterSelection = firstOption.getBoundingClientRect();
+  assert(beforeSelection.width === afterSelection.width && beforeSelection.height === afterSelection.height, 'Answer selection never shifts layout');
+  assert(firstOption.querySelector('input').checked && getComputedStyle(firstOption).borderInlineStartWidth === '4px', 'Selection has native checked state and a structural marker');
+  deferSubmit = true;
   document.querySelector('form').dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+  await until(() => releaseSubmit && document.querySelector('form[aria-busy="true"]'), 'Assessment pending');
+  const pending = document.querySelector('form button[type="submit"]');
+  assert(pending.disabled && pending.getAttribute('aria-busy') === 'true' && pending.textContent.includes('Submitting'), 'Assessment pending is readable and guarded');
+  assert(getComputedStyle(pending, '::after').animationName === (matchMedia('(prefers-reduced-motion: reduce)').matches ? 'none' : 'waiting-progress'), 'Pending progress respects reduced motion');
+  deferSubmit = false; releaseSubmit();
   await until(() => document.querySelector('.assessment-result'), 'Submitted result');
   assert(writes === 1 && document.querySelector('.assessment-result').textContent.includes('+17 credits earned'), 'Actual submitted reward only');
+  assert(document.querySelector('.assessment-result h3 svg[aria-hidden="true"]'), 'Result retains text with a decorative status icon');
+  if (matchMedia('(prefers-reduced-motion: reduce)').matches) assert(getComputedStyle(document.querySelector('.assessment-result')).animationName === 'none', 'Result remains immediate without motion');
   await capture('assessment-result');
   document.querySelector('.assessment-result button').click(); await until(() => document.querySelector('.assessment-workspace form'), 'Retry supported');
   resultKind = 'repeat'; document.querySelectorAll('input[name="question-0"]')[0].click(); document.querySelectorAll('input[name="question-1"]')[0].click(); document.querySelectorAll('input[name="question-2"]')[0].click();

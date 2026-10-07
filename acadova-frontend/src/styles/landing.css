@@ -684,10 +684,6 @@
   transition: transform 0.2s ease, background 0.2s ease;
 }
 
-.landing-swap-button:hover {
-  transform: rotate(10deg) scale(1.05);
-  background: var(--acadova-blue-strong);
-}
 
 .is-previewed .landing-swap-button {
   color: #052e24;
@@ -726,11 +722,6 @@
   transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
 }
 
-.landing-feature-card:hover {
-  transform: translateY(-4px);
-  border-color: rgba(147, 197, 253, 0.4);
-  box-shadow: 0 20px 34px -24px rgba(59, 130, 246, 0.65);
-}
 
 .landing-feature-icon,
 .landing-skill-detail-icon {
@@ -826,7 +817,6 @@
 
 .landing-skill-button:hover,
 .landing-skill-button.is-selected {
-  transform: translateY(-3px);
   border-color: var(--acadova-sky);
   color: #ffffff;
   background: var(--acadova-action);
@@ -1727,4 +1717,22 @@
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
   }
+}
+
+/* One entrance on the public hero; actions are visible throughout, with no delay. */
+.landing-hero-copy { animation: academic-arrival 380ms ease-out; }
+.landing-network { animation: academic-arrival 450ms ease-out; }
+@keyframes academic-arrival { from { opacity: .72; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+.landing-action-row .btn-primary > svg { transition: transform var(--interaction-duration) ease; }
+@media (hover: hover) and (pointer: fine) and (prefers-reduced-motion: no-preference) {
+  .landing-action-row .btn-primary:hover > svg { transform: translateX(2px); }
+  .landing-skill-button:hover { transform: translateY(-1px); }
+}
+@media (hover: hover) and (pointer: fine) and (min-width: 701px) and (prefers-reduced-motion: no-preference) {
+  .landing-swap-button:hover { transform: rotate(6deg); background: var(--acadova-blue-strong); }
+  .is-previewed .landing-swap-button:hover { transform: rotate(186deg); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .landing-hero-copy, .landing-network { animation: none !important; }
+  .landing-skill-button, .landing-swap-button, .landing-action-row .btn-primary > svg { transform: none !important; }
 }

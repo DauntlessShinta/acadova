@@ -13,7 +13,7 @@ export default function AssessmentCard({ assessment, topicName, context, onRevie
       ? `Recommended: review ${topicName || assessment.topic || 'related learning'} materials first. Reviewing is optional.`
       : 'Review related learning materials if available, or take this assessment directly.'}</p>
     <div className="assessment-card-actions">
-      {onReview && <button type="button" className="btn btn-secondary btn-sm" disabled={reviewBusy} onClick={() => onReview(assessment)}>{reviewBusy ? 'Loading topic...' : 'Review topic'}</button>}
+      {onReview && <button type="button" className="btn btn-secondary btn-sm" disabled={reviewBusy} aria-busy={reviewBusy} onClick={() => onReview(assessment)}>{reviewBusy ? 'Loading topic...' : 'Review topic'}</button>}
       {!onReview && <Link className="btn btn-secondary btn-sm" to={learningReviewHrefForCard(context, assessment.topic)}>{context ? 'Review topic' : 'Browse learning'}</Link>}
       <Link className="btn btn-primary btn-sm" to={assessmentHref(assessment.id, context)} aria-label={`Take assessment: ${assessment.title}`}>Take assessment <ArrowRight size={16} aria-hidden="true" /></Link>
     </div>

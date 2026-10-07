@@ -61,7 +61,7 @@ export default function NotificationBell({ label }) {
         {soundEnabled ? <Volume2 size={16} aria-hidden="true" /> : <VolumeX size={16} aria-hidden="true" />}{soundEnabled ? 'Mute notification sound' : 'Enable notification sound'}
       </button>
       {error && <p role="alert" className="notification-error">{error}</p>}
-      {loadingItems ? <p className="notification-empty">Loading notifications...</p> :
+      {loadingItems ? <p className="notification-empty" role="status">Loading notifications...</p> :
         items.length === 0 ? <p className="notification-empty">{error ? 'Notifications are unavailable. Try again.' : 'No notifications yet.'}{error && <button type="button" className="text-action" onClick={() => void refresh()}>Retry</button>}</p> :
         <ul className="notification-list">{items.map((item) => <li key={item.id}>
           <button type="button" className={item.readAt ? '' : 'is-unread'} onClick={() => follow(item)}>

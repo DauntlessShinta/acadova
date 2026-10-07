@@ -47,7 +47,10 @@ window.fetch = async (url, options = {}) => {
   if (options.method === 'POST' && route.endsWith('/publish')) { publicationWrites++; return json({}); }
   if (options.method === 'POST' && route === '/api/sessions') {
     requestWrites++;
-    if (delayRequest) return new Promise((resolve) => { releaseRequest = () => resolve(json({ _id: 's', status: 'pending' }, 201)); });
+    if (delayRequest) return new Promise((resolve) => { releaseRequest = (status = 201) => resolve(json(
+      status === 201 ? { _id: 's', status: 'pending' } : null, status,
+      status === 409 ? { message: 'You already have this session request pending.' }
+        : status === 503 ? { message: 'Session request could not be created.' } : {})); });
     return json({ _id: 's', status: 'pending' }, 201);
   }
   if (options.method === 'PATCH' && route === '/api/sessions/s/status') { cancellationWrites++; roomSession = { ...roomSession, status: JSON.parse(options.body).status }; return json(roomSession); }
@@ -88,6 +91,13 @@ const root = createRoot(document.getElementById('root')); let renderKey = 0;
 const pause = (ms = 40) => new Promise((resolve) => setTimeout(resolve, ms));
 const assert = (value, label) => { if (!value) throw new Error(label); };
 const until = async (check, label) => { for (let i = 0; i < 150; i++) { if (check()) return; await pause(); } throw new Error(label); };
+const nativeKey = async (key) => { window.__acadovaKey = key; await until(() => window.__acadovaKey === null, 'Native key: ' + key); };
+const nativeDoubleClick = async (control) => {
+  control.scrollIntoView({ block: 'center', behavior: 'instant' }); await pause();
+  const bounds = control.getBoundingClientRect();
+  window.__acadovaPointer = { x: bounds.x + bounds.width / 2, y: bounds.y + bounds.height / 2, double: true };
+  await until(() => window.__acadovaPointer === null, 'Native double click');
+};
 const visible = (selector) => [...document.querySelectorAll(selector)].filter((element) => element.getClientRects().length && (!element.closest('details:not([open])') || element.matches('summary')));
 const fill = (selector, value) => { const field = document.querySelector(selector); Object.getOwnPropertyDescriptor(field.tagName === 'TEXTAREA' ? HTMLTextAreaElement.prototype : HTMLInputElement.prototype, 'value').set.call(field, value); field.dispatchEvent(new Event('input', { bubbles: true })); };
 // oxlint-disable-next-line react/only-export-components
@@ -148,17 +158,36 @@ try {
   await until(() => document.querySelector('#scheduledAt'), 'Request modal');
   fill('#scheduledAt', '2099-10-08T12:00'); fill('#requestMessage', 'Help me understand Java arrays.'); await pause();
   const requestForm = document.querySelector('#scheduledAt').closest('form'); delayRequest = true; const before = requestWrites;
+  await nativeDoubleClick(requestForm.querySelector('[type="submit"]'));
   requestForm.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
   requestForm.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
   await until(() => releaseRequest, 'Request pending'); assert(requestWrites === before + 1, 'Repeated submit creates one call');
-  assert(requestForm.querySelector('[type="submit"]').disabled, 'Request submit disabled');
-  releaseRequest(); delayRequest = false; await until(() => document.querySelector('.session-request-success'), 'Request success state');
+  assert(requestForm.querySelector('[type="submit"]').disabled && requestForm.getAttribute('aria-busy') === 'true', 'Request submit disabled/busy');
+  await nativeKey('Escape'); assert(document.querySelector('[role="dialog"]'), 'Pending request cannot be dismissed');
+  for (const status of [409, 503]) {
+    releaseRequest(status); releaseRequest = null;
+    await until(() => !requestForm.querySelector('[type="submit"]').disabled, 'Request controls recover: ' + status);
+    assert(requestForm.querySelector('[role="alert"]') && requestForm.getAttribute('aria-busy') === 'false', 'Persistent request failure and cleared busy');
+    assert(document.getElementById('requestMessage').value === 'Help me understand Java arrays.', 'Request failure keeps draft');
+    requestForm.querySelector('[type="submit"]').focus(); await nativeKey('Enter'); await nativeKey('Enter');
+    await until(() => releaseRequest, 'Request retry pending');
+  }
+  assert(requestWrites === before + 3, 'Exactly one call per attempt including repeated Enter');
+  releaseRequest(); releaseRequest = null; delayRequest = false; await until(() => document.querySelector('.session-request-success'), 'Request success state');
   assert(!document.querySelector('#scheduledAt') && document.querySelector('.session-request-success a').getAttribute('href') === '/sessions/s', 'Success replaces form and links to Session');
   await render('/tutors/peer'); fill('#scheduledAt', '2099-10-15T12:00'); fill('#requestMessage', 'Help with Java again.'); await pause();
   const profileForm = document.querySelector('#request-session form'); const profileBefore = requestWrites;
+  delayRequest = true; await nativeDoubleClick(profileForm.querySelector('[type="submit"]'));
   profileForm.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true })); profileForm.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
-  await until(() => document.querySelector('.session-request-success'), 'Profile request success'); assert(requestWrites === profileBefore + 1 && !document.querySelector('#request-session form'), 'Profile submit guard');
-  checks.push('Find Tutors has one search and Quick Filters; discovery/profile repeated-submit guards and success destination');
+  await until(() => releaseRequest, 'Profile request pending');
+  assert(profileForm.querySelector('[type="submit"]').disabled && profileForm.getAttribute('aria-busy') === 'true' && requestWrites === profileBefore + 1, 'Profile pending guard');
+  releaseRequest(409); releaseRequest = null;
+  await until(() => !profileForm.querySelector('[type="submit"]').disabled, 'Profile conflict recovery');
+  assert(profileForm.querySelector('[role="alert"]')?.textContent.includes('already have') && document.getElementById('requestMessage').value === 'Help with Java again.', 'Profile persistent conflict and draft');
+  profileForm.querySelector('[type="submit"]').focus(); await nativeKey('Enter'); await nativeKey('Enter');
+  await until(() => releaseRequest, 'Profile retry'); releaseRequest(); releaseRequest = null; delayRequest = false;
+  await until(() => document.querySelector('.session-request-success'), 'Profile request success'); assert(requestWrites === profileBefore + 2 && !document.querySelector('#request-session form'), 'Profile submit guard and recovery');
+  checks.push('Discovery/profile native double-click and repeated Enter; synchronous submit guards; disabled/busy pending; persistent conflicts, failed-request draft and retry recovery; success destination');
   await render('/learning'); await until(() => document.querySelector('.learning-card-action'), 'Whole topic destination');
   const topicCard = document.querySelector('.learning-destination-card');
   assert(topicCard.querySelectorAll('button, a').length === 1, 'Topic has one destination');

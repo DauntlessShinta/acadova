@@ -21,6 +21,7 @@ const session = { _id: 's', subject: 'Java tutoring', learner: student, tutor: p
   creditAmount: 20, scheduledAt: new Date().toISOString(), reviewIndicators: ['prior_credit_transaction'], disputeReason: 'Please review the recorded evidence.' };
 const rules = { startingCreditGrant: 100, tutoringSessionCost: 20, assessmentReward: 20, version: 1 };
 let current = student;
+let waitForTutors = false; let releaseTutors;
 let roomSession = { ...session, status: 'scheduled', meetingLink: 'https://example.com/meeting' };
 let review = { _id: 'rating', rating: 4, comment: 'Helpful session.', isHidden: false, fromUser: peer, toUser: student,
   session: { subject: 'Java tutoring' }, createdAt: new Date().toISOString() };
@@ -55,7 +56,9 @@ window.fetch = async (url, options = {}) => {
   if (route === '/api/analytics/sessions') data = { total: 0, byStatus: {} };
   if (route === '/api/analytics/ratings') data = { totalRatings: 0, averageRating: null, distribution: [] };
   if (route === '/api/analytics/credits') data = { totalTransactions: 0, breakdown: {} };
-  return json(data, 200, { pagination: { page: 1, limit: 25, total: 0 }, summary: { recordedEarned: 0, recordedSpent: 0 } });
+  const result = json(data, 200, { pagination: { page: 1, limit: 25, total: 0 }, summary: { recordedEarned: 0, recordedSpent: 0 } });
+  if (route === '/api/users/tutors' && waitForTutors) return new Promise((resolve) => { releaseTutors = () => resolve(result); });
+  return result;
 };
 const root = createRoot(document.getElementById('root')); let renderKey = 0;
 const pause = (ms = 40) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -95,6 +98,11 @@ const capture = async (name) => {
   }
 };
 const keyPress = async (key) => { window.__acadovaKey = key; await until(() => !window.__acadovaKey, 'Keyboard: ' + key); await pause(60); };
+const hover = async (element) => {
+  element.scrollIntoView({ block: 'center', behavior: 'instant' }); await pause(60);
+  const box = element.getBoundingClientRect(); window.__acadovaPointer = { x: box.x + box.width / 2, y: box.y + box.height / 2, hover: true };
+  await until(() => !window.__acadovaPointer, 'Native pointer hover'); await pause(220);
+};
 const layout = (path) => {
   assert(document.documentElement.scrollWidth <= innerWidth, 'Page overflow: ' + path);
   for (const button of visible('.btn')) {
@@ -106,6 +114,11 @@ const layout = (path) => {
     assert(box.left >= -1 && box.right <= innerWidth + 1 || button.closest('.table-responsive'), 'Action outside page: ' + text);
   }
   for (const link of visible('a[href]')) assert(!link.querySelector('button, a, input, select'), 'Nested interaction: ' + path);
+  for (const link of visible('.learning-section-nav a')) {
+    const range = document.createRange(); range.selectNodeContents(link);
+    if (!link.textContent.trim().includes(' ')) assert(range.getClientRects().length === 1, 'Learning navigation must not split a word: ' + link.textContent);
+    assert(getComputedStyle(link).overflowWrap === 'normal', 'Learning navigation wraps only between words');
+  }
 };
 try {
   assert(window.visualViewport.scale === 1 && devicePixelRatio === 1, '100% zoom baseline');
@@ -138,6 +151,15 @@ try {
       assert(document.querySelector('#how-it-works') && document.querySelector('#credit-system') && document.querySelector('#skill-network') && document.querySelector('#dashboard-preview'), 'Original Landing sections');
       assert(!document.querySelector('.landing-study-photo'), 'Rejected photo composition removed');
       assert([...document.querySelectorAll('.landing-skill-node, .landing-network-lines path')].every((element) => getComputedStyle(element).animationName === 'none'), 'Decorative motion must be static');
+      const heroStyle = getComputedStyle(document.querySelector('.landing-hero-copy'));
+      assert(heroStyle.animationIterationCount === '1' && heroStyle.animationDelay === '0s', 'Hero enters once without delayed actions');
+      assert(heroStyle.animationName === (matchMedia('(prefers-reduced-motion: reduce)').matches ? 'none' : 'academic-arrival'), 'Hero honors reduced motion');
+      await hover(document.querySelector('.landing-feature-card'));
+      assert(getComputedStyle(document.querySelector('.landing-feature-card')).transform === 'none', 'Passive feature cards stay still');
+      await hover(document.querySelector('.landing-action-row .btn-primary'));
+      const moves = matchMedia('(hover: hover) and (pointer: fine) and (prefers-reduced-motion: no-preference)').matches;
+      const arrow = document.querySelector('.landing-action-row .btn-primary > svg');
+      assert(getComputedStyle(arrow).transform === (moves ? 'matrix(1, 0, 0, 1, 2, 0)' : 'none'), 'CTA movement only for fine pointer without reduced motion');
       if (innerWidth <= 1024) {
         const menu = document.querySelector('.site-menu-button'); menu.focus(); await keyPress('Enter');
         await until(() => document.querySelector('#site-mobile-menu'), 'Public menu opens');
@@ -172,6 +194,8 @@ try {
     if (name === 'tutors') {
       assert(document.querySelector('[role="search"][aria-label="Find tutors"]'), 'Named tutor search');
       assert(document.querySelector('.subject-filter-chip[aria-pressed="true"]')?.textContent === 'All', 'Subject filter selection is announced');
+      await hover(document.querySelector('.peer-card'));
+      assert(getComputedStyle(document.querySelector('.peer-card')).transform === 'none', 'Multi-action Tutor card stays still');
     }
     if (account?.role === 'student' && innerWidth <= 1024) {
       const mark = document.querySelector('.student-mobile-header .staff-brand > svg').getBoundingClientRect();
@@ -219,6 +243,23 @@ try {
   assert(document.querySelector('[role="dialog"]').contains(document.activeElement), 'Modal recovers keyboard focus from outside');
   await keyPress('Escape'); assert(document.activeElement === searchTrigger, 'Shared dialog restores trigger');
   checks.push('Subject filter keyboard routing, pressed state and modal focus recovery');
+  waitForTutors = true; releaseTutors = null; await render('/tutors', student);
+  await until(() => releaseTutors && document.querySelector('.loading-progress'), 'Actual delayed fetch loading state');
+  const loading = document.querySelector('.loading-container');
+  const track = document.querySelector('.loading-progress');
+  assert(loading.getAttribute('role') === 'status' && loading.querySelector('p')?.textContent.trim(), 'Loading has announced readable text');
+  const originalWidth = track.getBoundingClientRect().width;
+  await pause(300); assert(track.getBoundingClientRect().width === originalWidth, 'Progress animation does not change layout');
+  assert(getComputedStyle(track.firstElementChild).animationName === (matchMedia('(prefers-reduced-motion: reduce)').matches ? 'none' : 'waiting-progress'), 'Loading motion respects reduced motion');
+  layout('loading'); await capture('loading-tutors'); waitForTutors = false; releaseTutors();
+  await until(() => document.querySelector('.peer-card') && !document.querySelector('.loading-progress'), 'Data replaces loading promptly');
+  await capture('loaded-tutors');
+  const account = visible('.account-trigger')[0]; account.focus(); await keyPress('Enter');
+  await until(() => document.querySelector('.account-actions'), 'Keyboard account disclosure'); await pause(220);
+  assert(account.getAttribute('aria-expanded') === 'true', 'Account state is announced');
+  if (matchMedia('(prefers-reduced-motion: reduce)').matches) assert(getComputedStyle(account.lastElementChild).transform === 'none' && getComputedStyle(document.querySelector('.account-actions')).animationName === 'none', 'Reduced motion removes account movement');
+  await keyPress('Escape'); assert(document.activeElement === account && !document.querySelector('.account-actions'), 'Account Escape restores focus immediately');
+  checks.push('Fine-pointer-only CTA hover, static multi-action/passive cards, one-time hero, real delayed loading with stable track, reduced motion and immediate keyboard account controls');
   assert(errors.length === 0, 'Browser errors: ' + errors.join('; '));
   document.getElementById('result').textContent = `PASS: ${innerWidth}x${innerHeight} quality\n${checks.join(' | ')}`;
   document.getElementById('result').hidden = true;

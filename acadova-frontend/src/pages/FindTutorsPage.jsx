@@ -154,6 +154,7 @@ export const FindTutorsPage = () => {
       toast('success', `Session request sent to ${selectedTutor.name}. You can track it in Sessions.`);
       refreshUser();
     } catch (err) {
+      setModalError(err.message || 'Failed to request session.');
       toast('error', err.message || 'Failed to request session.');
     } finally {
       submittingRef.current = false; setModalSubmitting(false);
@@ -247,7 +248,7 @@ export const FindTutorsPage = () => {
         onClose={() => { if (!submittingRef.current) setIsModalOpen(false); }}
         title={`Request Session with ${selectedTutor?.name || 'Peer'}`}
       >
-        {requestedSession ? <div className="session-request-success" role="status"><h2>Session request sent</h2><p>{selectedTutor?.name} will receive your proposed schedule.</p><Link className="btn btn-primary" to={`/sessions/${requestedSession._id || requestedSession.id}`}>View requested session</Link></div> : <form onSubmit={handleCreateSession}>
+        {requestedSession ? <div className="session-request-success" role="status"><h2>Session request sent</h2><p>{selectedTutor?.name} will receive your proposed schedule.</p><Link className="btn btn-primary" to={`/sessions/${requestedSession._id || requestedSession.id}`}>View requested session</Link></div> : <form onSubmit={handleCreateSession} aria-busy={modalSubmitting}>
           <Alert type="danger" message={modalError} onClose={() => setModalError('')} />
 
           <div style={{
@@ -351,6 +352,7 @@ export const FindTutorsPage = () => {
               type="submit"
               className="btn btn-primary btn-sm"
               disabled={modalSubmitting}
+              aria-busy={modalSubmitting}
             >
               {modalSubmitting ? 'Sending Request...' : 'Confirm & Request Session'}
             </button>

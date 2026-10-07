@@ -694,7 +694,7 @@ const SessionRoom = ({ id }) => {
                   })}
                 </div>
                 {newMessageCount > 0 && <button type="button" className="btn btn-secondary btn-sm chat-new-messages" onClick={newestMessages}>{newMessageCount} new {newMessageCount === 1 ? 'message' : 'messages'} - go to newest</button>}
-                <form className="message-composer" onSubmit={handleSendMessage}>
+                <form className="message-composer" onSubmit={handleSendMessage} aria-busy={sendingMessage}>
                   <label className="form-label" htmlFor="session-message">Message</label>
                   <div className="chat-compose-row">
                   <textarea
@@ -709,7 +709,7 @@ const SessionRoom = ({ id }) => {
                     aria-describedby={messageError ? 'session-message-error' : undefined}
                     onChange={(event) => { setMessageBody(event.target.value); setMessageError(''); setMessageNotice(''); }}
                   />
-                  <button type="submit" className="btn btn-primary" disabled={actionLoading || sendingMessage || !messageBody.trim()}><Send size={16} aria-hidden="true" />{sendingMessage ? 'Sending...' : 'Send'}</button>
+                  <button type="submit" className="btn btn-primary" disabled={actionLoading || sendingMessage || !messageBody.trim()} aria-busy={sendingMessage}><Send size={16} aria-hidden="true" />{sendingMessage ? 'Sending...' : 'Send'}</button>
                   </div>
                   {messageNotice && <p role="status" className="form-hint">{messageNotice}</p>}
                   {messageError && <span role="alert" className="form-error" id="session-message-error">{messageError}</span>}

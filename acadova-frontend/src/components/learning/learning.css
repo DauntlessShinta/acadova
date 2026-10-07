@@ -1,5 +1,5 @@
 .learning-section-nav { display: flex; flex-wrap: wrap; gap: var(--space-2); padding: 6px; margin-block: var(--space-3) var(--space-4); border: 1px solid var(--border-subtle); border-radius: var(--radius-md); background: var(--bg-surface); }
-.learning-section-nav a { display: inline-flex; align-items: center; justify-content: center; min-height: 44px; padding: 10px 14px; border-radius: var(--radius-sm); color: var(--ink-600); font-size: .875rem; text-decoration: none; transition: background-color var(--interaction-duration) ease; }
+.learning-section-nav a { display: inline-flex; align-items: center; justify-content: center; min-height: 44px; padding: 10px 14px; border-radius: var(--radius-sm); color: var(--ink-600); font-size: .875rem; text-decoration: none; overflow-wrap: normal; word-break: normal; transition: background-color var(--interaction-duration) ease; }
 .learning-page-header h1:focus { outline: none; }
 .learning-section-nav a:hover { background: var(--bg-subtle); color: var(--acadova-primary); }
 .learning-section-nav a[aria-current='page'] { color: var(--acadova-primary); background: var(--acadova-tint); font-weight: 700; }

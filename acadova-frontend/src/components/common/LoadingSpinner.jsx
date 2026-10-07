@@ -5,6 +5,7 @@ export const LoadingSpinner = ({ text = 'Loading data...', size = 28 }) => {
   return (
     <div className="loading-container" role="status" aria-live="polite" aria-atomic="true">
       <span className="loading-indicator" aria-hidden="true"><BookOpen size={size} strokeWidth={1.5} /></span>
+      <span className="loading-progress" aria-hidden="true"><span /></span>
       <p>{text || 'Loading...'}</p>
     </div>
   );

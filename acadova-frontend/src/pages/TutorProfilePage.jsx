@@ -33,6 +33,7 @@ export const TutorProfilePage = () => {
   const submittingRef = useRef(false);
   const [requestedSession, setRequestedSession] = useState(null);
   const [submitting, setSubmitting] = useState(false);
+  const [requestError, setRequestError] = useState('');
   const [fieldErrors, setFieldErrors] = useState({});
   const [sessionCost, setSessionCost] = useState(null);
 
@@ -40,7 +41,7 @@ export const TutorProfilePage = () => {
     const fetchTutor = async () => {
       try {
         setLoading(true);
-        setError(''); setRequestedSession(null);
+        setError(''); setRequestedSession(null); setRequestError('');
         const res = await userService.getUserById(id);
         if (res?.data?.role === 'student') {
           setTutor(res.data);
@@ -74,7 +75,7 @@ export const TutorProfilePage = () => {
   const handleRequestSession = async (e) => {
     e.preventDefault();
     if (submittingRef.current || requestedSession) return;
-    setError('');
+    setRequestError('');
 
 
     const errors = {};
@@ -109,6 +110,7 @@ export const TutorProfilePage = () => {
       toast('success', 'Session request sent.');
       refreshUser();
     } catch (err) {
+      setRequestError(err.message || 'Failed to request session.');
       toast('error', err.message || 'Failed to request session.');
     } finally {
       submittingRef.current = false; setSubmitting(false);
@@ -203,7 +205,8 @@ export const TutorProfilePage = () => {
             Book a 1-on-1 collaborative study room with {tutor.name}. Credits transfer after both participants confirm a verified session, or after a valid Moderator resolution.
           </p>
 
-          {requestedSession ? <div className="session-request-success" role="status"><h2>Session request sent</h2><p>{tutor.name} will receive your request and proposed schedule.</p><Link className="btn btn-primary" to={`/sessions/${requestedSession._id || requestedSession.id}`}>View requested session</Link></div> : <form onSubmit={handleRequestSession}>
+          {requestedSession ? <div className="session-request-success" role="status"><h2>Session request sent</h2><p>{tutor.name} will receive your request and proposed schedule.</p><Link className="btn btn-primary" to={`/sessions/${requestedSession._id || requestedSession.id}`}>View requested session</Link></div> : <form onSubmit={handleRequestSession} aria-busy={submitting}>
+            <Alert type="danger" message={requestError} onClose={() => setRequestError('')} />
             <div className="form-group">
               <label className="form-label" htmlFor="subject">Subject / Topic</label>
               <input
@@ -284,6 +287,7 @@ export const TutorProfilePage = () => {
               className="btn btn-primary"
               style={{ width: '100%' }}
               disabled={submitting}
+              aria-busy={submitting}
             >
               {submitting ? 'Sending Request...' : 'Send Session Request'}
             </button>

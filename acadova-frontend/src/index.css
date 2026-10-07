@@ -220,7 +220,6 @@ input, button, select, textarea {
   background: var(--acadova-blue-strong);
   border-color: var(--acadova-blue-strong);
   box-shadow: var(--shadow-sm);
-  transform: translateY(-1px);
 }
 
 .btn:focus-visible,
@@ -241,7 +240,6 @@ textarea:focus-visible {
 
 .btn-navy:hover:not(:disabled) {
   background: var(--navy-900);
-  transform: translateY(-1px);
 }
 
 .btn-secondary {
@@ -349,7 +347,6 @@ textarea:focus-visible {
 
 .card-interactive:hover {
   box-shadow: var(--shadow-md);
-  transform: translateY(-2px);
 }
 
 /* Forms & Inputs */
@@ -630,7 +627,7 @@ textarea:focus-visible {
 .alert-info { background: var(--info-bg); color: var(--info-text); border: 1px solid var(--info-border); }
 .alert-warning { background: var(--warning-bg); color: var(--warning-text); border: 1px solid var(--warning-border); }
 
-/* Loading status stays readable without decorative motion. */
+/* Loading status stays readable; only the progress track moves while waiting. */
 .loading-indicator { display: grid; place-items: center; padding: 12px; border-radius: var(--radius-md); color: var(--acadova-primary); background: var(--acadova-tint); }
 
 .loading-container {
@@ -3654,8 +3651,6 @@ label:has(> input:is([type='checkbox'], [type='radio'])) { min-height: 44px; cur
 .home-path, .home-credit-summary, .staff-quick-links a { transition: border-color var(--interaction-duration) ease, background-color var(--interaction-duration) ease, box-shadow var(--interaction-duration) ease; }
 .home-path { position: relative; padding: 24px; gap: 14px; cursor: pointer; transition: transform var(--interaction-duration) ease, border-color var(--interaction-duration) ease, background-color var(--interaction-duration) ease, box-shadow var(--interaction-duration) ease; }
 .home-path-arrow { position: absolute; top: 24px; right: 20px; transition: transform var(--interaction-duration) ease; }
-.home-path:hover { transform: translateY(-1px); }
-.home-path:hover .home-path-arrow { transform: translateX(2px); }
 .home-path:active { transform: translateY(0); box-shadow: var(--shadow-xs); }
 .learning-destination-card:active, button.learning-resource-row:active:not(:disabled), .home-resume-card:active { background: var(--acadova-tint); box-shadow: var(--shadow-xs); }
 .home-path strong { line-height: 1.4; }
@@ -3863,4 +3858,46 @@ button.learning-resource-row:disabled { cursor: progress; opacity: .65; }
   .staff-filter-bar > button { justify-self: stretch; }
   .form-actions .btn { flex: 1 1 150px; }
   .empty-state { padding: 32px 20px; }
+}
+
+/* Final interaction pass: acknowledge actions without moving workspace content. */
+.loading-progress { display: block; width: 88px; height: 3px; overflow: hidden; border-radius: var(--radius-full); background: var(--acadova-tint); }
+.loading-progress > span { display: block; width: 30%; height: 100%; background: var(--acadova-action); animation: waiting-progress 1.4s ease-in-out infinite; }
+.btn[aria-busy='true'] { position: relative; overflow: hidden; opacity: 1; cursor: progress; }
+.btn[aria-busy='true']::after { content: ''; position: absolute; bottom: 0; left: 0; width: 30%; height: 3px; background: currentColor; animation: waiting-progress 1.4s ease-in-out infinite; pointer-events: none; }
+@keyframes waiting-progress { from { transform: translateX(-100%); } to { transform: translateX(434%); } }
+
+.workflow-tabs button, .learning-section-nav a { border-bottom: 2px solid transparent; transition: background-color var(--interaction-duration) ease, border-color var(--interaction-duration) ease, color var(--interaction-duration) ease; }
+.workflow-tabs button[aria-selected='true'], .learning-section-nav a[aria-current='page'] { border-bottom-color: var(--acadova-action); }
+.assessment-option { transition: background-color var(--interaction-duration) ease, border-color var(--interaction-duration) ease; }
+.assessment-option:focus-within { outline: 2px solid var(--acadova-action); outline-offset: 2px; }
+.assessment-option:has(input:checked) { border-inline-start-width: 4px; padding-inline-start: 9px; }
+.learning-resource-row.is-current { box-shadow: inset 3px 0 var(--acadova-action); }
+.assessment-result { padding: var(--space-3); border: 1px solid var(--acadova-soft-blue); border-inline-start: 4px solid var(--acadova-action); border-radius: var(--radius-md); background: var(--acadova-canvas); animation: feedback-appear var(--interaction-duration) ease-out; }
+.assessment-result h3 { display: flex; align-items: center; gap: var(--space-2); }
+.assessment-result h3 > svg { flex-shrink: 0; color: var(--acadova-primary); }
+.session-request-success { animation: feedback-appear var(--interaction-duration) ease-out; }
+.notification-panel { animation: feedback-appear var(--interaction-duration) ease-out; }
+@keyframes feedback-appear { from { opacity: .65; } to { opacity: 1; } }
+.account-trigger > svg:last-child { flex-shrink: 0; transition: transform var(--interaction-duration) ease; }
+.account-trigger[aria-expanded='true'] > svg:last-child { transform: rotate(180deg); }
+.message-composer:focus-within { border-top-color: var(--acadova-action); }
+.message-composer .form-textarea, .message-composer { transition: border-color var(--interaction-duration) ease; }
+.assessment-card:focus-within, .peer-card:focus-within { border-color: var(--acadova-action); }
+.assessment-card { transition: border-color var(--interaction-duration) ease, box-shadow var(--interaction-duration) ease; }
+.learning-card-hint > svg, .learning-resource-row > svg:last-child, .session-card-open > svg { transition: transform var(--interaction-duration) ease; }
+.staff-content .table tbody tr:focus-within { background: #eff6ff; }
+
+@media (hover: hover) and (pointer: fine) and (prefers-reduced-motion: no-preference) {
+  .btn-primary:hover:not(:disabled), .btn-navy:hover:not(:disabled), .home-path:hover { transform: translateY(-1px); }
+  .home-path:hover .home-path-arrow, .learning-destination-card:hover .learning-card-hint > svg,
+  button.learning-resource-row:hover:not(:disabled) > svg:last-child, .student-session-card:hover .session-card-open > svg { transform: translateX(2px); }
+}
+@media (hover: hover) and (pointer: fine) {
+  .assessment-card:hover { border-color: var(--acadova-soft-blue); box-shadow: var(--shadow-sm); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .loading-progress > span, .btn[aria-busy='true']::after { animation: none !important; transform: none; width: 100%; }
+  .assessment-result, .session-request-success, .notification-panel, .modal-backdrop, .modal-dialog, .account-actions, .app-toast { animation: none !important; }
+  .btn:active:not(:disabled), .account-trigger > svg:last-child { transform: none !important; }
 }

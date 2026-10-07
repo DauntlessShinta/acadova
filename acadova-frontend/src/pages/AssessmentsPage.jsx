@@ -1,5 +1,6 @@
 import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { BookOpen, CheckCircle2 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import assessmentService from '../services/assessmentService';
 import learningService from '../services/learningService';
@@ -178,12 +179,12 @@ export const AssessmentsPage = () => {
       <h2>{result ? 'Assessment result' : 'Questions'}</h2><p className="learning-item-meta">{selected.topic} · {selected.questionCount} questions · Free assessment</p>
       {materialActions}{reviewNotice && <p className="form-hint">{reviewNotice}</p>}
       {result ? <div className="assessment-result" role="status">
-        <h3>{result.passed ? 'Passed' : 'Not passed yet'}</h3><p>Score: {result.score}%</p>
+        <h3>{result.passed ? <CheckCircle2 size={24} aria-hidden="true" /> : <BookOpen size={24} aria-hidden="true" />}{result.passed ? 'Passed' : 'Not passed yet'}</h3><p>Score: {result.score}%</p>
         <p>{result.rewardIssued ? `+${result.creditsAwarded} credits earned` : 'No credits awarded for this attempt.'}</p>
         {!result.rewardIssued && result.passed && <p>You already earned the one-time reward for this assessment.</p>}
         <div className="assessment-card-actions"><Link to="/credits" className="btn btn-secondary btn-sm">View credit wallet</Link>
           <button type="button" className="btn btn-secondary btn-sm" onClick={() => { setResult(null); setAnswerError(''); setAnswers(Array(selected.questions.length).fill(null)); }}>Try again</button></div>
-      </div> : <form onSubmit={submit}>
+      </div> : <form onSubmit={submit} aria-busy={working}>
         <p>Choose one answer for every question. Your answers are graded after you submit.</p>
         {selected.questions.map((question, index) => <fieldset className="card" key={index} disabled={working} aria-describedby={answerError && answers[index] === null ? 'assessment-answer-error' : undefined}>
           <legend><strong>{index + 1}. {question.prompt}</strong></legend>
@@ -193,7 +194,7 @@ export const AssessmentsPage = () => {
           </label>)}
         </fieldset>)}
         {answerError && <p id="assessment-answer-error" className="form-error" role="alert">{answerError}</p>}
-        <button type="submit" className="btn btn-primary" disabled={working} aria-describedby={answerError ? 'assessment-answer-error' : undefined}>{working ? 'Submitting...' : 'Submit answers'}</button>
+        <button type="submit" className="btn btn-primary" disabled={working} aria-busy={working} aria-describedby={answerError ? 'assessment-answer-error' : undefined}>{working ? 'Submitting...' : 'Submit answers'}</button>
       </form>}
     </section>}
   </div>;

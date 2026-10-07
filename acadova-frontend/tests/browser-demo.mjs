@@ -92,11 +92,18 @@ server = await createServer({
   });
   const evaluate = (expression) => command('Runtime.evaluate', { expression, returnByValue: true });
   await command('Runtime.enable', {});
-  await command('Emulation.setDeviceMetricsOverride', { width, height, deviceScaleFactor: 1, mobile: false });
+  await command('Emulation.setDeviceMetricsOverride', { width, height, deviceScaleFactor: 1, mobile: process.env.ACADOVA_COARSE_POINTER === '1' });
+  if (process.env.ACADOVA_COARSE_POINTER === '1') await command('Emulation.setTouchEmulationEnabled', { enabled: true, maxTouchPoints: 1 });
   await command('Emulation.setFocusEmulationEnabled', { enabled: true });
   if (process.env.ACADOVA_REDUCED_MOTION === '1') await command('Emulation.setEmulatedMedia', {
     features: [{ name: 'prefers-reduced-motion', value: 'reduce' }],
   });
+  const media = (await evaluate(`({ fine: matchMedia('(pointer: fine)').matches,
+    coarse: matchMedia('(pointer: coarse)').matches, hover: matchMedia('(hover: hover)').matches,
+    reduced: matchMedia('(prefers-reduced-motion: reduce)').matches })`)).result?.result?.value;
+  if (process.env.ACADOVA_COARSE_POINTER === '1' && (!media?.coarse || media.hover)) throw new Error('Coarse-pointer emulation did not activate');
+  if (process.env.ACADOVA_REDUCED_MOTION === '1' && !media?.reduced) throw new Error('Reduced-motion emulation did not activate');
+  console.log('Browser media:', JSON.stringify(media));
   await command('Page.navigate', { url: `http://127.0.0.1:${address.port}/__demo-test?capture=${encodeURIComponent(process.argv[7] || '/dashboard')}` });
   if (process.env.ACADOVA_SCREENSHOT_DIR) await command('Page.addScriptToEvaluateOnNewDocument', { source: 'window.__acadovaCaptureEnabled = true;' });
   await evaluate(`window.__acadovaCaptureEnabled = ${Boolean(process.env.ACADOVA_SCREENSHOT_DIR)}`);
@@ -120,8 +127,11 @@ server = await createServer({
     }
     const pointer = (await evaluate('window.__acadovaPointer')).result?.result?.value;
     if (pointer && Number.isFinite(pointer.x) && Number.isFinite(pointer.y)) {
-      await command('Input.dispatchMouseEvent', { type: 'mousePressed', x: pointer.x, y: pointer.y, button: 'left', clickCount: 1 });
-      await command('Input.dispatchMouseEvent', { type: 'mouseReleased', x: pointer.x, y: pointer.y, button: 'left', clickCount: 1 });
+      await command('Input.dispatchMouseEvent', { type: 'mouseMoved', x: pointer.x, y: pointer.y });
+      for (let click = 1; !pointer.hover && click <= (pointer.double ? 2 : 1); click++) {
+        await command('Input.dispatchMouseEvent', { type: 'mousePressed', x: pointer.x, y: pointer.y, button: 'left', clickCount: click });
+        await command('Input.dispatchMouseEvent', { type: 'mouseReleased', x: pointer.x, y: pointer.y, button: 'left', clickCount: click });
+      }
       await evaluate('window.__acadovaPointer = null');
     }
     result = (await evaluate('document.getElementById("result")?.textContent')).result?.result?.value;

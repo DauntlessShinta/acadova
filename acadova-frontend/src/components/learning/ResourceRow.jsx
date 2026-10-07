@@ -13,6 +13,7 @@ export default function ResourceRow({ resource, onOpen, disabled = false, select
     <span className="learning-resource-copy"><strong>{resource.title}</strong>
       {resource.description && <span className="learning-resource-description">{resource.description}</span>}
       <span className="learning-item-meta"><span>{resource.resourceType === 'text' ? 'Reading resource' : 'External learning resource'}</span>
+        {selected && <span className="learning-current-label">Current resource</span>}
         {source && <span>{source}</span>}{access && <span className="learning-access">{access}</span>}</span>
     </span>
     <ArrowRight size={20} aria-hidden="true" />

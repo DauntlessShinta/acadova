@@ -1,0 +1,32 @@
+.learning-section-nav { display: flex; flex-wrap: wrap; gap: var(--space-2); padding: 6px; margin-block: var(--space-3) var(--space-4); border: 1px solid var(--border-subtle); border-radius: var(--radius-md); background: var(--bg-surface); }
+.learning-section-nav a { display: inline-flex; align-items: center; justify-content: center; min-height: 44px; padding: 10px 14px; border-radius: var(--radius-sm); color: var(--ink-600); font-size: .875rem; text-decoration: none; transition: background-color var(--interaction-duration) ease; }
+.learning-page-header h1:focus { outline: none; }
+.learning-section-nav a:hover { background: var(--bg-subtle); color: var(--acadova-primary); }
+.learning-section-nav a[aria-current='page'] { color: var(--acadova-primary); background: var(--acadova-tint); font-weight: 700; }
+.learning-section-nav a[aria-disabled='true'] { opacity: .65; cursor: not-allowed; }
+.assessment-hub-list { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-3); }
+.assessment-card { display: flex; flex-direction: column; gap: var(--space-3); min-width: 0; }
+.assessment-card-heading { display: flex; flex-wrap: wrap; align-items: start; justify-content: space-between; gap: var(--space-2); }
+.assessment-card-heading :is(h2, h3) { font-size: 1.2rem; flex: 1 1 200px; margin: 0; }
+.assessment-card p { margin: 0; }
+.assessment-card-actions { display: flex; flex-wrap: wrap; gap: var(--space-2); margin-top: auto; }
+.assessment-card-actions .btn { white-space: normal; }
+.assessment-hub-note { margin-bottom: var(--space-4); }
+.assessment-workspace > h2 { font-size: 1.3rem; margin-block: var(--space-4) var(--space-2); }
+.assessment-workspace fieldset.card legend { padding-inline: var(--space-2); max-width: 100%; }
+.assessment-workspace .assessment-result { margin-top: var(--space-4); }
+.assessment-review-actions { display: flex; flex-wrap: wrap; gap: var(--space-2); margin-block: var(--space-3); }
+.learning-current-label { font-size: .8125rem; color: var(--acadova-primary); font-weight: 600; }
+.learning-topic-section#topic-assessments { scroll-margin-top: 140px; }
+.learning-module-summary { cursor: pointer; }
+.learning-module-summary:has(button:disabled) { cursor: progress; }
+.learning-shell-context { color: var(--acadova-primary); }
+.learning-shell-context a { display: inline-flex; align-items: center; gap: var(--space-2); min-height: 44px; }
+@media (max-width: 700px) {
+  .learning-section-nav { gap: var(--space-1); }
+  .learning-section-nav a { flex: 1 1 100px; padding-inline: 8px; }
+  .assessment-hub-list { grid-template-columns: minmax(0, 1fr); }
+  .assessment-card-actions .btn { flex: 1 1 180px; }
+  .assessment-review-actions .btn { flex: 1 1 160px; white-space: normal; }
+  .assessments-page .learning-breadcrumbs li:nth-child(3) { display: none; }
+}

@@ -9,9 +9,9 @@ import react from '@vitejs/plugin-react';
 
 const browser = process.argv[2] || 'C:/Program Files/Google/Chrome/Application/chrome.exe';
 const fixture = process.argv[3] || 'browser-demo.jsx';
-if (!/^browser-(demo|p71|p71b|correction|hardening|quality|rollback)\.jsx$/.test(fixture)) throw new Error('Unknown browser fixture');
+if (!/^browser-(demo|p71|p71b|correction|hardening|quality|rollback|learning)\.jsx$/.test(fixture)) throw new Error('Unknown browser fixture');
 const width = Number(process.argv[4] || 1366);
-if (!Number.isInteger(width) || width < 320 || width > 3840) throw new Error('Width must be 320–3840 pixels');
+if (!Number.isInteger(width) || width < 320 || width > 3840) throw new Error('Width must be 320â€“3840 pixels');
 if (process.argv[5] && !process.argv[5].endsWith('.png')) throw new Error('Screenshot argument must be a .png path');
 const height = Number(process.argv[6] || (width < 700 ? 844 : 900));
 if (!Number.isInteger(height) || height < 480 || height > 2160) throw new Error('Invalid viewport height');
@@ -109,13 +109,20 @@ server = await createServer({
       await evaluate('window.__acadovaCapture = null');
     }
     const key = (await evaluate('window.__acadovaKey')).result?.result?.value;
-    if (['Tab', 'Shift+Tab', 'Enter', 'Escape'].includes(key)) {
-      const actualKey = key === 'Shift+Tab' ? 'Tab' : key;
-      const code = { Tab: 9, Enter: 13, Escape: 27 }[actualKey];
+    if (['Tab', 'Shift+Tab', 'Enter', 'Escape', 'Space'].includes(key)) {
+      const actualKey = key === 'Shift+Tab' ? 'Tab' : key === 'Space' ? ' ' : key;
+      const code = { Tab: 9, Enter: 13, Escape: 27, ' ': 32 }[actualKey];
+      const domCode = key === 'Space' ? 'Space' : actualKey;
       const modifiers = key === 'Shift+Tab' ? 8 : 0;
-      await command('Input.dispatchKeyEvent', { type: 'keyDown', key: actualKey, code: actualKey, windowsVirtualKeyCode: code, nativeVirtualKeyCode: code, modifiers, ...(actualKey === 'Enter' ? { text: '\r', unmodifiedText: '\r' } : {}) });
-      await command('Input.dispatchKeyEvent', { type: 'keyUp', key: actualKey, code: actualKey, windowsVirtualKeyCode: code, modifiers });
+      await command('Input.dispatchKeyEvent', { type: 'keyDown', key: actualKey, code: domCode, windowsVirtualKeyCode: code, nativeVirtualKeyCode: code, modifiers, ...(actualKey === 'Enter' ? { text: '\r', unmodifiedText: '\r' } : {}) });
+      await command('Input.dispatchKeyEvent', { type: 'keyUp', key: actualKey, code: domCode, windowsVirtualKeyCode: code, modifiers });
       await evaluate('window.__acadovaKey = null');
+    }
+    const pointer = (await evaluate('window.__acadovaPointer')).result?.result?.value;
+    if (pointer && Number.isFinite(pointer.x) && Number.isFinite(pointer.y)) {
+      await command('Input.dispatchMouseEvent', { type: 'mousePressed', x: pointer.x, y: pointer.y, button: 'left', clickCount: 1 });
+      await command('Input.dispatchMouseEvent', { type: 'mouseReleased', x: pointer.x, y: pointer.y, button: 'left', clickCount: 1 });
+      await evaluate('window.__acadovaPointer = null');
     }
     result = (await evaluate('document.getElementById("result")?.textContent')).result?.result?.value;
     if (result?.startsWith('PASS:') || result?.startsWith('FAIL:')) break;

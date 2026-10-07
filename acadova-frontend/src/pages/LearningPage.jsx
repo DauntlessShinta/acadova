@@ -1,12 +1,14 @@
 import ExternalResourceLink from '../components/common/ExternalResourceLink';
 import ResourceRow from '../components/learning/ResourceRow';
 import { learningAccessLabel, resourceSource } from '../utils/learningPresentation';
-import WorkflowTabs from '../components/common/WorkflowTabs';
+import LearningNavigation from '../components/learning/LearningNavigation';
+import AssessmentCard from '../components/learning/AssessmentCard';
+import ModuleAssessmentEntry from '../components/learning/ModuleAssessmentEntry';
 import { useConfirm } from '../context/confirmAccess';
 import { useToast } from '../context/toastAccess';
 import React, { useEffect, useRef, useState } from 'react';
 import { ArrowRight } from 'lucide-react';
-import { Link, useSearchParams } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { discoveryDestination, discoveryQueryError, filterLearningTopics, learningTopicTitle } from '../utils/discoverySearch';
 import learningService from '../services/learningService';
 import Alert from '../components/common/Alert';
@@ -20,6 +22,7 @@ const emptySubmission = { topic: '', title: '', description: '', resourceType: '
 export const LearningPage = () => {
   const toast = useToast();
   const confirm = useConfirm();
+  const navigate = useNavigate();
   const { user, refreshUser } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
   const topicId = searchParams.get('topic');
@@ -42,11 +45,6 @@ export const LearningPage = () => {
   const mutationPending = useRef(false);
   const [submissionSent, setSubmissionSent] = useState(false);
   const section = searchParams.get('view') === 'contribute' ? 'contribute' : 'library';
-  const setSection = (value) => {
-    const next = new URLSearchParams(searchParams);
-    if (value === 'contribute') next.set('view', value); else next.delete('view');
-    setSearchParams(next);
-  };
   const [error, setError] = useState('');
   const dirty = JSON.stringify(submission) !== JSON.stringify(emptySubmission);
   useUnsavedChanges(dirty);
@@ -146,13 +144,17 @@ export const LearningPage = () => {
       </ol></nav>}
       <h1>{section === 'contribute' ? 'Share a resource' : content?.title || (topic ? learningTopicTitle(topic) : 'Learning')}</h1>
       <p>{section === 'contribute' ? 'Submit teaching material for staff review before publication.' : content ? content.description : topic ? topic.description : 'Browse approved topics, study free resources, and take assessments.'}</p>
-      {section === 'library' && topic && !content && <p className="learning-item-meta">{topic.modules.length} {topic.modules.length === 1 ? 'module' : 'modules'} · {topic.resources.length} {topic.resources.length === 1 ? 'resource' : 'resources'}</p>}
+      {section === 'library' && topic && !content && <p className="learning-item-meta">{topic.modules.length} {topic.modules.length === 1 ? 'module' : 'modules'} · {topic.resources.length} {topic.resources.length === 1 ? 'resource' : 'resources'}{topic.assessments.length > 0 && <a className="text-link" href="#topic-assessments">Check your learning ({topic.assessments.length})</a>}</p>}
     </header>
     <Alert type="danger" message={error} />
+    <LearningNavigation disabled={working} onNavigate={async (event, to) => {
+      if (!dirty || !to.startsWith('/assessments') || event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) return;
+      event.preventDefault();
+      if (await confirm('Your resource draft will be discarded. Continue to Assessments?', { title: 'Leave this resource draft?', label: 'Continue', cancelLabel: 'Keep editing' })) navigate(to);
+    }} />
     {working && <p role="status">Loading learning content...</p>}
     {loading ? <LoadingSpinner text="Loading topics..." /> : <>
-      <WorkflowTabs id="learning" tabs={[['library', 'Browse learning'], ['contribute', 'Share a resource']]} active={section} onChange={setSection} />
-      <section role="tabpanel" id="learning-panel-library" aria-labelledby="learning-tab-library" hidden={section !== 'library'}>
+      <section id="learning-panel-library" aria-labelledby="learning-tab-library" hidden={section !== 'library'}>
       {!topic && topicQuery && <div className="learning-search-summary"><p role="status">{matchingTopics.length} {matchingTopics.length === 1 ? 'published topic matches' : 'published topics match'} “{topicQuery}”.</p><button type="button" className="btn btn-secondary btn-sm" onClick={() => { const next = new URLSearchParams(searchParams); next.delete('q'); setSearchParams(next); }}>Clear search</button></div>}
       {!topic ? <div className="assessment-list learning-topic-results">{!topicsAvailable ? <div className="card"><h2>Learning topics could not be loaded.</h2><p>Refresh to try again, or find a peer to learn with.</p><Link className="btn btn-primary" to="/tutors">Find a Tutor</Link></div> : topics.length === 0 ? <div className="card"><h2>No learning topics are available yet.</h2><p>You can still learn with a peer while staff prepare topics.</p><Link className="btn btn-primary" to="/tutors">Find a Tutor</Link></div>
         : matchingTopics.length === 0 ? <div className="card"><h2>No matching learning topics</h2><p>Try a shorter subject or clear the search to browse all published topics.</p><Link className="btn btn-secondary" to={discoveryQueryError('tutors', topicQuery) ? '/tutors' : discoveryDestination('tutors', topicQuery)}>Find a Tutor instead</Link></div>
@@ -193,10 +195,8 @@ export const LearningPage = () => {
                         </div>
                       </section>
                     </div>}
-                  {content.assessment && <section className="learning-assessment" aria-labelledby="learning-assessment-heading">
-                    <h2 id="learning-assessment-heading">Check your learning</h2><p>Assessment</p>
-                    <Link className="btn btn-primary btn-sm" to={'/assessments?open=' + content.assessment}>Take assessment</Link>
-                  </section>}</>}
+                  {content.assessment && <ModuleAssessmentEntry key={content.assessment} assessmentId={content.assessment}
+                    topicName={learningTopicTitle(topic)} context={{ topicId: topic.id, moduleId: content.id, lessonIndex }} />}</>}
         </section>}
         {!content && <>
           <section className="learning-topic-section" aria-labelledby="learning-modules-heading"><h2 id="learning-modules-heading">Modules</h2>
@@ -212,13 +212,14 @@ export const LearningPage = () => {
             <p>Browse the available resources individually.</p><div className="learning-resource-list">{topic.resources.map((item) =>
               <ResourceRow key={item.id} resource={item} disabled={working} onOpen={() => openResource(item.id)} />
             )}</div></section>}
-          {topic.assessments.length > 0 && <section className="learning-topic-section" aria-labelledby="learning-topic-assessments-heading"><h2 id="learning-topic-assessments-heading">Topic assessments</h2>
-            <div className="learning-topic-assessment-list">{topic.assessments.map((item) => <Link className="learning-assessment-link" key={item.id} to={`/assessments?open=${item.id}`}><span><strong>{item.title}</strong><span>{item.questionCount} questions</span></span><ArrowRight size={18} aria-hidden="true" /></Link>)}</div>
+          {topic.assessments.length > 0 && <section className="learning-topic-section" id="topic-assessments" aria-labelledby="learning-topic-assessments-heading"><h2 id="learning-topic-assessments-heading">Check your learning</h2>
+            <p>These published assessments are linked to this topic. Review the material first, or take an assessment directly. A first passing result can earn credits once per assessment.</p>
+            <div className="learning-topic-assessment-list">{topic.assessments.map((item) => <AssessmentCard key={item.id} assessment={item} topicName={learningTopicTitle(topic)} context={{ topicId: topic.id }} headingLevel="h3" />)}</div>
           </section>}
         </>}
       </>}
       </section>
-      <section role="tabpanel" id="learning-panel-contribute" aria-labelledby="learning-tab-contribute" hidden={section !== 'contribute'} className="learning-contribution">{topics.length ? <form className="card" data-unsaved={dirty} onSubmit={submit}><h2>Share a resource</h2>
+      <section id="learning-panel-contribute" aria-labelledby="learning-tab-contribute" hidden={section !== 'contribute'} className="learning-contribution">{topics.length ? <form className="card" data-unsaved={dirty} onSubmit={submit}><h2>Share a resource</h2>
         <p>Share a text lesson or an HTTPS resource with other Students. A Moderator reviews your submission before it appears in Learning.</p>
         <ol className="contribution-steps" aria-label="Resource review process"><li>Submit your resource</li><li>Moderator reviews it</li><li>Approved material is published</li></ol>
         {submissionSent && <p className="alert alert-success" role="status">Your resource is awaiting review. You'll receive an in-app notification when it is published or returned with feedback.</p>}

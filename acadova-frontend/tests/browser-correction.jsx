@@ -40,6 +40,7 @@ window.fetch = async (url, options = {}) => {
   if (failActions && options.method && options.method !== 'GET') return new Response(JSON.stringify({ message: 'Connection unavailable. Try again.' }), { status: 503 });
   const route = String(url).split('?')[0];
   const data = route === '/api/learning/topics' ? topics : route.startsWith('/api/learning/topics/') ? topicDetail(topics.find((topic) => topic.id === route.split('/').at(-1))) : route.startsWith('/api/learning/modules/') ? learningModules.find((module) => module.id === route.split('/').at(-1)) : route.startsWith('/api/learning/resources/') ? learningResources.find((resource) => resource.id === route.split('/').at(-1)) : route.includes('/moderator/learning/resources') ? learningResources.map((resource) => ({ ...resource, reviewStatus: 'submitted', creditCost: 0, submittedBy: peer._id, submitterName: peer.name, createdAt: '2026-10-01T10:00:00.000Z' })) : route.includes('unread-count') ? { count: 0 }
+    : route === '/api/assessments/network-assessment' ? { id: 'network-assessment', title: 'Networking foundations assessment', topic: 'Computer Networks', questionCount: 3, questions: Array.from({ length: 3 }, () => ({ prompt: 'Choose the correct answer.', options: ['First', 'Second'] })) }
     : route === '/api/sessions/demo' ? session
       : route === '/api/sessions' ? [session]
         : route === '/api/users/tutors' ? [peer]
@@ -61,7 +62,11 @@ let key = 0;
 // oxlint-disable-next-line react/only-export-components
 function ToastProbe() { const toast = useToast(); const location = useLocation(); return <button data-path={location.pathname} id="toast-probe" hidden onClick={() => toast('success', 'Profile saved.')}>Toast probe</button>; }
 const render = async (path, user = student) => { const previousProbe = document.querySelector('#toast-probe'); root.render(<AuthContext.Provider value={{ user, credits: 100, loading: false, isAuthenticated: Boolean(user), refreshUser: async () => {}, login: async () => { throw new Error('Connection unavailable.'); }, register: async () => { throw new Error('Connection unavailable.'); }, logout: () => {} }}><ToastProvider><ConfirmProvider><MemoryRouter key={++key} initialEntries={[path]}><App /><ToastProbe /></MemoryRouter></ConfirmProvider></ToastProvider></AuthContext.Provider>); await until(() => document.querySelector('#toast-probe') !== previousProbe && document.querySelector('#toast-probe')?.dataset.path === path.split('?')[0], 'Router commit: ' + path); };
-const tab = async (id) => { document.getElementById(id).click(); await pause(); };
+const tab = async (id) => {
+  document.getElementById(id).click();
+  await until(() => document.getElementById(id)?.getAttribute('aria-selected') === 'true' || document.getElementById(id)?.getAttribute('aria-current') === 'page', 'Navigation commit: ' + id);
+  await pause();
+};
 const fill = (selector, value) => {
   const input = document.querySelector(selector);
   Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set.call(input, value);
@@ -141,7 +146,9 @@ try {
   assert(![...document.querySelectorAll('.learning-module-summary')].find((card) => card.textContent.includes('Further study')).textContent.includes('0 learning resources'), 'Invented locked module count');
   await openLearningModule('Networking Fundamentals');
   assert([...document.querySelectorAll('.learning-resource-order strong')].map((node) => node.textContent).join('|') === 'Understanding the OSI Model|TCP/IP Basics', 'Module order changed');
-  assert(document.querySelector('.learning-assessment a').getAttribute('href') === '/assessments?open=network-assessment', 'Assessment relationship changed');
+  await until(() => document.querySelector('.learning-assessment a[aria-label^="Take assessment"]'), 'Module assessment availability');
+  const assessmentUrl = new URL(document.querySelector('.learning-assessment a[aria-label^="Take assessment"]').getAttribute('href'), 'https://fixture.test');
+  assert(assessmentUrl.pathname === '/assessments' && assessmentUrl.searchParams.get('open') === 'network-assessment' && assessmentUrl.searchParams.get('topic') === 'networking' && assessmentUrl.searchParams.get('module') === 'net-module', 'Assessment and return relationship changed');
   assert(document.querySelector('.learning-assessment').compareDocumentPosition(document.querySelector('.learning-module-layout')) & Node.DOCUMENT_POSITION_PRECEDING, 'Assessment is not final');
   assert(document.querySelector('.learning-resource-order').textContent.includes('cloudflare.com'), 'Resource source missing');
   safeExternalAction();

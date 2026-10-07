@@ -248,7 +248,7 @@ try {
   fill('#scheduledAt', '2020-01-01T12:00'); fill('#requestMessage', 'Please help with Java.'); await pause();
   document.querySelector('#request-session form').dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
   await until(() => document.querySelector('#request-time-error'), 'Past time inline error'); assert(document.activeElement.id === 'scheduledAt', 'Past time focus');
-  await render('/assessments'); await until(() => document.querySelector('.assessment-list button'), 'Assessment list'); document.querySelector('.assessment-list button').click();
+  await render('/assessments'); await until(() => document.querySelector('.assessment-hub-list a[aria-label^="Take assessment"]'), 'Assessment hub'); document.querySelector('.assessment-hub-list a[aria-label^="Take assessment"]').click();
   await until(() => document.querySelector('input[name="question-0"]'), 'Assessment questions');
   document.querySelector('fieldset').closest('form').dispatchEvent(new Event('submit', { bubbles: true, cancelable: true })); await pause();
   assert(document.activeElement.name === 'question-0' && document.querySelector('fieldset').getAttribute('aria-describedby') === 'assessment-answer-error', 'Unanswered question focus/description');
@@ -321,7 +321,7 @@ try {
     ['/moderator/learning', '/api/moderator/learning/topics', 'Learning management is unavailable'],
     ['/moderator/assessments', '/api/moderator/assessments', 'Assessment drafts are unavailable'],
     ['/learning', '/api/learning/topics', 'Learning topics could not be loaded'],
-    ['/assessments', '/api/assessments', 'Assessment list could not be loaded'],
+    ['/assessments', '/api/assessments', 'Assessments unavailable'],
     ['/credits', '/api/credits/mine', 'Credit activity is unavailable'],
   ]) { failure = endpoint; await render(path, { ...student, role: path.startsWith('/admin') ? 'admin' : path.startsWith('/moderator') ? 'moderator' : 'student' }); await until(() => document.body.textContent.includes(expected), 'Honest load failure: ' + path); assert(!document.body.textContent.includes('No matching audit records'), 'Failure presented as no records'); failure = ''; }
   await render('/profile'); const token = localStorage.getItem('acadova_token');

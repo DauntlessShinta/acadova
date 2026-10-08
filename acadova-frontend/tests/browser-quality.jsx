@@ -129,7 +129,8 @@ try {
     ['pending', '/verify-email/pending', null], ['forgot', '/forgot-password', null], ['reset', '/reset-password', null],
     ['verification', '/verify-email', null],
     ['home', '/dashboard', student], ['tutors', '/tutors', student], ['learning', '/learning', student],
-    ['tutor-profile', '/tutors/peer', student], ['assessments', '/assessments', student], ['onboarding', '/onboarding', student],
+    ['tutor-profile', '/tutors/peer', student], ['assessments', '/assessments', student],
+    ['onboarding', '/onboarding', { ...student, onboardingFinishedAt: null, skillsToLearn: [], skillsToTeach: [] }],
     ['sessions', '/sessions', student], ['credits', '/credits', student], ['profile', '/profile', student],
     ['messages', '/sessions?view=messages', student], ['moderator', '/moderator', { ...student, role: 'moderator' }],
     ['review', '/moderator/learning#manage-panel-resources', { ...student, role: 'moderator' }],
@@ -149,17 +150,18 @@ try {
       await until(() => document.querySelector('.landing-network'), 'Restored hero illustration');
       assert(document.querySelector('#sdg-title').textContent.includes('accessible learning'), 'SDG preserved');
       assert(document.querySelector('#how-it-works') && document.querySelector('#credit-system') && document.querySelector('#skill-network') && document.querySelector('#dashboard-preview'), 'Original Landing sections');
-      assert(!document.querySelector('.landing-study-photo'), 'Rejected photo composition removed');
-      assert([...document.querySelectorAll('.landing-skill-node, .landing-network-lines path')].every((element) => getComputedStyle(element).animationName === 'none'), 'Decorative motion must be static');
-      const heroStyle = getComputedStyle(document.querySelector('.landing-hero-copy'));
+      assert(document.querySelector('.landing-peer-photo img')?.naturalWidth === 1200, 'Local peer-learning photograph decoded');
+      assert(!document.querySelector('.landing-peer-visual .landing-skill-node, .landing-motion-toggle'), 'Clutter removed from hero DOM');
+      assert(document.querySelectorAll('.public-brand-logo image[href="/images/acadova-logo-new.png"]').length === 2, 'Supplied public logo in Navbar and Footer');
+      const heroStyle = getComputedStyle(document.querySelector('.landing-badge-row'));
       assert(heroStyle.animationIterationCount === '1' && heroStyle.animationDelay === '0s', 'Hero enters once without delayed actions');
-      assert(heroStyle.animationName === (matchMedia('(prefers-reduced-motion: reduce)').matches ? 'none' : 'academic-arrival'), 'Hero honors reduced motion');
+      assert(heroStyle.animationName === (matchMedia('(prefers-reduced-motion: reduce)').matches ? 'none' : 'landing-hero-arrival'), 'Hero honors reduced motion');
       await hover(document.querySelector('.landing-feature-card'));
       assert(getComputedStyle(document.querySelector('.landing-feature-card')).transform === 'none', 'Passive feature cards stay still');
       await hover(document.querySelector('.landing-action-row .btn-primary'));
       const moves = matchMedia('(hover: hover) and (pointer: fine) and (prefers-reduced-motion: no-preference)').matches;
       const arrow = document.querySelector('.landing-action-row .btn-primary > svg');
-      assert(getComputedStyle(arrow).transform === (moves ? 'matrix(1, 0, 0, 1, 2, 0)' : 'none'), 'CTA movement only for fine pointer without reduced motion');
+      assert(getComputedStyle(arrow).transform === (moves ? 'matrix(1, 0, 0, 1, 3, 0)' : 'none'), 'CTA movement only for fine pointer without reduced motion');
       if (innerWidth <= 1024) {
         const menu = document.querySelector('.site-menu-button'); menu.focus(); await keyPress('Enter');
         await until(() => document.querySelector('#site-mobile-menu'), 'Public menu opens');
@@ -219,6 +221,7 @@ try {
   log.scrollTop = 0; log.dispatchEvent(new Event('scroll')); await pause();
   layout('chat'); await capture('chat-normal');
   const expand = document.querySelector('.chat-expand'); const normalHeight = log.clientHeight; expand.focus(); await keyPress('Enter'); await pause(150);
+  await until(() => composer.getBoundingClientRect().bottom <= innerHeight - (innerWidth <= 1024 ? 60 : 8), 'Expanded composer settles inside viewport');
   assert((innerHeight < 700 || log.clientHeight >= normalHeight * 1.25) && expand.getAttribute('aria-expanded') === 'true', 'Substantial expanded history where viewport allows');
   assert(field.value.startsWith('Keep this draft') && log.scrollTop < 2, 'Expanded draft/scroll preserved');
   layout('chat-expanded');

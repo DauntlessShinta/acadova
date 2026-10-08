@@ -1,0 +1,4 @@
+.public-brand-link { min-height: 44px; }
+.public-brand-logo { display: block; width: 180px; height: auto; flex-shrink: 0; }
+.public-brand-footer { padding: 10px 12px; background: var(--bg-surface); border: 1px solid var(--border-subtle); border-radius: var(--radius-sm); }
+.public-brand-footer .public-brand-logo { width: 160px; }

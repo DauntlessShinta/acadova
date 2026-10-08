@@ -9,7 +9,7 @@ import react from '@vitejs/plugin-react';
 
 const browser = process.argv[2] || 'C:/Program Files/Google/Chrome/Application/chrome.exe';
 const fixture = process.argv[3] || 'browser-demo.jsx';
-if (!/^browser-(demo|p71|p71b|correction|hardening|quality|rollback|learning)\.jsx$/.test(fixture)) throw new Error('Unknown browser fixture');
+if (!/^browser-(demo|p71|p71b|correction|hardening|quality|rollback|learning|landing)\.jsx$/.test(fixture)) throw new Error('Unknown browser fixture');
 const width = Number(process.argv[4] || 1366);
 if (!Number.isInteger(width) || width < 320 || width > 3840) throw new Error('Width must be 320â€“3840 pixels');
 if (process.argv[5] && !process.argv[5].endsWith('.png')) throw new Error('Screenshot argument must be a .png path');

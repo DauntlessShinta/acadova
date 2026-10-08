@@ -5,6 +5,7 @@ import { useAuth } from '../../context/AuthContext';
 import { getRoleHomeRoute, normalizeRole } from '../../config/roleNavigation';
 import NotificationBell from './NotificationBell';
 import AccountMenu from './AccountMenu';
+import PublicBrandLogo from './PublicBrandLogo';
 
 const publicLinks = [
   { to: '/#how-it-works', label: 'How It Works' },
@@ -53,14 +54,14 @@ export const Navbar = () => {
   };
 
   return (
-    <header className={`site-navbar ${isAuthenticated && !isStudent ? 'site-navbar-staff' : ''}`}>
+    <header className={`site-navbar ${!isAuthenticated && location.pathname === '/' ? 'landing-public-navbar' : ''} ${isAuthenticated && !isStudent ? 'site-navbar-staff' : ''}`}>
       <div className="container site-navbar-inner">
-        <Link to={homeRoute} className="site-brand" aria-label={`Acadova ${roleLabels[role] || 'home'}`} onClick={() => setMobileMenuOpen(false)}>
-          <span className="site-brand-mark"><Layers size={20} /></span>
+        <Link to={homeRoute} className={`site-brand ${!isAuthenticated ? 'public-brand-link' : ''}`} aria-label={`Acadova ${roleLabels[role] || 'home'}`} onClick={() => setMobileMenuOpen(false)}>
+          {!isAuthenticated ? <PublicBrandLogo /> : <><span className="site-brand-mark"><Layers size={20} /></span>
           <span className="site-brand-copy">
             <span>Acadova</span>
             {isAuthenticated && roleLabels[role] && <small>{roleLabels[role]}</small>}
-          </span>
+          </span></>}
         </Link>
 
         <nav className="site-nav-desktop" aria-label={isAuthenticated ? `${role} navigation` : 'Primary navigation'}>

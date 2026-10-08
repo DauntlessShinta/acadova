@@ -1,10 +1,12 @@
 import React from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { BookOpen, Layers } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { getRoleHomeRoute } from '../../config/roleNavigation';
+import PublicBrandLogo from './PublicBrandLogo';
 
 export const Footer = () => {
+  const location = useLocation();
   const { isAuthenticated, user } = useAuth();
   const isStaff = isAuthenticated && (user?.role === 'admin' || user?.role === 'moderator');
 
@@ -24,13 +26,13 @@ export const Footer = () => {
   }
 
   return (
-    <footer className="site-footer">
+    <footer className={`site-footer ${!isAuthenticated && location.pathname === '/' ? 'landing-public-footer' : ''}`}>
       <div className="container">
         <div className="site-footer-grid">
           <div className="site-footer-brand">
-            <Link to="/" className="site-brand" aria-label="Acadova home">
-              <span className="site-brand-mark"><Layers size={19} /></span>
-              <span>Acadova</span>
+            <Link to="/" className={`site-brand ${!isAuthenticated ? 'public-brand-link public-brand-footer' : ''}`} aria-label="Acadova home">
+              {!isAuthenticated ? <PublicBrandLogo /> : <><span className="site-brand-mark"><Layers size={19} /></span>
+              <span>Acadova</span></>}
             </Link>
             <p>Peer-to-peer academic skill and knowledge sharing, powered by reciprocal learning credits.</p>
             <span className="site-footer-purpose"><BookOpen size={15} /> Supporting accessible, student-led learning</span>

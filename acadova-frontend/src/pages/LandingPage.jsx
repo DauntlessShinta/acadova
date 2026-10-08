@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import {
   ArrowRight,
@@ -152,6 +152,7 @@ const dashboardViews = {
 };
 
 export const LandingPage = () => {
+  const landingRoot = useRef(null);
   const { isAuthenticated, user } = useAuth();
   const homeRoute = getRoleHomeRoute(user?.role);
   const location = useLocation();
@@ -160,10 +161,51 @@ export const LandingPage = () => {
   const [learnSkill, setLearnSkill] = useState('Database Design');
   const [exchangePreviewed, setExchangePreviewed] = useState(false);
   const [dashboardView, setDashboardView] = useState('overview');
+  const [photoUnavailable, setPhotoUnavailable] = useState(false);
 
   const selectedSkill = skillOptions.find((skill) => skill.key === selectedSkillKey) || skillOptions[0];
   const SelectedSkillIcon = selectedSkill.icon;
   const activeDashboardView = dashboardViews[dashboardView];
+
+  useEffect(() => {
+    const root = landingRoot.current;
+    const motion = window.matchMedia('(prefers-reduced-motion: reduce)');
+    const groups = [...root.querySelectorAll('.landing-section > .container > div, .landing-cta-box')];
+    const revealed = new WeakSet();
+    let observer;
+    const reveal = (element) => {
+      if (revealed.has(element)) return;
+      revealed.add(element);
+      element.classList.add('landing-is-revealed');
+      observer?.unobserve(element);
+    };
+    const synchronizeMotion = () => {
+      observer?.disconnect();
+      // Content is visible by default, including without IntersectionObserver.
+      if (motion.matches || !('IntersectionObserver' in window)) return;
+      observer = new IntersectionObserver((entries) => {
+        entries.forEach((entry) => { if (entry.isIntersecting) reveal(entry.target); });
+      }, { threshold: 0.08 });
+      groups.forEach((group) => { if (!revealed.has(group)) observer.observe(group); });
+    };
+    const revealFocusedGroup = (event) => {
+      groups.forEach((group) => {
+        if (!group.contains(event.target)) return;
+        reveal(group);
+        // Finish a reveal when reached by keyboard, without restarting it on blur.
+        group.getAnimations().forEach((animation) => animation.finish());
+      });
+      event.target.closest('.landing-action-row')?.getAnimations().forEach((animation) => animation.finish());
+    };
+    synchronizeMotion();
+    motion.addEventListener('change', synchronizeMotion);
+    root.addEventListener('focusin', revealFocusedGroup);
+    return () => {
+      observer?.disconnect();
+      motion.removeEventListener('change', synchronizeMotion);
+      root.removeEventListener('focusin', revealFocusedGroup);
+    };
+  }, []);
 
   useEffect(() => {
     if (!location.hash) return;
@@ -180,7 +222,7 @@ export const LandingPage = () => {
   };
 
   return (
-    <div className="landing-page">
+    <div className="landing-page landing-delight" ref={landingRoot}>
       <header className="landing-hero" id="hero">
         <div className="container landing-hero-grid">
           <div className="landing-hero-copy">
@@ -215,33 +257,22 @@ export const LandingPage = () => {
             </div>
           </div>
 
-          <div className="landing-network" aria-label="Illustration of academic skills connected through Acadova">
-            <svg className="landing-network-lines" viewBox="0 0 520 520" aria-hidden="true">
-              <defs>
-                <linearGradient id="acadova-line-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
-                  <stop offset="0%" stopColor="#3B82F6" stopOpacity="0.85" />
-                  <stop offset="55%" stopColor="#93C5FD" stopOpacity="0.8" />
-                  <stop offset="100%" stopColor="#10B981" stopOpacity="0.75" />
-                </linearGradient>
-              </defs>
-              <path d="M110 105 Q220 190 260 260" />
-              <path d="M410 110 Q320 190 260 260" />
-              <path d="M90 390 Q190 320 260 260" />
-              <path d="M420 400 Q330 330 260 260" />
-              <path d="M70 250 Q170 250 260 260" />
-            </svg>
-
-            <div className="landing-network-hub">
-              <div className="landing-network-hub-icon"><Layers size={26} /></div>
-              <strong>Acadova</strong>
-              <span>Skill exchange</span>
-            </div>
-
-            <div className="landing-skill-node node-one"><Code2 size={18} /><span>Web Development</span></div>
-            <div className="landing-skill-node node-two"><Database size={18} /><span>Databases</span></div>
-            <div className="landing-skill-node node-three"><Network size={18} /><span>Networking</span></div>
-            <div className="landing-skill-node node-four"><Lock size={18} /><span>Cybersecurity</span></div>
-            <div className="landing-skill-node node-five"><GraduationCap size={18} /><span>Mathematics</span></div>
+          <div className="landing-network landing-peer-visual">
+            <figure className={`landing-peer-photo ${photoUnavailable ? 'is-unavailable' : ''}`}>
+              <div className="landing-photo-frame">
+                {!photoUnavailable ? <img
+                  src="/images/peer-study.webp"
+                  width="1200"
+                  height="800"
+                  alt="Three peers collaborating around laptops and notebooks at a table."
+                  fetchPriority="high"
+                  decoding="async"
+                  onError={() => setPhotoUnavailable(true)}
+                /> : <div className="landing-photo-fallback"><Users size={40} aria-hidden="true" /><strong>Knowledge grows when you share it.</strong><span>Peer learning, at the heart of Acadova.</span></div>}
+                <div className="landing-photo-caption"><Users size={24} aria-hidden="true" /><div><strong>Different strengths. Shared progress.</strong><span>Learn together. Teach each other.</span></div></div>
+              </div>
+              <figcaption>Representative photo · <a href="https://unsplash.com/photos/three-people-sitting-in-front-of-table-laughing-together-g1Kr4Ozfoac" target="_blank" rel="noopener noreferrer" aria-label="Photo by Brooke Cagle on Unsplash (opens in a new tab)">Brooke Cagle / Unsplash</a></figcaption>
+            </figure>
 
             <div className="landing-exchange-pill">
               <Zap size={15} /> Teach <strong>→ Earn → Learn</strong>
@@ -423,7 +454,7 @@ export const LandingPage = () => {
 
           <div className="landing-skill-explorer">
             <div className="landing-skill-map" aria-label="Example skill categories">
-              <div className="landing-skill-map-center"><Layers size={24} /><span>Acadova skills</span></div>
+              <div className="landing-skill-map-center"><BookOpen size={24} aria-hidden="true" /><span>Acadova skills</span></div>
               {skillOptions.map(({ key, title, icon: Icon }, index) => (
                 <button
                   type="button"
@@ -470,7 +501,7 @@ export const LandingPage = () => {
             </div>
             <div className="landing-dashboard-body">
               <aside className="landing-dashboard-nav" aria-label="Dashboard preview views">
-                <div className="landing-dashboard-brand"><Layers size={19} /><span>Student workspace</span></div>
+                <div className="landing-dashboard-brand"><BookOpen size={19} aria-hidden="true" /><span>Student workspace</span></div>
                 <div role="tablist" aria-label="Dashboard preview">
                   {[
                     ['overview', Compass, 'Overview'],

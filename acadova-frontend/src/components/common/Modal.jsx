@@ -1,4 +1,5 @@
 import React, { useEffect, useId, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { X } from 'lucide-react';
 
 export const Modal = ({ isOpen, onClose, title, children, footer, maxWidth = '540px', className = '' }) => {
@@ -42,7 +43,7 @@ export const Modal = ({ isOpen, onClose, title, children, footer, maxWidth = '54
 
   if (!isOpen) return null;
 
-  return (
+  return createPortal(
     <div className="modal-backdrop" onClick={onClose}>
       <div
         ref={dialogRef} role="dialog" aria-modal="true" aria-labelledby={titleId} tabIndex={-1}
@@ -64,7 +65,7 @@ export const Modal = ({ isOpen, onClose, title, children, footer, maxWidth = '54
         <div className="modal-body">{children}</div>
         {footer && <div className="modal-footer">{footer}</div>}
       </div>
-    </div>
+    </div>, document.body
   );
 };
 

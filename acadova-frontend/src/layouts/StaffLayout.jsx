@@ -2,7 +2,7 @@ import React, { useRef, useState } from 'react';
 import { Link, NavLink, Navigate, Outlet, useLocation } from 'react-router-dom';
 import { ArrowLeft, Layers, Menu } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
-import { canAccessStaffArea, getRoleHomeRoute, getRoleNavigation } from '../config/roleNavigation';
+import { canAccessStaffArea, getPageContext, getRoleHomeRoute, getRoleNavigation } from '../config/roleNavigation';
 import LoadingSpinner from '../components/common/LoadingSpinner';
 import AccountMenu from '../components/common/AccountMenu';
 import Modal from '../components/common/Modal';
@@ -16,7 +16,7 @@ export const StaffLayout = ({ area }) => {
   const isAdminArea = area === 'admin';
   const allowed = canAccessStaffArea(user?.role, area);
   const links = getRoleNavigation(area);
-  const current = links.find((link) => link.to === location.pathname)?.label || 'Overview';
+  const current = getPageContext(location.pathname, location.search).title;
 
 
 

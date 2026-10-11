@@ -2133,6 +2133,20 @@ textarea:focus-visible {
   border-top: 1px solid var(--border-subtle);
 }
 
+.session-proposal-target { scroll-margin-top: 110px; border-radius: var(--radius-md, 12px); }
+.session-proposal-target:focus { outline: 3px solid var(--navy-600); outline-offset: 4px; }
+.session-proposal-emphasis { box-shadow: 0 0 0 3px var(--navy-300); }
+.session-proposal-notice { padding: 12px; background: var(--navy-50); color: var(--navy-900); border-radius: 8px; }
+.session-proposal-target p { overflow-wrap: anywhere; }
+.session-completion-target { scroll-margin-top: 110px; margin: 24px 0; }
+.session-completion-target:focus { outline: 3px solid var(--navy-600); outline-offset: 4px; border-radius: 8px; }
+.session-completion-panel form { margin-top: 18px; padding-top: 16px; border-top: 1px solid var(--border-subtle); }
+.session-evidence-entry { padding: 12px 0; border-bottom: 1px solid var(--border-subtle); }
+.session-evidence-text { white-space: pre-wrap; overflow-wrap: anywhere; }
+.session-private-evidence a, .session-review-messages p { overflow-wrap: anywhere; }
+.session-dispute-card { scroll-margin-top: 110px; }
+.session-dispute-card:focus { outline: 3px solid var(--navy-600); outline-offset: 4px; }
+
 .session-reschedule h3 {
   color: var(--acadova-primary);
   font-size: 0.88rem;
@@ -3542,6 +3556,8 @@ a:where(:not([class]), .text-link, .session-room-back):where(:hover, :focus-visi
 .admin-user-table th:first-child, .admin-user-table td:first-child { min-width: 160px; overflow-wrap: normal; }
 .admin-user-table .admin-user-email { min-width: 180px; }
 .admin-user-table td:last-child { min-width: 260px; }
+.admin-user-table td:nth-child(3) { min-width: 130px; }
+.admin-user-table .badge { white-space: nowrap; overflow-wrap: normal; word-break: normal; }
 
 /* Final stabilization: width determines navigation; short desktops scroll the sidebar. */
 .staff-sidebar { overflow-y: auto; overscroll-behavior: contain; }
@@ -3901,3 +3917,21 @@ button.learning-resource-row:disabled { cursor: progress; opacity: .65; }
   .assessment-result, .session-request-success, .notification-panel, .modal-backdrop, .modal-dialog, .account-actions, .app-toast { animation: none !important; }
   .btn:active:not(:disabled), .account-trigger > svg:last-child { transform: none !important; }
 }
+.availability-guidance, .availability-editor { margin: 16px 0; padding: 16px; border: 1px solid var(--border-subtle); border-radius: var(--radius-md); }
+.availability-guidance ul { padding-left: 20px; }
+.availability-range { display: grid; grid-template-columns: 2fr 1fr 1fr auto; gap: 8px; align-items: end; margin: 12px 0; }
+.availability-range label { min-width: 0; }
+.study-actions { display: flex; flex-wrap: wrap; gap: 8px; margin: 12px 0; }
+@media (max-width: 600px) { .availability-range { grid-template-columns: 1fr 1fr; } }
+.study-page h1, .study-card h2, .study-question { overflow-wrap: anywhere; }
+.study-page fieldset { min-width: 0; }
+.study-question { padding: 16px; margin: 16px 0; border: 1px solid var(--border-subtle); border-radius: var(--radius-md); }
+.study-card { margin: 16px 0; }
+.study-card h2 { margin-bottom: 8px; }
+.study-card > .btn { margin-top: 8px; }
+.study-error-list { padding-left: 24px; margin-block: 12px; }
+.study-error-list li + li { margin-top: 6px; }
+.study-actions > [aria-current='page'] { border-color: var(--acadova-action); background: var(--acadova-tint); }
+.study-option-editor { display: grid; grid-template-columns: 1fr 2fr; align-items: center; gap: 8px; margin: 12px 0; }
+.study-page textarea, .study-page input, .study-page select { max-width: 100%; }
+.study-page h1:focus, #study-error:focus { outline: 2px solid var(--navy-600); outline-offset: 4px; }

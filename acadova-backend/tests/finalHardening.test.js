@@ -43,7 +43,7 @@ test('new requests independently lock/check both eligible Students, reject unava
     assert.deepEqual({ role: filter.role, suspendedAt: filter.suspendedAt, emailVerified: filter.emailVerified }, availableStudentFilter());
     assert.ok(options.session); assert.deepEqual(update, { $currentDate: { updatedAt: true } });
     locks.push(filter._id);
-    return filter._id === learner || isAvailableStudent(peer) ? { _id: filter._id } : null;
+    return filter._id === learner || isAvailableStudent(peer) ? { _id: filter._id, skillsToTeach: ['Java'] } : null;
   } }));
   replace(t, Session, 'create', async ([data], options) => { assert.ok(options.session); stored.push(data); return [{ ...data, populate: async () => {} }]; });
   replace(t, notifications, 'notifySession', async () => {});
@@ -154,7 +154,7 @@ test('public reputation ignores cached five-star defaults and follows visible re
     assert.ok(pipeline.findIndex((row) => row.$set) < pipeline.findIndex((row) => row.$sort));
     assert.deepEqual(pipeline.at(-3), { $sort: { rating: -1, ratingCount: -1, _id: 1 } });
     assert.deepEqual(pipeline.at(-2), { $limit: 50 });
-    assert.deepEqual(Object.keys(pipeline.at(-1).$project).sort(), ['name', 'rating', 'ratingCount', 'role', 'skillsToTeach']);
+    assert.deepEqual(Object.keys(pipeline.at(-1).$project).sort(), ['name', 'rating', 'ratingCount', 'role', 'skillsToTeach', 'weeklyAvailability']);
     return [{ _id: tutor, rating: null, ratingCount: 0 }];
   });
   const discovery = response(); await users.searchTutors({ user: { id: learner }, validatedQuery: { subject: 'Java' } }, discovery);

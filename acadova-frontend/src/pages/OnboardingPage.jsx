@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { Navigate, useNavigate } from 'react-router-dom';
+import { Navigate, useNavigate, useLocation } from 'react-router-dom';
+import { studentReturnFromSearch } from '../utils/studyNavigation';
 import { useAuth } from '../context/AuthContext';
 import userService from '../services/userService';
 import TagInput from '../components/common/TagInput';
@@ -10,6 +11,8 @@ import { needsProfileSetup } from '../utils/profileSetup';
 export default function OnboardingPage() {
   const { user, refreshUser } = useAuth();
   const navigate = useNavigate();
+  const { search } = useLocation();
+  const destination = studentReturnFromSearch(search) || '/dashboard';
   const toast = useToast();
   const [displayName, setDisplayName] = useState(user?.name || '');
   const [learn, setLearn] = useState(user?.skillsToLearn || []);
@@ -18,7 +21,7 @@ export default function OnboardingPage() {
   const [saving, setSaving] = useState(false);
   const [nameError, setNameError] = useState('');
 
-  if (!needsProfileSetup(user)) return <Navigate to="/dashboard" replace />;
+  if (!needsProfileSetup(user)) return <Navigate to={destination} replace />;
   const finish = async (event) => {
     event.preventDefault();
     const invalidName = nameValidationMessage(displayName);
@@ -31,7 +34,7 @@ export default function OnboardingPage() {
       await userService.finishOnboarding();
       await refreshUser();
       toast('success', 'Profile setup saved.');
-      navigate('/dashboard', { replace: true });
+      navigate(destination, { replace: true });
     } catch {
       toast('error', 'We could not save your profile. Please try again.');
     } finally { setSaving(false); }
@@ -42,7 +45,7 @@ export default function OnboardingPage() {
       await userService.finishOnboarding();
       await refreshUser();
       toast('info', 'You can finish your Profile later.');
-      navigate('/dashboard', { replace: true });
+      navigate(destination, { replace: true });
     } catch { toast('error', 'We could not save your choice. Please try again.'); }
     finally { setSaving(false); }
   };

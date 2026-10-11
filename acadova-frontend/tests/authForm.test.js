@@ -4,6 +4,7 @@ import {
   passwordRequirements, validateRegistration, isVerificationRequired,
   verificationResultForError, registrationErrorMessage, loginErrorMessage, maskEmail,
   pendingRegistrationNavigation,
+  validateLogin, isValidEmail,
 } from '../src/utils/authForm.js';
 import { getRoleHomeRoute } from '../src/config/roleNavigation.js';
 
@@ -12,6 +13,34 @@ const valid = {
   password: 'ValidSecret1!', confirmPassword: 'ValidSecret1!',
   policyAccepted: true,
 };
+
+test('login rejects malformed emails consistently with registration', () => {
+  for (const email of ['not-an-email', 'a@b', '@example.test', 'a@@example.test',
+    'a b@example.test', 'a@exam\u200bple.test', 'a'.repeat(250) + '@example.test']) {
+    assert.equal(isValidEmail(email), false, email);
+    assert.deepEqual(validateLogin({ email, password: 'fictional' }), { email: 'Enter a valid email address.' });
+    assert.equal(validateRegistration({ ...valid, email }).fields.email, 'Enter a valid email address.');
+  }
+});
+
+test('login accepts normalized email format and existing passwords without registration strength checks', () => {
+  for (const email of [' USER@EXAMPLE.TEST ', 'learner+tag@example.test']) {
+    assert.equal(isValidEmail(email), true);
+    assert.deepEqual(validateLogin({ email, password: 'old' }), {});
+  }
+  assert.deepEqual(validateLogin({ email: '  ', password: '' }), {
+    email: 'Enter your email address.', password: 'Enter your password.',
+  });
+  assert.deepEqual(validateLogin({ email: 'valid@example.test', password: '' }), { password: 'Enter your password.' });
+});
+
+test('login errors retain generic privacy, cooldown, server and suspension handling', () => {
+  assert.match(loginErrorMessage({ status: 429 }), /Too many login attempts/);
+  assert.match(loginErrorMessage({ status: 503 }), /temporarily unavailable/);
+  for (const status of [400, 403]) {
+    assert.equal(loginErrorMessage({ status, data: { message: 'Private account detail' } }), 'Unable to sign in. Please try again.');
+  }
+});
 
 test('registration accepts international names and sends only normalized account fields', () => {
   const result = validateRegistration(valid);

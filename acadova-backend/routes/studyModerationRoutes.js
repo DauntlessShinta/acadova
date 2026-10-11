@@ -1,0 +1,14 @@
+const express = require('express'); const router = express.Router();
+const { authenticateToken, requireRole } = require('../middleware/authMiddleware');
+const { validateBody, validateParams, validateQuery, schemas, InvalidInput } = require('../middleware/validation');
+const { staffActionLimiter } = require('../middleware/writeLimiters');
+const controller = require('../controllers/studyModerationController');
+const { versionSchema } = require('./studyRoutes');
+const outcome = value => { if (!['approve', 'reject', 'remove', 'restore'].includes(value)) throw new InvalidInput('Select a valid study decision.'); return value; };
+router.use(authenticateToken, requireRole('moderator', 'admin'));
+router.get('/', validateQuery({ view: value => { if (value === undefined) return undefined; if (value !== 'removed') throw new InvalidInput('Invalid study review view.'); return value; } }), controller.list);
+router.use(validateQuery());
+router.get('/:id', validateParams(schemas.assessmentId), controller.get);
+router.post('/:id/decision', staffActionLimiter, validateParams(schemas.assessmentId), validateBody({ ...versionSchema, outcome, reason: schemas.dispute.reason }), controller.decide);
+router.post('/reports/:id/close', staffActionLimiter, validateParams(schemas.assessmentId), validateBody({ ...versionSchema, reason: schemas.dispute.reason }), controller.closeReport);
+module.exports = router;

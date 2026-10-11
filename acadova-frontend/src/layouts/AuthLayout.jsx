@@ -1,14 +1,18 @@
 import React from 'react';
-import { Link, Outlet } from 'react-router-dom';
+import { Link, Outlet, useLocation } from 'react-router-dom';
 import { ArrowRightLeft, BookOpen, Coins, Layers, Network, Sparkles } from 'lucide-react';
 
-export const AuthLayout = () => (
-  <main className="auth-shell">
+export const AuthLayout = () => {
+  const { pathname } = useLocation();
+  const isRegister = pathname.replace(/\/$/, '') === '/register';
+  const BrandHeading = isRegister ? 'p' : 'h1';
+  return (
+  <main className={`auth-shell${isRegister ? ' auth-shell--register' : ''}`}>
     <section className="auth-brand-panel" aria-label="About Acadova">
       <Link to="/" className="auth-brand-link" aria-label="Acadova home"><span><Layers size={23} /></span><strong>Acadova</strong></Link>
       <div className="auth-brand-content">
         <span className="auth-eyebrow"><Sparkles size={15} /> Peer learning, made personal</span>
-        <h1>Learn what you need.<br />Teach what you know.</h1>
+        <BrandHeading className={isRegister ? 'register-brand-heading' : undefined}>Learn what you need.<br />Teach what you know.</BrandHeading>
         <p>Find student peers, share your strengths, and grow together through skill exchange and learning credits.</p>
         <div className="auth-visual" aria-hidden="true">
           <div className="auth-visual-heading"><Network size={18} /> Your knowledge network</div>
@@ -19,9 +23,10 @@ export const AuthLayout = () => (
       <small className="auth-brand-foot">Learn · Teach · Exchange · Grow</small>
     </section>
     <section className="auth-form-panel" aria-label="Account access"><div className="auth-form-inner"><Outlet />
-      <p className="auth-policy-links"><Link to="/terms">Terms of Use</Link> · <Link to="/privacy">Privacy Policy</Link> · <Link to="/community-guidelines">Community Guidelines</Link></p>
+      {!isRegister && <p className="auth-policy-links"><Link to="/terms">Terms of Use</Link> · <Link to="/privacy">Privacy Policy</Link> · <Link to="/community-guidelines">Community Guidelines</Link></p>}
     </div></section>
   </main>
 );
+};
 
 export default AuthLayout;

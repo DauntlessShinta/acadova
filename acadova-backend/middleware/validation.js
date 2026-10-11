@@ -316,21 +316,40 @@ const schemas = {
     name: optional(fullName),
     skillsToTeach: optional(skills('Teaching skills')),
     skillsToLearn: optional(skills('Learning skills')),
+    weeklyAvailability: optional((value) => { try { return require('../utils/weeklyAvailability').validateAvailability(value); } catch (error) { throw new InvalidInput(error.message); } }),
   },
   search: { subject: optional(searchSubject) },
   session: {
     tutorId: objectId('tutor id'), subject: requiredText('Subject', 120),
-    scheduledAt, meetingMethod: oneOf('meeting method', ['online', 'in-person']),
-    requestMessage: requiredText('Request message', 500),
+    scheduledAt, meetingMethod: optional(oneOf('meeting method; new sessions must be online', ['online'])),
+    requestMessage: optional(requiredText('Request message', 500, 0)),
     creditAmount: optional(creditAmount),
   },
   sessionStatus: { status: oneOf('session status', ['accepted', 'scheduled', 'rejected', 'declined', 'completed', 'cancelled']) },
-  reschedule: { scheduledAt },
+  checkIn: { expectedScheduledAt: optional(scheduledAt) },
+  reschedule: { scheduledAt, proposalId: optional(proposalId) },
   rescheduleDecision: { proposalId },
   dispute: { reason: requiredText('Dispute reason', 500, 10) },
+  completionEvidence: {
+    summary: requiredText('Session summary', 1000, 10),
+    completedWork: requiredText('Completed work', 2000, 10),
+    links: (value) => {
+      if (!Array.isArray(value) || value.length > 5) throw new InvalidInput('Use up to five HTTPS evidence links.');
+      return [...new Set(value.map(httpsLink))];
+    },
+  },
+  clarification: { reason: requiredText('Clarification reason', 500, 10),
+    reviewVersion: (value) => {
+      if (!Number.isSafeInteger(value) || value < 0) throw new InvalidInput('Enter the current review version.');
+      return value;
+    } },
   resolution: {
     resolution: oneOf('resolution', ['confirm_session', 'cancel_session']),
     resolutionNote: requiredText('Resolution note', 500, 10),
+    reviewVersion: optional((value) => {
+      if (!Number.isSafeInteger(value) || value < 0) throw new InvalidInput('Invalid review version.');
+      return value;
+    }),
   },
   coordination: { meetingLink: optional(httpsLink), location: optional(requiredText('Location', 300)) },
   googleMeet: { accessToken: requiredText('Google authorization', 8192, 20) },
@@ -380,6 +399,7 @@ const schemas = {
 };
 
 module.exports = {
+  InvalidInput,
   isValidEmail,
   isValidPassword,
   isValidRating,

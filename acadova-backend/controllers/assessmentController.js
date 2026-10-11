@@ -20,7 +20,13 @@ const publicAssessment = (assessment) => ({
   questionCount: assessment.questions.length,
   questions: assessment.questions.map((question) => ({ prompt: question.prompt, options: question.options })),
 });
+async function rewardEligibility(student, assessment) {
+  const account = await User.findById(student).select('+rewardedAssessments').lean();
+  const rewardEarned = (account?.rewardedAssessments || []).some((id) => String(id) === String(assessment));
+  return { rewardEligible: Boolean(account && account.role === 'student' && !rewardEarned), rewardEarned };
+}
 const resultView = (attempt) => ({
+  mode: attempt.mode || 'official',
   id: String(attempt._id), assessmentId: String(attempt.assessment),
   score: attempt.score, passed: attempt.passed, rewardIssued: attempt.rewardIssued,
   creditsAwarded: attempt.rewardIssued ? (attempt.rewardAmount ?? assessmentReward) : 0,
@@ -41,7 +47,7 @@ exports.getPublishedAssessment = async (req, res) => {
   try {
     const assessment = await Assessment.findOne({ _id: req.params.id, status: 'published' }).lean();
     if (!assessment) return res.status(404).json({ success: false, message: 'Assessment not available.' });
-    return res.json({ success: true, data: publicAssessment(assessment) });
+    return res.json({ success: true, data: { ...publicAssessment(assessment), ...await rewardEligibility(req.user.id, assessment._id) } });
   } catch { return res.status(500).json({ success: false, message: 'Assessment could not be loaded.' }); }
 };
 
@@ -49,7 +55,7 @@ exports.getOwnAttempt = async (req, res) => {
   try {
     const attempt = await AssessmentAttempt.findOne({ _id: req.params.id, student: req.user.id }).lean();
     if (!attempt) return res.status(404).json({ success: false, message: 'Result not found.' });
-    return res.json({ success: true, data: resultView(attempt) });
+    return res.json({ success: true, data: { ...resultView(attempt), ...await rewardEligibility(req.user.id, attempt.assessment) } });
   } catch { return res.status(500).json({ success: false, message: 'Result could not be loaded.' }); }
 };
 
@@ -66,11 +72,13 @@ exports.submitAssessment = async (req, res) => {
     const correct = answers.filter((answer, index) => answer === assessment.questions[index].correctIndex).length;
     const score = Math.round(correct * 100 / assessment.questions.length);
     const passed = correct * 100 >= assessment.passingScore * assessment.questions.length;
-    const baseAttempt = { student: req.user.id, assessment: assessment._id, answers,
+    const eligibility = await rewardEligibility(req.user.id, assessment._id);
+    const practice = req.assessmentMode === 'practice' || eligibility.rewardEarned;
+    const baseAttempt = { mode: practice ? 'practice' : 'official', student: req.user.id, assessment: assessment._id, answers,
       score, passed, rewardIssued: false, submittedAt: new Date() };
-    if (!passed) {
+    if (!passed || practice) {
       const attempt = await AssessmentAttempt.create(baseAttempt);
-      return res.json({ success: true, data: resultView(attempt) });
+      return res.json({ success: true, data: { ...resultView(attempt), ...await rewardEligibility(req.user.id, attempt.assessment) } });
     }
 
     // Production must have the separately rolled-out unique ledger index.
@@ -90,7 +98,7 @@ exports.submitAssessment = async (req, res) => {
         { $addToSet: { rewardedAssessments: assessment._id }, $inc: { credits: rules.assessmentReward } },
         { session: dbSession, new: true },
       );
-      const [attempt] = await AssessmentAttempt.create([{ ...baseAttempt, rewardIssued: Boolean(claimed),
+      const [attempt] = await AssessmentAttempt.create([{ ...baseAttempt, mode: claimed ? 'official' : 'practice', rewardIssued: Boolean(claimed),
         ...(claimed ? { rewardAmount: rules.assessmentReward } : {}) }],
         { session: dbSession });
       if (claimed) {
@@ -99,7 +107,7 @@ exports.submitAssessment = async (req, res) => {
           assessment: assessment._id, result: attempt._id,
         }], { session: dbSession });
       }
-      result = resultView(attempt);
+      result = { ...resultView(attempt), rewardEligible: false, rewardEarned: true };
     });
     return res.json({ success: true, data: result });
   } catch (error) {

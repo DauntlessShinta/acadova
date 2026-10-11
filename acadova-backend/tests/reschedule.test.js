@@ -4,11 +4,14 @@ const mongoose = require('mongoose');
 const User = require('../models/User');
 const Session = require('../models/Session');
 const controller = require('../controllers/sessionController');
+const notifications = require('../services/notificationService');
+const originalEnqueue = notifications.enqueueProposalEvent;
 
 const originalStart = mongoose.startSession;
 const originalLock = User.findOneAndUpdate;
 const originalExists = Session.exists;
 test.beforeEach(() => {
+  notifications.enqueueProposalEvent = async () => {};
   mongoose.startSession = async () => ({ withTransaction: async (fn) => fn(), endSession: async () => {} });
   User.findOneAndUpdate = () => ({ select: async () => ({ _id: 'participant' }) });
   Session.exists = () => ({ session: async () => null });
@@ -17,6 +20,7 @@ const originalFindById = Session.findById;
 const originalFindOneAndUpdate = Session.findOneAndUpdate;
 
 test.afterEach(() => {
+  notifications.enqueueProposalEvent = originalEnqueue;
   mongoose.startSession = originalStart; User.findOneAndUpdate = originalLock; Session.exists = originalExists;
   Session.findById = originalFindById;
   Session.findOneAndUpdate = originalFindOneAndUpdate;
@@ -41,6 +45,7 @@ const sessionDoc = (overrides = {}) => ({
 });
 const comparable = (value) => value instanceof Date ? value.getTime() : String(value);
 const matches = (stored, filter) => Object.entries(filter).every(([key, expected]) => {
+  if (key === '$expr') return true;
   const actual = stored[key];
   if (expected === null) return actual == null;
   return comparable(actual) === comparable(expected);
@@ -51,6 +56,7 @@ const mockStore = (stored) => {
     if (!matches(stored, filter)) return null;
     Object.assign(stored, update.$set || {});
     for (const key of Object.keys(update.$unset || {})) delete stored[key];
+    if (update.$push) stored.rescheduleHistory = [...(stored.rescheduleHistory || []), ...update.$push.rescheduleHistory.$each].slice(-20);
     return stored;
   };
 };
@@ -126,8 +132,7 @@ test('proposer cannot accept or decline their own proposal', async () => {
 
 for (const status of ['accepted', 'scheduled']) {
   test(`other participant accepts ${status} proposal and clears proposal fields`, async () => {
-    const checkedInAt = new Date();
-    const stored = sessionDoc({ status, learnerCheckedInAt: checkedInAt });
+    const stored = sessionDoc({ status });
     mockStore(stored);
     const agreed = stored.scheduledAt;
     await propose(stored, stored.learner);
@@ -145,15 +150,14 @@ for (const status of ['accepted', 'scheduled']) {
   });
 
   test(`other participant declines ${status} proposal without changing agreed time`, async () => {
-    const checkedInAt = new Date();
-    const stored = sessionDoc({ status, learnerCheckedInAt: checkedInAt });
+    const stored = sessionDoc({ status });
     mockStore(stored);
     const agreed = stored.scheduledAt;
     await propose(stored, stored.tutor);
     const res = await decide(controller.declineReschedule, stored, stored.learner);
     assert.equal(res.statusCode, 200);
     assert.equal(stored.scheduledAt, agreed);
-    assert.equal(stored.learnerCheckedInAt, checkedInAt);
+    assert.equal(stored.learnerCheckedInAt, undefined);
     assert.equal(stored.proposedScheduledAt, undefined);
     assert.equal(stored.rescheduleProposalId, undefined);
   });
@@ -261,8 +265,9 @@ test('a proposal whose time has passed cannot be accepted', async () => {
     rescheduleProposalId: '00000000-0000-4000-8000-000000000000',
   });
   Session.findById = async () => stored;
-  Session.findOneAndUpdate = async () => assert.fail('Past time must not be accepted');
-  assert.equal((await decide(controller.acceptReschedule, stored, stored.tutor)).statusCode, 400);
+  mockStore(stored);
+  assert.equal((await decide(controller.acceptReschedule, stored, stored.tutor)).statusCode, 409);
+  assert.equal(stored.rescheduleProposalId, undefined);
 });
 
 test('legacy completion or cancellation clears a pending reschedule without changing settlement', async () => {

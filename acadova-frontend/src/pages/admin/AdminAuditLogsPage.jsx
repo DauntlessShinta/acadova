@@ -3,7 +3,7 @@ import analyticsService from '../../services/analyticsService';
 import Alert from '../../components/common/Alert';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
 
-const actions = ['session.dispute_resolved', 'credit.rules_changed', 'credit.admin_adjustment',
+const actions = ['study.publication_decided', 'study.report_closed', 'session.dispute_resolved', 'credit.rules_changed', 'credit.admin_adjustment',
   'learning.topic_created', 'learning.topic_published', 'learning.topic_archived',
   'learning.resource_approved', 'learning.resource_rejected', 'learning.resource_archived',
   'learning.module_created', 'learning.module_published', 'learning.module_archived',
@@ -58,7 +58,7 @@ export default function AdminAuditLogsPage() {
       }}>Apply actor</button></div>{actorError && <span className="form-error" id="audit-actor-error">{actorError}</span>}</div>
       <label>Target type <select className="form-select" value={targetType} onChange={updateFilter(setTargetType)}>
         <option value="">All types</option>{['Session', 'User', 'Rating', 'LearningTopic', 'LearningResource',
-          'LearningModule', 'Assessment', 'CreditConfig', 'CreditTransaction'].map((type) => <option key={type}>{type}</option>)}
+          'LearningModule', 'Assessment', 'CreditConfig', 'CreditTransaction', 'StudySet', 'StudyReport'].map((type) => <option key={type}>{type}</option>)}
       </select></label>
     </div>
     {loading ? <LoadingSpinner text="Loading audit logs..." size={30} /> : error ? <p className="staff-data-note">Audit records are unavailable. <button type="button" className="btn btn-secondary btn-sm" onClick={() => setAttempt((value) => value + 1)}>Retry</button></p> : <>
@@ -66,7 +66,7 @@ export default function AdminAuditLogsPage() {
         <th>Time</th><th>Actor</th><th>Role</th><th>Action</th><th>Target</th><th>Summary</th>
       </tr></thead><tbody>{rows.map((row) => <tr key={row._id}>
         <td>{new Date(row.createdAt).toLocaleString()}</td><td>{row.actorRole === 'system' ? 'System' : row.actor?.name || row.actor?._id || 'Former account'}</td>
-        <td>{row.actorRole}</td><td><span title={row.action}>{actionLabel(row.action)}</span></td><td>{row.targetType} · {row.targetId}</td><td>{row.summary}{row.metadata?.suspensionReason && <details><summary>Suspension reason</summary><p>{row.metadata.suspensionReason}</p></details>}</td>
+        <td>{row.actorRole}</td><td><span title={row.action}>{actionLabel(row.action)}</span></td><td>{row.targetType} · {row.targetId}</td><td>{row.summary}{row.metadata?.reason && <details><summary>Recorded decision reason</summary><p>{row.metadata.reason}</p></details>}{row.metadata?.suspensionReason && <details><summary>Suspension reason</summary><p>{row.metadata.suspensionReason}</p></details>}</td>
       </tr>)}</tbody></table></div>
       {rows.length === 0 && <p className="staff-data-note">No matching audit records.</p>}
       <div className="session-dispute-actions">

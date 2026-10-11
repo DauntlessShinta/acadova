@@ -10,7 +10,7 @@ exports.listAuditLogs = async (req, res) => {
     || (action && !Object.values(ACTIONS).includes(action))
     || (actor && !isValidObjectId(actor))
     || (targetType && !['Session', 'CreditConfig', 'CreditTransaction', 'LearningTopic',
-      'LearningResource', 'LearningModule', 'Assessment', 'Rating', 'User'].includes(targetType))) {
+      'LearningResource', 'LearningModule', 'Assessment', 'Rating', 'User', 'StudySet', 'StudyReport'].includes(targetType))) {
     return res.status(400).json({ success: false, message: 'Invalid audit filter or pagination.' });
   }
   const filter = { ...(action ? { action } : {}), ...(actor ? { actor } : {}),

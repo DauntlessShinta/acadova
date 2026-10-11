@@ -111,16 +111,13 @@ for (const [evidence, absent] of [
   });
 }
 
-test('no-show rejects completed, in-progress, awaiting-validation, proposals and both-present records', async () => {
+test('no-show rejects completed, in-progress, awaiting-validation and both-present records', async () => {
   const stored = noShowStore();
   for (const status of ['pending', 'completed', 'cancelled', 'declined', 'rejected', 'in_progress', 'awaiting_validation']) {
     stored.status = status;
     assert.equal((await invoke(sessionController.reportNoShow, stored, ids.learner)).statusCode, 400, status);
   }
   stored.status = 'accepted';
-  stored.rescheduleProposalId = 'active';
-  assert.equal((await invoke(sessionController.reportNoShow, stored, ids.learner)).statusCode, 409);
-  delete stored.rescheduleProposalId;
   stored.learnerCheckedInAt = new Date();
   stored.tutorCheckedInAt = new Date();
   assert.equal((await invoke(sessionController.reportNoShow, stored, ids.learner)).statusCode, 409);
@@ -341,7 +338,7 @@ test('audit failure rolls back Moderator dispute resolution and settlement', asy
   assert.equal(state.payments.length, 0);
 });
 
-test('Moderator dispute list is restricted to disputed records', async () => {
+test('Moderator queue includes participant disputes and honest open completion referrals', async () => {
   let filter;
   CreditTransaction.find = () => ({ select() { return this; }, lean: async () => [] });
   Session.find = (query) => {
@@ -351,7 +348,7 @@ test('Moderator dispute list is restricted to disputed records', async () => {
   const res = response();
   await moderatorController.listDisputedSessions({}, res);
   assert.equal(res.statusCode, 200);
-  assert.deepEqual(filter, { status: 'disputed' });
+  assert.deepEqual(filter, { $or: [{ status: 'disputed' }, { status: 'awaiting_validation', 'reviewReferral.id': { $exists: true }, 'reviewReferral.closedAt': null }] });
   assert.equal(res.body.data.length, 1);
   assert.deepEqual(res.body.data[0].reviewIndicators, []);
   CreditTransaction.find = () => ({ select() { return this; }, lean: async () => [{ session: ids.session }] });

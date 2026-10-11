@@ -16,6 +16,7 @@ export const PeerCard = ({ peer, onRequest, compact = false }) => (
     <div className="peer-skills">
       <span>Can teach</span>
       <div>
+        {!peer.skillsToTeach?.length && <span>No teaching subjects listed yet.</span>}
         {(peer.skillsToTeach || []).map((skill, index) => (
           <span key={`${skill}-${index}`} className="badge badge-info">{skill}</span>
         ))}
@@ -26,7 +27,7 @@ export const PeerCard = ({ peer, onRequest, compact = false }) => (
       <Link to={`/tutors/${peer._id}`} className="btn btn-secondary btn-sm">
         <UserRound size={14} /> View Profile
       </Link>
-      {onRequest ? (
+      {!peer.skillsToTeach?.length ? <button type="button" className="btn btn-primary btn-sm" disabled>Request Session</button> : onRequest ? (
         <button type="button" className="btn btn-primary btn-sm" onClick={() => onRequest(peer)}>
           <BookOpen size={14} /> Request Session
         </button>

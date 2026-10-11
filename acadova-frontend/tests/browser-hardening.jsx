@@ -280,7 +280,7 @@ try {
   await render('/assessments'); await until(() => document.querySelector('.assessment-hub-list a[aria-label^="Take assessment"]'), 'Assessment hub'); document.querySelector('.assessment-hub-list a[aria-label^="Take assessment"]').click();
   await until(() => document.querySelector('input[name="question-0"]'), 'Assessment questions');
   document.querySelector('fieldset').closest('form').dispatchEvent(new Event('submit', { bubbles: true, cancelable: true })); await pause();
-  assert(document.activeElement.name === 'question-0' && document.querySelector('fieldset').getAttribute('aria-describedby') === 'assessment-answer-error', 'Unanswered question focus/description');
+  assert(document.activeElement.name === 'question-0' && document.querySelector('input[name="question-0"]').closest('fieldset').getAttribute('aria-describedby') === 'assessment-answer-error', 'Unanswered question focus/description');
   for (let index = 0; index < 3; index++) { document.querySelector(`input[name="question-${index}"]`).click(); await pause(); }
   const assessmentForm = document.querySelector('fieldset').closest('form');
   assessmentForm.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
@@ -306,7 +306,7 @@ try {
   await until(() => document.querySelector('a[href="/moderator/learning#manage-panel-resources"]'), 'Canonical queue links');
   document.querySelector('a[href="/moderator/learning#manage-panel-resources"]').click(); await until(() => visible('#manage-panel-resources').length, 'Queue opens Resources');
   await render('/moderator/disputes', { ...student, role: 'moderator' }); await until(() => document.querySelector('.session-dispute-actions button'), 'Dispute evidence');
-  assert([...document.querySelectorAll('.session-dispute-actions button')].every((button) => button.disabled), 'Prior-payment resolution must appear blocked');
+  assert([...document.querySelectorAll('.session-dispute-actions .btn-primary, .session-dispute-actions .btn-danger')].every((button) => button.disabled), 'Prior-payment settlement/rejection must appear blocked; clarification remains available');
   for (const path of ['/moderator/reviews', '/moderator/assessments', '/admin/sessions', '/admin/analytics', '/admin/credits', '/admin/audit-logs', '/admin/security', '/admin/moderation']) {
     await render(path, { ...student, role: path.startsWith('/admin') ? 'admin' : 'moderator' });
     assert(document.documentElement.scrollWidth <= innerWidth, 'Staff overflow: ' + path);
@@ -385,7 +385,7 @@ try {
   await render('/onboarding', { ...student, onboardingFinishedAt: null, skillsToLearn: [], skillsToTeach: [] }); assert(document.documentElement.scrollWidth <= innerWidth, 'Onboarding overflow');
   checks.push('Representative Student/staff/auth/public/onboarding routes at CSS viewport with scale 1 and fresh default zoom');
   await render('/', null); await until(() => document.querySelector('.landing-network'), 'Original Landing illustration');
-  assert(document.querySelector('.landing-network').getAttribute('aria-label')?.length > 20, 'Illustration alternative description');
+  assert(document.querySelector('.landing-peer-photo img')?.getAttribute('alt')?.length > 20, 'Current Landing photo alternative description');
   assert(!document.querySelector('.landing-study-photo'), 'Rejected photo design removed');
   if (window.__acadovaFontsLoaded) checks.push('Canonical Inter, Plus Jakarta Sans and JetBrains Mono loaded before UI checks');
   if (matchMedia('(prefers-reduced-motion: reduce)').matches) {

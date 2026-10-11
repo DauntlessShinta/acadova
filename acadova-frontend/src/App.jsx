@@ -6,8 +6,9 @@ import StaffLayout from './layouts/StaffLayout';
 import AuthLayout from './layouts/AuthLayout';
 import { NotificationProvider } from './context/NotificationContext';
 import { useAuth } from './context/AuthContext';
-import { getRoleHomeRoute } from './config/roleNavigation';
+import { getPageContext, getRoleHomeRoute } from './config/roleNavigation';
 import LoadingSpinner from './components/common/LoadingSpinner';
+import { studentReturnFromSearch } from './utils/studyNavigation';
 
 // Public Pages
 import LandingPage from './pages/LandingPage';
@@ -32,6 +33,7 @@ import CreditsPage from './pages/CreditsPage';
 import AssessmentsPage from './pages/AssessmentsPage';
 import LearningPage from './pages/LearningPage';
 import ProfilePage from './pages/ProfilePage';
+import StudySetsPage from './pages/StudySetsPage';
 
 // Admin Page
 import AdminOverviewPage from './pages/admin/AdminOverviewPage';
@@ -42,6 +44,7 @@ import AdminSessionsPage from './pages/admin/AdminSessionsPage';
 import AdminAnalyticsPage from './pages/admin/AdminAnalyticsPage';
 import AdminCreditsPage from './pages/admin/AdminCreditsPage';
 import AdminModerationPage from './pages/admin/AdminModerationPage';
+import ModeratorStudySetsPage from './pages/moderator/ModeratorStudySetsPage';
 import ModeratorOverviewPage from './pages/moderator/ModeratorOverviewPage';
 import ModeratorReviewsPage from './pages/moderator/ModeratorReviewsPage';
 import ModeratorDisputesPage from './pages/moderator/ModeratorDisputesPage';
@@ -50,13 +53,18 @@ import ModeratorLearningPage from './pages/moderator/ModeratorLearningPage';
 
 const GuestOnly = ({ children }) => {
   const { isAuthenticated, loading, user } = useAuth();
+  const { search } = useLocation();
   if (loading) return <LoadingSpinner text="Checking account access..." size={34} />;
-  return isAuthenticated ? <Navigate to={getRoleHomeRoute(user?.role)} replace /> : children;
+  return isAuthenticated ? <Navigate to={(user?.role === 'student' && studentReturnFromSearch(search)) || getRoleHomeRoute(user?.role)} replace /> : children;
 };
 
 export const App = () => {
-  const { pathname, hash } = useLocation();
+  const { pathname, search, hash } = useLocation();
   const { user } = useAuth();
+  useEffect(() => {
+    const page = getPageContext(pathname, search);
+    document.title = `${page.title}${page.area ? ` | ${page.area}` : ''} | Acadova`;
+  }, [pathname, search]);
   useEffect(() => {
     // Preserve page-specific hash navigation, such as the tutoring request form.
     if (!hash) window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
@@ -92,6 +100,8 @@ export const App = () => {
         <Route path="/credits" element={<CreditsPage />} />
         <Route path="/assessments" element={<AssessmentsPage />} />
         <Route path="/learning" element={<LearningPage />} />
+        <Route path="/study-sets" element={<StudySetsPage />} />
+        <Route path="/study-sets/:id" element={<StudySetsPage />} />
         <Route path="/profile" element={<ProfilePage />} />
         <Route path="/onboarding" element={<OnboardingPage />} />
       </Route>
@@ -103,6 +113,7 @@ export const App = () => {
         <Route path="disputes" element={<ModeratorDisputesPage />} />
         <Route path="assessments" element={<ModeratorAssessmentsPage />} />
         <Route path="learning" element={<ModeratorLearningPage />} />
+        <Route path="study-sets" element={<ModeratorStudySetsPage />} />
       </Route>
 
       {/* Protected Admin Routes */}
@@ -117,6 +128,7 @@ export const App = () => {
         <Route path="moderation" element={<AdminModerationPage />} />
         <Route path="assessments" element={<ModeratorAssessmentsPage />} />
         <Route path="learning" element={<ModeratorLearningPage />} />
+        <Route path="study-sets" element={<ModeratorStudySetsPage />} />
       </Route>
 
       {/* Fallback */}

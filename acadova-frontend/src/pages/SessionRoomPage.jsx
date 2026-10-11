@@ -3,7 +3,7 @@ import { isChatViewed, isNearChatBottom, newIncomingMessages, canMessageSession 
 import { resourceSource } from '../utils/learningPresentation';
 import { useConfirm } from '../context/confirmAccess';
 import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
-import { Link, useLocation, useParams } from 'react-router-dom';
+import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
 import {
   ArrowLeft,
   Calendar,
@@ -27,6 +27,7 @@ import Alert from '../components/common/Alert';
 import Badge from '../components/common/Badge';
 import LoadingSpinner from '../components/common/LoadingSpinner';
 import StarRating from '../components/common/StarRating';
+import SessionCompletionPanel from '../components/student/SessionCompletionPanel';
 import { createRefreshGate } from '../utils/refreshGate';
 import { loadGoogleCalendarAuthorization, requestGoogleCalendarAccess } from '../services/googleCalendarAuthorization';
 import { useToast } from '../context/toastAccess';
@@ -40,6 +41,8 @@ import {
   getSessionTimeline, canCancelSession,
 } from '../utils/sessionPresentation';
 
+import { proposalTarget, proposalTargetMessage } from '../utils/sessionNavigation';
+
 const idOf = (value) => String(value?._id || value?.id || value || '');
 
 export const SessionRoomPage = () => {
@@ -48,8 +51,14 @@ export const SessionRoomPage = () => {
 };
 
 const SessionRoom = ({ id }) => {
-  const { hash, key: navigationKey } = useLocation();
-  const [activeSection, setActiveSection] = useState(hash === '#session-messages' ? 'messages' : 'overview');
+  const { hash, search, key: navigationKey } = useLocation();
+  const navigate = useNavigate();
+  const targetProposalId = proposalTarget(search, hash);
+  const proposalRef = useRef(null);
+  const proposalDetailsRef = useRef(null);
+  const [proposalEmphasis, setProposalEmphasis] = useState(false);
+  const focusedTarget = useRef('');
+  const [activeSection, setActiveSection] = useState(targetProposalId ? 'details' : hash === '#session-messages' ? 'messages' : 'overview');
   const { refresh: refreshNotifications, setActiveThread } = useNotifications();
   const confirm = useConfirm();
   const { user, refreshUser } = useAuth();
@@ -58,6 +67,9 @@ const SessionRoom = ({ id }) => {
   const [messages, setMessages] = useState([]);
   const [messagesLoaded, setMessagesLoaded] = useState(false);
   const [loading, setLoading] = useState(true);
+  const roomAvailable = Boolean(session);
+  const currentProposalId = session?.rescheduleProposalId;
+  const currentProposalStatus = session?.proposalStatus;
   useEffect(() => {
     if (!loading && hash === '#session-messages') {
       Promise.resolve().then(() => setActiveSection('messages'));
@@ -65,6 +77,41 @@ const SessionRoom = ({ id }) => {
       return () => cancelAnimationFrame(frame);
     }
   }, [loading, hash, navigationKey]);
+  useEffect(() => {
+    if (!loading && targetProposalId && roomAvailable) {
+      Promise.resolve().then(() => setActiveSection('details'));
+    }
+  }, [loading, targetProposalId, navigationKey, roomAvailable]);
+  useLayoutEffect(() => {
+    if (loading || !targetProposalId || !roomAvailable || activeSection !== 'details') return;
+    const focusKey = `${navigationKey}:${targetProposalId}`;
+    if (focusedTarget.current === focusKey) return;
+    const target = proposalRef.current;
+    if (!target) return;
+    // Focus only after Details is visibly committed, rather than racing a hidden panel.
+    focusedTarget.current = focusKey;
+    if (proposalDetailsRef.current) proposalDetailsRef.current.open = true;
+    target.focus({ preventScroll: true });
+    target.scrollIntoView({ block: 'start', behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth' });
+    setProposalEmphasis(targetProposalId === currentProposalId && currentProposalStatus !== 'expired');
+  }, [loading, targetProposalId, navigationKey, currentProposalId, currentProposalStatus, roomAvailable, activeSection]);
+  useEffect(() => {
+    if (!proposalEmphasis) return undefined;
+    const timer = window.setTimeout(() => setProposalEmphasis(false), 2400);
+    return () => window.clearTimeout(timer);
+  }, [proposalEmphasis, targetProposalId, navigationKey]);
+  const completionFocus = useRef('');
+  useEffect(() => {
+    if (!loading && hash === '#session-completion') Promise.resolve().then(() => setActiveSection('overview'));
+  }, [loading, hash, navigationKey]);
+  useLayoutEffect(() => {
+    if (loading || hash !== '#session-completion' || activeSection !== 'overview' || completionFocus.current === navigationKey) return;
+    const panel = document.getElementById('session-completion');
+    if (!panel) return;
+    completionFocus.current = navigationKey;
+    panel.focus({ preventScroll: true }); panel.scrollIntoView({ block: 'start', behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth' });
+  }, [loading, hash, navigationKey, activeSection, roomAvailable]);
+  const reviewProposal = () => navigate(`/sessions/${id}?target=proposal&proposalId=${encodeURIComponent(session.rescheduleProposalId)}#session-proposal`);
   const [refreshing, setRefreshing] = useState(false);
   const [refreshError, setRefreshError] = useState('');
   const [actionLoading, setActionLoading] = useState(false);
@@ -330,7 +377,7 @@ const SessionRoom = ({ id }) => {
     event.preventDefault();
     if (!beginAction()) return;
     try {
-      const response = await sessionService.proposeReschedule(id, proposedTime);
+      const response = await sessionService.proposeReschedule(id, proposedTime, session.proposalStatus !== 'expired' ? session.rescheduleProposalId : undefined);
       setSession(response.data);
       setProposedTime('');
       toast('success', response.message);
@@ -342,12 +389,13 @@ const SessionRoom = ({ id }) => {
   };
 
   const handleRescheduleDecision = async (accept) => {
+    const expectedId = session.rescheduleProposalId;
     if (!accept && !await confirm('Decline this proposed schedule? The current agreed time will remain.', { title: 'Decline proposed time', label: 'Decline time' })) return;
     if (!beginAction()) return;
     try {
       const response = accept
-        ? await sessionService.acceptReschedule(id, session.rescheduleProposalId)
-        : await sessionService.declineReschedule(id, session.rescheduleProposalId);
+        ? await sessionService.acceptReschedule(id, expectedId)
+        : await sessionService.declineReschedule(id, expectedId);
       setSession(response.data);
       toast('success', response.message);
     } catch (err) {
@@ -357,10 +405,24 @@ const SessionRoom = ({ id }) => {
     }
   };
 
-  const handleCheckIn = async () => {
+  const handleWithdrawProposal = async () => {
+    const expectedId = session.rescheduleProposalId;
+    if (!await confirm('Withdraw your unanswered time proposal? The confirmed schedule stays in place.', { title: 'Withdraw proposal', label: 'Withdraw proposal' })) return;
     if (!beginAction()) return;
     try {
-      const response = await sessionService.checkIn(id);
+      const response = await sessionService.withdrawReschedule(id, expectedId);
+      setSession(response.data);
+      toast('success', response.message);
+    } catch (err) { toast('error', err.message || 'Proposal could not be withdrawn. Refresh and try again.'); }
+    finally { finishAction(); }
+  };
+
+  const handleCheckIn = async () => {
+    const expectedScheduledAt = session.scheduledAt;
+    if (!await confirm(`Check in for ${formatSessionDateTime(expectedScheduledAt)}? I am present and ready for this session. This is self-reported attendance; completion still requires separate confirmations.`, { title: 'Confirm check-in', label: 'I am present and ready', destructive: false })) return;
+    if (!beginAction()) return;
+    try {
+      const response = await sessionService.checkIn(id, expectedScheduledAt);
       setSession(response.data);
       toast('success', response.message);
     } catch (err) {
@@ -368,6 +430,17 @@ const SessionRoom = ({ id }) => {
     } finally {
       finishAction();
     }
+  };
+
+  const saveCompletionEvidence = async (evidence) => {
+    if (!beginAction()) return false;
+    try { const response = await sessionService.submitEvidence(id, evidence); setSession(response.data); toast('success', response.message); return true; }
+    finally { finishAction(); }
+  };
+  const requestCompletionReview = async (reason) => {
+    if (!beginAction()) return false;
+    try { const response = await sessionService.requestCompletionReview(id, reason); setSession(response.data); toast('success', response.message); return true; }
+    finally { finishAction(); }
   };
 
   const handleFinishSession = async () => {
@@ -493,14 +566,17 @@ const SessionRoom = ({ id }) => {
     && clockNow <= agreedTime + 4 * 60 * 60 * 1000;
   const myCheckIn = isTeaching ? session.tutorCheckedInAt : session.learnerCheckedInAt;
   const peerCheckIn = isTeaching ? session.learnerCheckedInAt : session.tutorCheckedInAt;
-  const checkInBlockedByProposal = Boolean(session.rescheduleProposalId || session.proposedScheduledAt);
   const canCheckIn = usesLegacyActions && ['accepted', 'scheduled'].includes(session.status)
-    && checkInOpen && !checkInBlockedByProposal && !myCheckIn;
+    && checkInOpen && !myCheckIn;
   const canReportNoShow = usesLegacyActions && ['accepted', 'scheduled'].includes(session.status)
     && Number.isFinite(agreedTime) && clockNow != null
-    && clockNow > agreedTime + 4 * 60 * 60 * 1000 && !checkInBlockedByProposal
+    && clockNow > agreedTime + 4 * 60 * 60 * 1000
     && !session.startedAt && !(session.learnerCheckedInAt && session.tutorCheckedInAt);
-  const canReschedule = usesLegacyActions && ['accepted', 'scheduled'].includes(session.status);
+  const canReschedule = usesLegacyActions && ['accepted', 'scheduled'].includes(session.status)
+    && !session.startedAt && !myCheckIn && !peerCheckIn
+    && (!Number.isFinite(agreedTime) || clockNow <= agreedTime + 4 * 60 * 60 * 1000);
+  const targetMessage = proposalTargetMessage(session, targetProposalId);
+  const expiredProposal = session.proposalStatus === 'expired';
   const hasRescheduleProposal = canReschedule && Boolean(session.rescheduleProposalId && session.proposedScheduledAt);
   const proposedByMe = hasRescheduleProposal && idOf(session.rescheduleProposedBy) === idOf(user);
   const proposedScheduleLabel = formatSessionDateTime(session.proposedScheduledAt);
@@ -550,7 +626,7 @@ const SessionRoom = ({ id }) => {
         <CheckCircle2 size={19} aria-hidden="true" />
         <div>
           <span>Next step</span>
-          <h2 id="next-step-heading">{hasRescheduleProposal ? 'Review the proposed time before checking in.' : needsMeetingDetails ? 'Add the agreed meeting details for your peer.' : canReportNoShow ? 'The check-in window ended. Review attendance and report a no-show if needed.' : nextStep}</h2>
+          <h2 id="next-step-heading">{hasRescheduleProposal && !expiredProposal ? 'Review the alternative or check in at the confirmed original time.' : needsMeetingDetails ? 'Add the agreed meeting details for your peer.' : canReportNoShow ? 'The check-in window ended. Review attendance and report a no-show if needed.' : nextStep}</h2>
           {session.status === 'pending' && !isTeaching && <p>No action is required from you right now.</p>}
           {session.creditsSettledAt && <p>{creditLabel} transferred.</p>}
         </div>
@@ -563,7 +639,7 @@ const SessionRoom = ({ id }) => {
         {canCheckIn && <button type="button" className={`btn btn-sm ${needsMeetingDetails ? 'btn-secondary' : 'btn-primary'}`} disabled={actionLoading} onClick={handleCheckIn}>Check in</button>}
         {session.meetingMethod === 'online' && ['accepted', 'scheduled', 'in_progress'].includes(session.status) && resourceSource(session.meetingLink) && <a className="btn btn-secondary btn-sm" href={session.meetingLink} target="_blank" rel="noopener noreferrer">Join Meeting <ExternalLink size={14} aria-hidden="true" /><span className="sr-only"> (opens in a new tab)</span></a>}
         {needsMeetingDetails && <button type="button" className={`btn btn-sm ${hasRescheduleProposal ? 'btn-secondary' : 'btn-primary'}`} onClick={() => changeSection('details')}>Add meeting details</button>}
-        {hasRescheduleProposal && <button className="btn btn-primary btn-sm" onClick={() => changeSection('details')}>Review proposed time</button>}
+        {hasRescheduleProposal && <button className="btn btn-primary btn-sm" onClick={reviewProposal}>Review proposed time</button>}
       </section>
 
       <details className="session-secondary-actions" hidden={!hasSecondaryActions || isClosed}><summary>More session actions</summary>          {hasSecondaryActions && !isClosed && (
@@ -583,15 +659,13 @@ const SessionRoom = ({ id }) => {
             {checkInStateVisible && (
               <div className="session-check-in">
                 <h3>Session check-in</h3>
-                <p className="session-muted-copy">Check-in is available from 15 minutes before until 4 hours after the agreed time.</p>
+                <p className="session-muted-copy">Check-in is self-reported presence, available from 15 minutes before until 4 hours after the agreed time. Opening the meeting link records no attendance or credits.</p>
                 <p>Learner: {session.learnerCheckedInAt ? `Checked in ${formatSessionDateTime(session.learnerCheckedInAt)}` : 'Not checked in'}</p>
                 <p>Tutor: {session.tutorCheckedInAt ? `Checked in ${formatSessionDateTime(session.tutorCheckedInAt)}` : 'Not checked in'}</p>
                 {session.status === 'in_progress' ? (
                   <p><strong>In progress{session.startedAt ? ` since ${formatSessionDateTime(session.startedAt)}` : ''}.</strong></p>
                 ) : myCheckIn ? (
                   <p>Waiting for {peerCheckIn ? 'the session to start' : 'your peer to check in'}.</p>
-                ) : checkInBlockedByProposal ? (
-                  <p>Resolve the reschedule proposal before checking in.</p>
                 ) : !checkInOpen ? (
                   <p>Check-in is not available at this time.</p>
                 ) : null}
@@ -602,7 +676,7 @@ const SessionRoom = ({ id }) => {
             {session.status === 'awaiting_validation' && (
               <div className="session-validation">
                 <h3>Session validation</h3>
-                <p>The live interaction is finished. Credits transfer only after both participants confirm.</p>
+                <p>The Tutor finished the live session. Finish is not a positive completion confirmation. Each participant must confirm separately; the second positive confirmation settles credits once.</p>
                 <p>Learner: {session.learnerConfirmedAt ? 'Confirmed' : 'Waiting for confirmation'}</p>
                 <p>Tutor: {session.tutorConfirmedAt ? 'Confirmed' : 'Waiting for confirmation'}</p>
                 {myValidation && <p>Thanks for confirming. Waiting for your peer.</p>}
@@ -617,6 +691,12 @@ const SessionRoom = ({ id }) => {
                 <textarea id="dispute-reason" className="form-textarea" rows={3} minLength={10} maxLength={500} required value={disputeReason} onChange={(event) => setDisputeReason(event.target.value)} disabled={actionLoading} />
                 <button className="btn btn-secondary btn-sm" type="submit" disabled={actionLoading}>Submit dispute</button>
               </form>
+            )}
+
+            {['in_progress', 'awaiting_validation', 'disputed', 'no_show', 'completed', 'resolved'].includes(session.status) && (
+              <div id="session-completion" className="session-completion-target" tabIndex={-1} aria-label="Session completion and evidence">
+                <SessionCompletionPanel session={session} user={user} disabled={actionLoading} onEvidence={saveCompletionEvidence} onReview={requestCompletionReview} />
+              </div>
             )}
 
             {session.status === 'no_show' && (
@@ -634,7 +714,7 @@ const SessionRoom = ({ id }) => {
             )}
             {session.status === 'resolved' && (
               <div className="session-validation">
-                <h3>Dispute resolved</h3>
+                <h3>Session review resolved</h3>
                 <p>{session.resolution === 'confirm_session'
                   ? 'The tutoring session was confirmed by a Moderator and credits were settled.'
                   : 'The tutoring session was not validated. No credits were transferred.'}</p>
@@ -719,35 +799,42 @@ const SessionRoom = ({ id }) => {
             )}
           </section>
 
-          <section id="room-panel-details" role="tabpanel" tabIndex={0} aria-labelledby="room-tab-details" hidden={activeSection !== 'details'} className="card session-room-section"><h2 id="details-heading">Session details</h2><div>            {canReschedule && (
-              <details className="session-reschedule" open={hasRescheduleProposal}><summary className="text-action">Schedule and rescheduling</summary>
+          <section id="room-panel-details" role="tabpanel" tabIndex={0} aria-labelledby="room-tab-details" hidden={activeSection !== 'details'} className="card session-room-section"><h2 id="details-heading">Session details</h2><div>            <div id="session-proposal" ref={proposalRef} tabIndex={-1}
+              className={`session-proposal-target${proposalEmphasis && targetProposalId === session.rescheduleProposalId && !expiredProposal ? ' session-proposal-emphasis' : ''}`}
+              aria-label={targetMessage ? 'Proposal status' : 'Schedule and rescheduling'}>
+              {targetMessage && <p role="status" className="session-proposal-notice">{targetMessage}</p>}
+              <details ref={proposalDetailsRef} className="session-reschedule" open={hasRescheduleProposal || Boolean(targetProposalId)}>
+                <summary className="text-action">Schedule and rescheduling</summary>
                 <h3>Reschedule</h3>
-                <p className="session-muted-copy">Current agreed time: {scheduledLabel || 'Not recorded'}. A new time takes effect only when your peer accepts it.</p>
-                {hasRescheduleProposal ? (
-                  <div className="session-reschedule-proposal">
+                <p className="session-muted-copy">Current agreed time: {scheduledLabel || 'Not recorded'}. A new time takes effect only when your peer accepts it. Checking in locks this confirmed time.</p>
+                {hasRescheduleProposal && (
+                  <div className="session-reschedule-proposal" data-proposal-id={session.rescheduleProposalId}>
                     <p><strong>Proposed time:</strong> {proposedScheduleLabel || 'Unavailable'}</p>
                     <p><strong>Proposed by:</strong> {proposedByMe ? 'You' : counterpart?.name || 'Your peer'}</p>
-                    <p>{proposedByMe ? 'Waiting for your peer to respond.' : `${counterpart?.name || 'Your peer'} proposed this time. The current time remains in place until you accept.`}</p>
-                    {!proposedByMe && (
+                    <p><strong>Expires:</strong> {formatSessionDateTime(session.rescheduleExpiresAtEffective || session.rescheduleExpiresAt) || 'Refresh for expiration details'}</p>
+                    <p>{expiredProposal ? 'This proposal expired. You can propose a new time within the original check-in window.' : proposedByMe ? 'Waiting for your peer to respond. You can withdraw or replace this unanswered proposal.' : 'The confirmed time remains in place until you accept. You can still check in at that time.'}</p>
+                    {!expiredProposal && (!proposedByMe ? (
                       <div className="session-reschedule-actions">
                         <button type="button" className="btn btn-primary btn-sm" disabled={actionLoading} onClick={() => handleRescheduleDecision(true)}>Accept new time</button>
                         <button type="button" className="btn btn-secondary btn-sm" disabled={actionLoading} onClick={() => handleRescheduleDecision(false)}>Decline new time</button>
                       </div>
-                    )}
+                    ) : <button type="button" className="btn btn-secondary btn-sm" disabled={actionLoading} onClick={handleWithdrawProposal}>Withdraw proposal</button>)}
                   </div>
-                ) : (
+                )}
+                {canReschedule && (!hasRescheduleProposal || proposedByMe || expiredProposal) && (
                   <form onSubmit={handleRescheduleProposal}>
-                    <label className="form-label" htmlFor="reschedule-time">Propose a new date and time</label>
+                    <label className="form-label" htmlFor="reschedule-time">{hasRescheduleProposal && !expiredProposal ? 'Replace with a new date and time' : 'Propose a new date and time'}</label>
                     <div className="session-reschedule-actions">
-                      <input id="reschedule-time" className="form-input" type="datetime-local" value={proposedTime} onChange={(event) => setProposedTime(event.target.value)} required disabled={actionLoading} />
-                      <button type="submit" className="btn btn-secondary btn-sm" disabled={actionLoading}>Propose time</button>
+                      <input id="reschedule-time" className="form-input" type="datetime-local" value={proposedTime} onChange={(event) => setProposedTime(event.target.value)} aria-describedby="proposal-time-help" required disabled={actionLoading} />
+                      <button type="submit" className="btn btn-secondary btn-sm" disabled={actionLoading}>{hasRescheduleProposal && !expiredProposal ? 'Replace proposal' : 'Propose time'}</button>
                     </div>
+                    <p className="form-hint" id="proposal-time-help">Time is in your device timezone. Alternatives expire at their start, at the original check-in window end, or after the configured lifetime, whichever is earlier.</p>
                   </form>
                 )}
+                {!canReschedule && <p>{myCheckIn || peerCheckIn ? 'A participant checked in. The confirmed schedule is locked.' : 'A new time cannot be proposed here. Review the schedule and attendance actions.'}</p>}
               </details>
-            )}
-
-{!canReschedule && <p>A new time cannot be proposed in this session state.</p>}</div>
+            </div>
+          </div>
             <dl className="session-details-grid">
               <div><dt><UserRound size={16} /> Other participant</dt><dd>{counterpart?.name || 'Peer student'}</dd></div>
               <div><dt><Calendar size={16} /> Date and time</dt><dd>{scheduledLabel || 'Not scheduled'}</dd></div>
@@ -788,7 +875,7 @@ const SessionRoom = ({ id }) => {
                     maxLength={session.meetingMethod === 'online' ? 500 : 300}
                     required
                     disabled={actionLoading}
-                    placeholder={session.meetingMethod === 'online' ? 'https://meet.example.com/...' : 'University Library – Study Area 2'}
+                    placeholder={session.meetingMethod === 'online' ? 'https://meet.google.com/abc-defg-hij' : 'University Library – Study Area 2'}
                     onChange={(event) => { meetingDirty.current = true; setMeetingValue(event.target.value); }}
                   />
                   <button type="submit" className="btn btn-secondary" disabled={actionLoading}>{session.meetingMethod === 'online' ? 'Save meeting link' : 'Save location'}</button>

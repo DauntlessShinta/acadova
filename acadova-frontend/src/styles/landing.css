@@ -1737,6 +1737,12 @@
   .landing-skill-button, .landing-swap-button, .landing-action-row .btn-primary > svg { transform: none !important; }
 }
 
+.landing-delight .landing-dashboard-nav button:focus-visible,
+.landing-dashboard-content:focus-visible {
+  outline: 3px solid var(--acadova-soft-blue);
+  outline-offset: 4px;
+}
+
 /* Focused delight pass: retain the existing sections, palette, and layout system. */
 .landing-delight .landing-hero-grid { gap: clamp(32px, 4vw, 64px); }
 .landing-delight .landing-hero { background: var(--acadova-canvas); isolation: isolate; }

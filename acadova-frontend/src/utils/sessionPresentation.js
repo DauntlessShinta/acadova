@@ -5,6 +5,10 @@ const entityId = (entity) => String(entity?._id || entity?.id || entity || '');
 export const toSessionInstant = (value) => {
   const date = value ? new Date(value) : null;
   if (!date || Number.isNaN(date.getTime())) throw new Error('Enter a valid session date and time.');
+  // Reject nonexistent local clock times instead of silently shifting a DST gap.
+  const local = typeof value === 'string' && value.match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})(?::(\d{2}))?$/);
+  if (local && [date.getFullYear(), date.getMonth() + 1, date.getDate(), date.getHours(), date.getMinutes(), date.getSeconds()]
+    .some((part, index) => part !== Number(local[index + 1] || 0))) throw new Error('This local date/time does not exist. Choose another future time; daylight-saving changes may skip an hour.');
   return date.toISOString();
 };
 

@@ -3,6 +3,7 @@ const mongoose = require('mongoose');
 const AssessmentAttemptSchema = new mongoose.Schema({
   student: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
   assessment: { type: mongoose.Schema.Types.ObjectId, ref: 'Assessment', required: true },
+  mode: { type: String, enum: ['official', 'practice'], default: undefined },
   answers: { type: [Number], required: true },
   score: { type: Number, required: true, min: 0, max: 100 },
   passed: { type: Boolean, required: true },

@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useId, useRef, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import {
   ArrowRight,
@@ -165,7 +165,29 @@ export const LandingPage = () => {
 
   const selectedSkill = skillOptions.find((skill) => skill.key === selectedSkillKey) || skillOptions[0];
   const SelectedSkillIcon = selectedSkill.icon;
-  const activeDashboardView = dashboardViews[dashboardView];
+  const dashboardId = useId();
+  const dashboardTabs = useRef({});
+  const [horizontalPreview, setHorizontalPreview] = useState(() => window.matchMedia('(min-width: 561px) and (max-width: 780px)').matches);
+
+  useEffect(() => {
+    const media = window.matchMedia('(min-width: 561px) and (max-width: 780px)');
+    const synchronize = () => setHorizontalPreview(media.matches);
+    media.addEventListener('change', synchronize);
+    return () => media.removeEventListener('change', synchronize);
+  }, []);
+
+  const navigateDashboardTab = (event, key) => {
+    const keys = Object.keys(dashboardViews);
+    const index = keys.indexOf(key);
+    let next;
+    if (event.key === 'Home') next = 0;
+    else if (event.key === 'End') next = keys.length - 1;
+    else if (event.key === 'ArrowRight' || (!horizontalPreview && event.key === 'ArrowDown')) next = (index + 1) % keys.length;
+    else if (event.key === 'ArrowLeft' || (!horizontalPreview && event.key === 'ArrowUp')) next = (index + keys.length - 1) % keys.length;
+    else return;
+    event.preventDefault();
+    dashboardTabs.current[keys[next]]?.focus();
+  };
 
   useEffect(() => {
     const root = landingRoot.current;
@@ -502,7 +524,7 @@ export const LandingPage = () => {
             <div className="landing-dashboard-body">
               <aside className="landing-dashboard-nav" aria-label="Dashboard preview views">
                 <div className="landing-dashboard-brand"><BookOpen size={19} aria-hidden="true" /><span>Student workspace</span></div>
-                <div role="tablist" aria-label="Dashboard preview">
+                <div role="tablist" aria-label="Dashboard preview" aria-orientation={horizontalPreview ? 'horizontal' : 'vertical'}>
                   {[
                     ['overview', Compass, 'Overview'],
                     ['sessions', Calendar, 'Sessions'],
@@ -511,17 +533,31 @@ export const LandingPage = () => {
                     <button
                       type="button"
                       role="tab"
+                      id={`${dashboardId}-tab-${key}`}
+                      aria-controls={`${dashboardId}-panel-${key}`}
                       aria-selected={dashboardView === key}
+                      tabIndex={dashboardView === key ? 0 : -1}
+                      ref={(element) => { dashboardTabs.current[key] = element; }}
                       className={dashboardView === key ? 'is-active' : ''}
+                      onFocus={() => setDashboardView(key)}
                       onClick={() => setDashboardView(key)}
+                      onKeyDown={(event) => navigateDashboardTab(event, key)}
                       key={key}
                     >
-                      <Icon size={16} /> {label}
+                      <Icon size={16} aria-hidden="true" /> {label}
                     </button>
                   ))}
                 </div>
               </aside>
-              <div className="landing-dashboard-content" role="tabpanel">
+              {Object.entries(dashboardViews).map(([key, activeDashboardView]) => <div
+                key={key}
+                className="landing-dashboard-content"
+                role="tabpanel"
+                id={`${dashboardId}-panel-${key}`}
+                aria-labelledby={`${dashboardId}-tab-${key}`}
+                hidden={dashboardView !== key}
+                tabIndex={0}
+              >
                 <span className="landing-preview-label">{activeDashboardView.eyebrow}</span>
                 <h3>{activeDashboardView.title}</h3>
                 <p>{activeDashboardView.copy}</p>
@@ -535,7 +571,7 @@ export const LandingPage = () => {
                   ))}
                 </div>
                 <div className="landing-dashboard-note"><MessageSquare size={18} /> Preview content only—sign in to view your actual Acadova workspace.</div>
-              </div>
+              </div>)}
             </div>
           </div>
         </div>

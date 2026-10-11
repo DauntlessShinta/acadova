@@ -7,6 +7,7 @@ import { focusInvalidField } from '../utils/focusInvalidField';
 import { passwordRequirements, pendingRegistrationNavigation, registrationErrorMessage, validateRegistration } from '../utils/authForm';
 import GoogleSignInButton from '../components/auth/GoogleSignInButton';
 import PolicyReviewDialog from '../components/auth/PolicyReviewDialog';
+import './RegisterPage.css';
 
 export const RegisterPage = () => {
   const { register } = useAuth();
@@ -24,6 +25,7 @@ export const RegisterPage = () => {
   const [submitting, setSubmitting] = useState(false);
   const submittingRef = useRef(false);
   const requirements = passwordRequirements(password);
+  const requirementLabels = ['8+ characters', 'Uppercase letter', 'Lowercase letter', 'Number', 'Special character'];
 
   const handleSubmit = async (event) => {
     event.preventDefault();
@@ -61,28 +63,27 @@ export const RegisterPage = () => {
 
   return <>
     <span className="auth-form-eyebrow">Join the exchange</span>
-    <h2>Create your Acadova account</h2>
-    <p className="auth-form-intro">Start learning with student peers. You can add your skills later from your Profile.</p>
-    <form onSubmit={handleSubmit} noValidate>
+    <h1 className="register-title">Create your Acadova account</h1>
+    <p className="auth-form-intro">Learn with peers. Add your skills later from your Profile.</p>
+    <form className="register-form" onSubmit={handleSubmit} noValidate>
+      <div className="register-fields">
       <div className="form-group">
         <label className="form-label" htmlFor="register-name">Full name</label>
-        <input id="register-name" type="text" className="form-input" autoComplete="name" value={name} onChange={(event) => setName(event.target.value)} aria-invalid={Boolean(fields.name)} aria-describedby={fields.name ? 'register-name-error' : undefined} required autoFocus />
-        <span className="form-hint">Enter the name you normally use for school or tutoring.</span>
+        <input id="register-name" placeholder="Juan Dela Cruz" type="text" className="form-input" autoComplete="name" value={name} onChange={(event) => setName(event.target.value)} aria-invalid={Boolean(fields.name)} aria-describedby={fields.name ? 'register-name-hint register-name-error' : 'register-name-hint'} required autoFocus />
+        <span className="form-hint" id="register-name-hint">Name used at school or tutoring.</span>
         {fields.name && <span className="form-error" id="register-name-error">{fields.name}</span>}
       </div>
       <div className="form-group">
         <label className="form-label" htmlFor="register-email">Email address</label>
-        <input id="register-email" type="email" className="form-input" autoComplete="email" inputMode="email" value={email} onChange={(event) => setEmail(event.target.value)} aria-invalid={Boolean(fields.email)} aria-describedby={fields.email ? 'register-email-error' : undefined} required />
+        <input id="register-email" type="email" placeholder="student@example.com" className="form-input" autoComplete="email" inputMode="email" value={email} onChange={(event) => setEmail(event.target.value)} aria-invalid={Boolean(fields.email)} aria-describedby={fields.email ? 'register-email-error' : undefined} required />
         {fields.email && <span className="form-error" id="register-email-error">{fields.email}</span>}
       </div>
       <div className="form-group">
         <label className="form-label" htmlFor="register-password">Password</label>
         <div className="auth-password-field">
-          <input id="register-password" type={showPassword ? 'text' : 'password'} className="form-input" autoComplete="new-password" value={password} onChange={(event) => setPassword(event.target.value)} aria-invalid={Boolean(fields.password)} aria-describedby={fields.password ? 'register-password-hint register-password-error' : 'register-password-hint'} minLength={8} required />
+          <input id="register-password" type={showPassword ? 'text' : 'password'} className="form-input" autoComplete="new-password" value={password} onChange={(event) => setPassword(event.target.value)} aria-invalid={Boolean(fields.password)} aria-describedby={fields.password ? 'register-password-hint register-password-requirements register-password-error' : 'register-password-hint register-password-requirements'} minLength={8} required />
           <button type="button" onClick={() => setShowPassword((value) => !value)} aria-label={showPassword ? 'Hide password' : 'Show password'} aria-pressed={showPassword}>{showPassword ? <EyeOff size={19} /> : <Eye size={19} />}</button>
         </div>
-        <span className="form-hint" id="register-password-hint">Password must contain the items below. </span>
-        <ul className="auth-password-requirements" aria-label="Password requirements">{requirements.map(([label, met]) => <li key={label} className={met ? 'is-met' : ''}><span aria-hidden="true">{met ? <Check size={14} /> : '○'}</span>{label}</li>)}</ul>
         {fields.password && <span className="form-error" id="register-password-error">{fields.password}</span>}
       </div>
       <div className="form-group">
@@ -93,21 +94,28 @@ export const RegisterPage = () => {
         </div>
         {fields.confirmPassword && <span className="form-error" id="register-confirm-password-error">{fields.confirmPassword}</span>}
       </div>
+      </div>
+      <div className="register-password-guidance">
+        <p className="form-hint" id="register-password-hint">Password requirements</p>
+        <ul className="auth-password-requirements" id="register-password-requirements" aria-label="Password requirements">{requirements.map(([label, met], index) => <li key={label} className={met ? 'is-met' : ''}><span aria-hidden="true">{met ? <Check size={14} /> : '○'}</span><span className="sr-only">{met ? 'Met: ' : 'Required: '}</span>{requirementLabels[index]}</li>)}</ul>
+      </div>
       <div className="form-group policy-acknowledgment">
         <p>I agree to the <Link to="/terms" target="_blank" rel="noopener noreferrer">Terms of Use</Link> and acknowledge the <Link to="/privacy" target="_blank" rel="noopener noreferrer">Privacy Policy</Link>.</p>
+        <div className="register-consent-review">
         <button id="register-policy-review" type="button" className="btn btn-secondary btn-sm" onClick={() => setReviewOpen(true)}
           aria-describedby={fields.policyAccepted ? 'register-policy-error' : undefined}>
           {policyAccepted ? 'Review Terms & Privacy again' : 'Review Terms & Privacy'}
         </button>
         <p className={policyAccepted ? 'policy-review-status is-accepted' : 'policy-review-status'} role="status">
-          {policyAccepted ? 'Terms and Privacy acknowledgment completed for this registration.' : 'Review and agree before creating your account.'}
+          {policyAccepted ? 'Terms and Privacy acknowledgment completed.' : 'Review and agree before creating your account.'}
         </p>
+        </div>
         {fields.policyAccepted && <span className="form-error" id="register-policy-error">{fields.policyAccepted}</span>}
         <p>See also our <Link to="/community-guidelines" target="_blank" rel="noopener noreferrer">Community Guidelines</Link>.</p>
       </div>
       <button type="submit" className="btn btn-primary auth-submit" disabled={submitting}>{submitting ? 'Creating account...' : <>Create Account <ArrowRight size={17} /></>}</button>
     </form>
-    {reviewOpen && <PolicyReviewDialog accepted={policyAccepted} onClose={() => setReviewOpen(false)}
+    {reviewOpen && <PolicyReviewDialog className="register-policy-backdrop" accepted={policyAccepted} onClose={() => setReviewOpen(false)}
       onAgree={() => { setPolicyAccepted(true); setFields((current) => Object.fromEntries(
         Object.entries(current).filter(([key]) => key !== 'policyAccepted'),
       )); setReviewOpen(false); }} />}

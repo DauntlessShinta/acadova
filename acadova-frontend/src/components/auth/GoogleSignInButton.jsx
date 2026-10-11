@@ -1,6 +1,7 @@
 import { useToast } from '../../context/toastAccess';
 import React, { useEffect, useRef, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
+import { sessionReturnFromSearch } from '../../utils/sessionNavigation';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { getRoleHomeRoute } from '../../config/roleNavigation';
@@ -14,6 +15,7 @@ export default function GoogleSignInButton() {
   const container = useRef(null);
   const { googleLogin } = useAuth();
   const navigate = useNavigate();
+  const { search } = useLocation();
   const toast = useToast();
   const [error, setError] = useState('');
   const [working, setWorking] = useState(false);
@@ -34,7 +36,8 @@ export default function GoogleSignInButton() {
           setWorking(true);
           try {
             const response = await googleLogin(credential);
-            navigate(getRoleHomeRoute(response?.data?.user?.role), { replace: true });
+            const role = response?.data?.user?.role;
+            navigate((role === 'student' && sessionReturnFromSearch(search)) || getRoleHomeRoute(role), { replace: true });
           } catch (failure) {
             if (active && failure?.data?.code === 'POLICY_ACCEPTANCE_REQUIRED') {
               setPendingCredential(credential);
@@ -68,7 +71,7 @@ export default function GoogleSignInButton() {
       return () => { active = false; script.removeEventListener('load', render); };
     }
     return () => { active = false; };
-  }, [googleLogin, toast, navigate]);
+  }, [googleLogin, toast, navigate, search]);
 
   const createGoogleAccount = async (event) => {
     event.preventDefault();
@@ -77,7 +80,8 @@ export default function GoogleSignInButton() {
     try {
       const response = await googleLogin(pendingCredential, true);
       setPendingCredential(null);
-      navigate(getRoleHomeRoute(response?.data?.user?.role), { replace: true });
+      const role = response?.data?.user?.role;
+      navigate((role === 'student' && sessionReturnFromSearch(search)) || getRoleHomeRoute(role), { replace: true });
     } catch {
       toast('error', 'Google sign-up could not be completed. Please try signing in again.');
       setPendingCredential(null);

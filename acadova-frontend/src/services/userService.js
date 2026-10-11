@@ -5,8 +5,8 @@ export const userService = {
     return api.get('/api/users/me');
   },
 
-  updateMe: async ({ name, skillsToTeach, skillsToLearn }) => {
-    return api.patch('/api/users/me', { name, skillsToTeach, skillsToLearn });
+  updateMe: async ({ name, skillsToTeach, skillsToLearn, weeklyAvailability }) => {
+    return api.patch('/api/users/me', { name, skillsToTeach, skillsToLearn, weeklyAvailability });
   },
   finishOnboarding: async () => api.post('/api/users/me/onboarding', {}),
 

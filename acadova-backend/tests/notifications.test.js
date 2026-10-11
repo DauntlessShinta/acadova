@@ -319,15 +319,15 @@ test('Session message write notifies peer only and outsider cannot create a mess
     service.notifyMessage = old.notify; }
 });
 
-test('reschedule proposal and decisions notify peer/proposer only after persistence', async () => {
+test('reschedule proposal and decisions notify peer/proposer as durable intent inside the action transaction', async () => {
   const old = { find: Session.findById, update: Session.findOneAndUpdate,
-    notify: service.notifySession, invalidate: service.invalidateUpcoming };
+    notify: service.enqueueProposalEvent, invalidate: service.invalidateUpcoming };
   const events = []; let stored; let allow = true; let invalidations = 0;
   Session.findById = async () => ({ ...stored });
   Session.findOneAndUpdate = async (_, update) => allow ? {
     ...stored, ...(update.$set || {}), async populate() {},
   } : null;
-  service.notifySession = async (type, _, recipients) => { events.push({ type, recipients }); };
+  service.enqueueProposalEvent = async (type, _, recipients) => { events.push({ type, recipients }); };
   service.invalidateUpcoming = async () => { invalidations += 1; };
   const req = (actor, body) => ({ params: { id: sessionId }, user: { id: actor }, body });
   try {
@@ -344,7 +344,7 @@ test('reschedule proposal and decisions notify peer/proposer only after persiste
       [sessionController.declineReschedule, 'session.reschedule_declined', 1],
     ]) {
       stored = { ...stored, rescheduleProposalId: 'proposal-1', rescheduleProposedBy: alice,
-        proposedScheduledAt: new Date(Date.now() + 172_800_000) };
+        proposedScheduledAt: new Date(Date.now() + 172_800_000), rescheduleProposedAt: new Date() };
       const decision = response(); await handler(req(bob, { proposalId: 'proposal-1' }), decision);
       assert.equal(decision.statusCode, 200);
       assert.deepEqual(events.at(-1), { type, recipients: [alice] });
@@ -354,25 +354,26 @@ test('reschedule proposal and decisions notify peer/proposer only after persiste
     const conflict = response(); await sessionController.declineReschedule(req(bob, { proposalId: 'proposal-1' }), conflict);
     assert.equal(conflict.statusCode, 409); assert.equal(events.length, count);
   } finally { Session.findById = old.find; Session.findOneAndUpdate = old.update;
-    service.notifySession = old.notify; service.invalidateUpcoming = old.invalidate; }
+    service.enqueueProposalEvent = old.notify; service.invalidateUpcoming = old.invalidate; }
 });
 
 test('finishing a checked-in Session notifies both participants of validation', async () => {
+  const completion = require('../services/completionLifecycle');
   const old = { find: Session.findById, update: Session.findOneAndUpdate,
-    notify: service.notifySession };
+    notify: completion.enqueueCompletionEvent };
   const now = new Date(); const events = [];
   const stored = { _id: sessionId, learner: alice, tutor: bob, status: 'in_progress',
     startedAt: now, learnerCheckedInAt: now, tutorCheckedInAt: now };
   Session.findById = async () => ({ ...stored });
   Session.findOneAndUpdate = async (_, update) => ({ ...stored, ...update.$set, async populate() {} });
-  service.notifySession = async (type, _, recipients) => { events.push({ type, recipients }); };
+  completion.enqueueCompletionEvent = async (type, _, recipients) => { events.push({ type, recipients }); };
   try {
     const result = response(); await sessionController.finishSession({ params: { id: sessionId },
       user: { id: bob }, body: {} }, result);
     assert.equal(result.statusCode, 200);
     assert.deepEqual(events, [{ type: 'session.awaiting_validation', recipients: [alice, bob] }]);
   } finally { Session.findById = old.find; Session.findOneAndUpdate = old.update;
-    service.notifySession = old.notify; }
+    completion.enqueueCompletionEvent = old.notify; }
 });
 
 test('unread worker produces one reminder per unread burst and none after read', async () => {

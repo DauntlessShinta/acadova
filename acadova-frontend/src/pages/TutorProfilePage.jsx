@@ -6,6 +6,7 @@ import userService from '../services/userService';
 import sessionService from '../services/sessionService';
 import creditService from '../services/creditService';
 import PeerReputation from '../components/common/PeerReputation';
+import { AvailabilityGuidance } from '../components/student/WeeklyAvailability';
 import { sessionRequestTimeError } from '../utils/sessionRequestTime';
 import Alert from '../components/common/Alert';
 import LoadingSpinner from '../components/common/LoadingSpinner';
@@ -28,7 +29,6 @@ export const TutorProfilePage = () => {
   // Request form state
   const [sessionSubject, setSessionSubject] = useState('');
   const [scheduledAt, setScheduledAt] = useState('');
-  const [meetingMethod, setMeetingMethod] = useState('online');
   const [requestMessage, setRequestMessage] = useState('');
   const submittingRef = useRef(false);
   const [requestedSession, setRequestedSession] = useState(null);
@@ -48,9 +48,7 @@ export const TutorProfilePage = () => {
           setReviews([]); setReviewError('');
           userService.getUserReviews(id).then((reviewResult) => setReviews(reviewResult.data || []))
             .catch(() => setReviewError('Reviews could not be loaded. Please refresh to try again.'));
-          if (res.data.skillsToTeach?.length > 0) {
-            setSessionSubject(res.data.skillsToTeach[0]);
-          }
+          setSessionSubject(res.data.skillsToTeach?.[0] || '');
         }
       } catch (err) {
         setError(err.message || 'Failed to load peer profile');
@@ -79,11 +77,9 @@ export const TutorProfilePage = () => {
 
 
     const errors = {};
-    if (!sessionSubject.trim()) errors.subject = 'Choose a subject.';
+    if (!tutor.skillsToTeach?.includes(sessionSubject)) errors.subject = 'Choose one of this peer\'s teaching subjects.';
     const timeError = sessionRequestTimeError(scheduledAt);
     if (timeError) errors.scheduledAt = timeError;
-    if (!meetingMethod) errors.meetingMethod = 'Choose a session method.';
-    if (!requestMessage.trim()) errors.requestMessage = 'Tell your peer what you would like help with.';
     if (requestMessage.trim().length > 500) errors.requestMessage = 'Your message must be 500 characters or fewer.';
     setFieldErrors(errors);
     if (Object.keys(errors).length > 0) {
@@ -102,7 +98,7 @@ export const TutorProfilePage = () => {
         tutorId: id,
         subject: sessionSubject.trim(),
         scheduledAt: scheduledAt || undefined,
-        meetingMethod,
+        meetingMethod: 'online',
         requestMessage: requestMessage.trim(),
       });
 
@@ -209,17 +205,21 @@ export const TutorProfilePage = () => {
             <Alert type="danger" message={requestError} onClose={() => setRequestError('')} />
             <div className="form-group">
               <label className="form-label" htmlFor="subject">Subject / Topic</label>
-              <input
+              <select
                 id="subject"
-                type="text"
                 className="form-input"
-                placeholder="e.g. Java Data Structures"
                 value={sessionSubject}
               onChange={(e) => setSessionSubject(e.target.value)}
               aria-invalid={Boolean(fieldErrors.subject)}
+              aria-describedby={`subject-help${fieldErrors.subject ? ' subject-error' : ''}`}
+              disabled={!tutor.skillsToTeach?.length || submitting}
               required
-            />
-              {fieldErrors.subject && <span className="form-error">{fieldErrors.subject}</span>}
+              >
+                <option value="">Choose a teaching subject</option>
+                {(tutor.skillsToTeach || []).map((skill, index) => <option key={`${skill}-${index}`} value={skill}>{skill}</option>)}
+              </select>
+              <span className="form-hint" id="subject-help">{tutor.skillsToTeach?.length ? 'Choose a subject this peer currently teaches.' : 'This peer has not listed teaching subjects yet. Find another peer or ask them to update their Profile.'}</span>
+              {fieldErrors.subject && <span className="form-error" id="subject-error">{fieldErrors.subject}</span>}
             </div>
 
             <div className="form-group">
@@ -238,16 +238,11 @@ export const TutorProfilePage = () => {
               {fieldErrors.scheduledAt && <span className="form-error" id="request-time-error">{fieldErrors.scheduledAt}</span>}
             </div>
 
-            <div className="form-group">
-              <label className="form-label" htmlFor="meetingMethod">Session Method</label>
-              <select id="meetingMethod" className="form-select" value={meetingMethod} onChange={(e) => setMeetingMethod(e.target.value)} required>
-                <option value="online">Online</option>
-                <option value="in-person">In Person</option>
-              </select>
-            </div>
+            <AvailabilityGuidance availability={tutor?.weeklyAvailability} selected={scheduledAt} />
+            <p className="form-hint">Online session. The Tutor will add an HTTPS meeting link after accepting.</p>
 
             <div className="form-group">
-              <label className="form-label" htmlFor="requestMessage">Short Request Message</label>
+              <label className="form-label" htmlFor="requestMessage">Message to Tutor (Optional)</label>
               <textarea
                 id="requestMessage"
                 className="form-textarea"
@@ -256,10 +251,9 @@ export const TutorProfilePage = () => {
                 value={requestMessage}
                 onChange={(e) => setRequestMessage(e.target.value)}
                 placeholder="Tell your peer what you would like help with."
-                aria-invalid={Boolean(fieldErrors.requestMessage)}
-                required
+                aria-invalid={Boolean(fieldErrors.requestMessage)} aria-describedby="profile-request-message-help"
               />
-              <span className="form-hint">{500 - requestMessage.length} characters remaining</span>
+              <span id="profile-request-message-help" className="form-hint">Example: I need help with Java arrays. {500 - requestMessage.length} characters remaining</span>
               {fieldErrors.requestMessage && <span className="form-error">{fieldErrors.requestMessage}</span>}
             </div>
 
@@ -286,7 +280,7 @@ export const TutorProfilePage = () => {
               type="submit"
               className="btn btn-primary"
               style={{ width: '100%' }}
-              disabled={submitting}
+              disabled={submitting || !tutor.skillsToTeach?.length}
               aria-busy={submitting}
             >
               {submitting ? 'Sending Request...' : 'Send Session Request'}

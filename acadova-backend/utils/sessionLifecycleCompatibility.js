@@ -51,13 +51,17 @@ function classifyLegacySession(session, transactions = []) {
   }
 
   if (legacyStatus === 'resolved') {
-    const valid = session.resolution === 'confirm_session' && session.disputedAt && session.disputeReason
+    const reviewed = Boolean(session.disputedAt && session.disputeReason) || Boolean(
+      session.reviewReferral?.id && session.reviewReferral.createdAt && session.reviewReferral.reason
+      && session.reviewReferral.closedAt && session.reviewReferral.closure === 'staff_resolution'
+      && session.awaitingValidationAt && session.startedAt && session.learnerCheckedInAt && session.tutorCheckedInAt);
+    const valid = session.resolution === 'confirm_session' && reviewed
       && session.resolvedAt && session.resolvedBy && session.resolutionNote
       && session.completedAt && session.creditsSettledAt;
     if (valid && transactions.length === 1 && matchesPayment(session, transactions[0])) {
       return { ...base, settlementState: 'settled', requiresReconciliation: false };
     }
-    const invalid = session.resolution === 'cancel_session' && session.disputedAt && session.disputeReason
+    const invalid = session.resolution === 'cancel_session' && reviewed
       && session.resolvedAt && session.resolvedBy && session.resolutionNote
       && !session.completedAt && !session.creditsSettledAt
       && transactions.length === 0;

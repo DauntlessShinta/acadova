@@ -12,4 +12,7 @@ router.get('/:id', validateParams(schemas.assessmentId), controller.getPublished
 router.post('/:id/submit', assessmentSubmissionLimiter, validateParams(schemas.assessmentId),
   validateBody(schemas.assessmentSubmit), controller.submitAssessment);
 
+router.post('/:id/practice', assessmentSubmissionLimiter, validateParams(schemas.assessmentId),
+  validateBody(schemas.assessmentSubmit), (req, res, next) => { req.assessmentMode = 'practice'; next(); }, controller.submitAssessment);
+
 module.exports = router;

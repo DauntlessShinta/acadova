@@ -2,9 +2,9 @@ const Notification = require('../models/Notification');
 const { isValidObjectId } = require('../middleware/validation');
 const { linkFor, pushAliasFor } = require('../services/notificationService');
 
-const present = (row) => ({ id: String(row._id), type: row.type, title: row.title,
+const present = (row, role) => ({ id: String(row._id), type: row.type, title: row.title,
   message: row.message, createdAt: row.createdAt, readAt: row.readAt,
-  href: linkFor(row) });
+  href: linkFor(row, role), ...(row.proposal ? { proposal: row.proposal } : {}) });
 
 exports.pushIdentity = (req, res) => {
   const alias = process.env.ONESIGNAL_APP_ID && process.env.ONESIGNAL_REST_API_KEY
@@ -24,11 +24,11 @@ exports.listMine = async (req, res) => {
   try {
     const [total, rows] = await Promise.all([
       Notification.countDocuments(filter), Notification.find(filter)
-        .select('type title message relatedType relatedId readAt createdAt')
+        .select('type title message relatedType relatedId readAt createdAt proposal actionTarget')
         .sort({ createdAt: -1, _id: -1 }).skip((Number(page) - 1) * Number(limit))
         .limit(Number(limit)).lean(),
     ]);
-    return res.json({ success: true, data: rows.map(present),
+    return res.json({ success: true, data: rows.map(row => present(row, req.user.role)),
       pagination: { page: Number(page), limit: Number(limit), total } });
   } catch { return res.status(503).json({ success: false, message: 'Notifications unavailable.' }); }
 };
@@ -45,10 +45,10 @@ exports.markRead = async (req, res) => {
   try {
     const row = await Notification.findOneAndUpdate({ _id: req.params.id, recipient: req.user.id,
       readAt: null }, { $set: { readAt: new Date() } }, { returnDocument: 'after' }).lean();
-    if (row) return res.json({ success: true, data: present(row) });
+    if (row) return res.json({ success: true, data: present(row, req.user.role) });
     const owned = await Notification.findOne({ _id: req.params.id, recipient: req.user.id })
-      .select('type title message relatedType relatedId readAt createdAt').lean();
-    return owned ? res.json({ success: true, data: present(owned) })
+      .select('type title message relatedType relatedId readAt createdAt proposal actionTarget').lean();
+    return owned ? res.json({ success: true, data: present(owned, req.user.role) })
       : res.status(404).json({ success: false, message: 'Notification not found.' });
   } catch { return res.status(503).json({ success: false, message: 'Notification could not be updated.' }); }
 };

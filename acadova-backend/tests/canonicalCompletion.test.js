@@ -6,6 +6,12 @@ const User = require('../models/User');
 const CreditTransaction = require('../models/CreditTransaction');
 const Rating = require('../models/Rating');
 const controller = require('../controllers/sessionController');
+const completion = require('../services/completionLifecycle');
+const originalEnqueue = completion.enqueueCompletionEvent;
+test.beforeEach(() => {
+  mongoose.startSession = async () => ({ withTransaction: async (fn) => fn(), endSession: async () => {} });
+  completion.enqueueCompletionEvent = async () => {};
+});
 const ratingController = require('../controllers/ratingController');
 
 const originals = {
@@ -25,6 +31,7 @@ const originals = {
 };
 
 test.afterEach(() => {
+  completion.enqueueCompletionEvent = originalEnqueue;
   Session.findById = originals.findById;
   Session.findOneAndUpdate = originals.findOneAndUpdate;
   Session.updateOne = originals.updateOne;

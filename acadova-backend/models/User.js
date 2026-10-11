@@ -15,6 +15,7 @@ const UserSchema = new mongoose.Schema({
   // Atomic, per-account reward claim. Historical users without this field match $ne.
   rewardedAssessments: { type: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Assessment' }],
     select: false, default: [] },
+  weeklyAvailability: { type: new mongoose.Schema({ timezone: String, ranges: [{ day: Number, start: String, end: String, _id: false }] }, { _id: false }), default: undefined },
   skillsToTeach: [{ type: String }],
   skillsToLearn: [{ type: String }],
   rating: { type: Number, default: 5.0 },

@@ -4,7 +4,7 @@ import { X } from 'lucide-react';
 import { PrivacyContent, TermsContent } from '../../pages/PolicyPages';
 import { canCompletePolicyReview, hasReachedPolicyEnd } from '../../utils/policyReview';
 
-export default function PolicyReviewDialog({ accepted = false, onClose, onAgree }) {
+export default function PolicyReviewDialog({ accepted = false, onClose, onAgree, className = '' }) {
   const dialogRef = useRef(null);
   const closeRef = useRef(null);
   const scrollRef = useRef(null);
@@ -48,7 +48,7 @@ export default function PolicyReviewDialog({ accepted = false, onClose, onAgree 
     };
   }, []);
 
-  return createPortal(<div className="modal-backdrop policy-review-backdrop" onMouseDown={(event) => {
+  return createPortal(<div className={`modal-backdrop policy-review-backdrop${className ? ` ${className}` : ''}`} onMouseDown={(event) => {
     if (event.target === event.currentTarget) onClose();
   }}>
     <div ref={dialogRef} className="modal-dialog policy-review-dialog" role="dialog" aria-modal="true"

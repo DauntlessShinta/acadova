@@ -11,7 +11,7 @@ import { staffLearningHash } from '../../utils/staffLearningNavigation';
 const empty = { disputes: [], resolved: [], resources: [], topics: [], modules: [], assessments: [] };
 const names = Object.keys(empty);
 const kind = (item) => item.type === 'activity' ? 'Review recommended'
-  : item.type === 'content' ? 'Learning content' : 'Session dispute';
+  : item.type === 'content' ? 'Learning content' : 'Session exception';
 
 export default function ModeratorOverviewPage() {
   const [data, setData] = useState(empty);
@@ -39,8 +39,8 @@ export default function ModeratorOverviewPage() {
   const rows = useMemo(() => {
     const items = [
       ...data.disputes.map((row) => ({ id: row._id, type: 'dispute', status: 'open',
-        title: row.subject, detail: `Disputed by ${row.disputedBy?.name || 'a participant'}`,
-        date: row.disputedAt, to: '/moderator/disputes', priority: 1 })),
+        title: row.subject, detail: row.disputedBy ? `Disputed by ${row.disputedBy.name || 'a participant'}` : 'Unresolved completion review referral',
+        date: row.reviewReferral?.createdAt || row.disputedAt, to: `/moderator/disputes?session=${row._id}`, priority: 1 })),
       ...data.resources.filter((row) => row.reviewStatus === 'submitted').map((row) => ({
         id: row.id, type: 'content', status: 'open', title: row.title,
         detail: 'Resource awaiting review', date: row.createdAt, to: `/moderator/learning${staffLearningHash('resources')}`, priority: 2 })),
@@ -55,10 +55,10 @@ export default function ModeratorOverviewPage() {
         detail: 'Assessment draft', date: row.createdAt, to: '/moderator/assessments', priority: 3 })),
       ...data.disputes.filter((row) => row.reviewIndicators?.includes('prior_credit_transaction'))
         .map((row) => ({ id: `signal-${row._id}`, type: 'activity', status: 'open',
-          title: row.subject, detail: 'Disputed Session has a recorded credit transaction',
+          title: row.subject, detail: 'Session exception has a recorded credit transaction',
           date: row.disputedAt, to: '/moderator/disputes', priority: 0 })),
       ...data.resolved.map((row) => ({ id: row._id, type: 'dispute', status: 'resolved',
-        title: row.subject, detail: row.resolution === 'confirm_session' ? 'Resolved as valid' : 'Resolved as invalid',
+        title: row.subject, detail: row.status === 'completed' ? 'Closed by participant confirmations' : row.resolution === 'confirm_session' ? 'Resolved as valid' : 'Resolved as invalid',
         date: row.resolvedAt, to: '/moderator/disputes?status=resolved', priority: 4 })),
     ];
     return items.filter((item) => item.status === status && (type === 'all' || item.type === type))
@@ -72,13 +72,13 @@ export default function ModeratorOverviewPage() {
     <p>Normal tutoring sessions need no Moderator approval. Review exceptions and learning content here.</p>
   </div></header><Alert type="danger" message={error} />
     {loading ? <LoadingSpinner text="Loading review queue..." /> : <>
-      <div className="staff-queue-summary card"><strong>{availability.disputes ? data.disputes.length : 'Unavailable'} Session disputes</strong>
+      <div className="staff-queue-summary card"><strong>{availability.disputes ? data.disputes.length : 'Unavailable'} Session exceptions</strong>
         <strong>{availability.resources ? data.resources.filter((row) => row.reviewStatus === 'submitted').length : 'Unavailable'} resource reviews</strong>
         <strong>{availability.disputes ? data.disputes.filter((row) => row.reviewIndicators?.includes('prior_credit_transaction')).length : 'Unavailable'} review recommendations</strong>
         <Link to="/moderator/reviews">Browse review moderation</Link></div>
       <div className="staff-queue-filters card">
         <label>Status <select className="form-select" value={status} onChange={(event) => setStatus(event.target.value)}><option value="open">Open</option><option value="resolved">Resolved</option></select></label>
-        <label>Type <select className="form-select" value={type} onChange={(event) => setType(event.target.value)}><option value="all">All</option><option value="dispute">Disputes</option><option value="content">Learning content</option><option value="activity">Review recommended</option></select></label>
+        <label>Type <select className="form-select" value={type} onChange={(event) => setType(event.target.value)}><option value="all">All</option><option value="dispute">Session exceptions</option><option value="content">Learning content</option><option value="activity">Review recommended</option></select></label>
         <label>Sort <select className="form-select" value={sort} onChange={(event) => setSort(event.target.value)}><option value="oldest">Oldest first</option><option value="newest">Newest first</option><option value="priority">Priority</option></select></label>
         <button type="button" className="btn btn-secondary btn-sm" onClick={load}>Refresh queue</button>
       </div>

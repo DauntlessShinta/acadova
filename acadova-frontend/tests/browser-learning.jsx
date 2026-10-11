@@ -104,7 +104,7 @@ window.addEventListener('unhandledrejection', (event) => errors.push(String(even
 try {
   assert(window.visualViewport.scale === 1 && devicePixelRatio === 1, '100% zoom');
   await render('/learning'); await until(() => document.querySelector('.learning-card-action'), 'Topic list');
-  assert(document.querySelectorAll('.learning-section-nav a').length === 3 && !document.querySelector('.learning-section-nav [role="tab"]'), 'Section routes must be semantic navigation');
+  assert(document.querySelectorAll('.learning-section-nav a').length === 4 && document.querySelector('.learning-section-nav a[href="/study-sets"]') && !document.querySelector('.learning-section-nav [role="tab"]'), 'Section routes including Study Sets must be semantic navigation');
   for (const link of document.querySelectorAll('.learning-section-nav a')) {
     const range = document.createRange(); range.selectNodeContents(link);
     if (!link.textContent.trim().includes(' ')) assert(range.getClientRects().length === 1, 'Navigation must not split a word: ' + link.textContent);
@@ -125,7 +125,7 @@ try {
   assert(document.querySelector('.learning-page-header a[href="#topic-assessments"]'), 'Topic assessment shortcut');
   await capture('learning-topic');
   const topicAssessment = document.querySelector('#topic-assessments a[aria-label^="Take assessment"]'); topicAssessment.focus(); await keyPress('Enter');
-  await until(() => url()?.startsWith('/assessments?open=a') && document.querySelectorAll('.assessment-option').length === 9, 'Contextual topic assessment');
+  await until(() => url()?.startsWith('/assessments?open=a') && document.querySelectorAll('.assessment-option input[name^="question-"]').length === 9, 'Contextual topic assessment');
   await until(() => document.querySelector('a[href="/learning?topic=db"]'), 'Topic return verified');
   assert(document.activeElement === document.querySelector('.learning-page-header h1'), 'Assessment heading focus');
   await capture('assessment-questions');
@@ -160,7 +160,7 @@ try {
   document.querySelector('.assessment-card a[aria-label^="Take assessment"]').click(); await until(() => document.querySelector('.assessment-workspace form'), 'Direct access without viewing materials');
   document.querySelector('form button[type="submit"]').click(); await until(() => document.querySelector('#assessment-answer-error'), 'Incomplete answers');
   assert(document.activeElement.name === 'question-0' && writes === 0, 'First unanswered focus and no submit');
-  const firstOption = document.querySelector('.assessment-option'); const beforeSelection = firstOption.getBoundingClientRect();
+  const firstOption = document.querySelector('input[name="question-0"]').closest('.assessment-option'); const beforeSelection = firstOption.getBoundingClientRect();
   for (const radio of document.querySelectorAll('input[type="radio"]')) if (radio.value && radio.parentElement.textContent.includes('First answer')) radio.click();
   await pause(220); const afterSelection = firstOption.getBoundingClientRect();
   assert(beforeSelection.width === afterSelection.width && beforeSelection.height === afterSelection.height, 'Answer selection never shifts layout');

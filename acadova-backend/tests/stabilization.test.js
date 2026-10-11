@@ -26,6 +26,7 @@ const replace = (t, object, key, value) => { const old = object[key]; object[key
 const equal = (a, b) => a instanceof Date || b instanceof Date ? new Date(a).getTime() === new Date(b).getTime() : String(a).toLowerCase() === String(b).toLowerCase();
 function matches(row, filter) {
   return Object.entries(filter).every(([key, expected]) => {
+    if (key === '$expr') return true; // Real expression semantics are exercised by replica-set integration tests.
     if (key === '$or') return expected.some((part) => matches(row, part));
     if (expected === null) return row[key] == null;
     if (expected?.$in) return expected.$in.some((value) => equal(row[key], value));
@@ -45,7 +46,7 @@ function store(t, rows = []) {
   }, async endSession() {} }));
   replace(t, User, 'findOneAndUpdate', (filter, update, options) => ({ select: async () => {
     assert.ok(options.session); assert.deepEqual(update, { $currentDate: { updatedAt: true } });
-    assert.equal(options.timestamps, false); locks.push(String(filter._id)); return { _id: filter._id };
+    assert.equal(options.timestamps, false); locks.push(String(filter._id)); return { _id: filter._id, skillsToTeach: ['Java', 'Java Arrays', 'Python'] };
   } }));
   replace(t, CreditConfig, 'findById', () => ({ lean: async () => null }));
   const query = (data) => ({ session(value) { assert.ok(value); return this; }, lean: async () => data });
@@ -69,6 +70,7 @@ function store(t, rows = []) {
   replace(t, CreditTransaction, 'find', (filter) => query(payments.filter((row) => matches(row, filter))));
   replace(t, CreditTransaction, 'create', async () => assert.fail('Request/accept/cancel must never settle'));
   replace(t, notifications, 'notifySession', async (type, session) => events.push({ type, id: session._id }));
+  replace(t, notifications, 'enqueueProposalEvent', async (type, session) => events.push({ type, id: session._id }));
   replace(t, notifications, 'invalidateUpcoming', async () => {});
   const create = async (overrides = {}) => {
     const res = response(); await controller.createSession({ user: { id: learner, credits: 100 }, body: {
@@ -145,7 +147,7 @@ test('concurrent different-subject requests can both be pending but only one com
 test('accepted reschedule conflicts preserve proposal and original time; different time succeeds', async (t) => {
   const fixture = store(t); const date = instant();
   const row = { _id: learner, learner, tutor, status: 'scheduled', scheduledAt: date,
-    proposedScheduledAt: new Date(date.getTime() + 86400000), rescheduleProposalId: 'proposal', rescheduleProposedBy: learner };
+    proposedScheduledAt: new Date(date.getTime() + 86400000), rescheduleProposalId: 'proposal', rescheduleProposedBy: learner, rescheduleProposedAt: new Date() };
   fixture.rows.push(row, { _id: other, learner: other, tutor, status: 'accepted', scheduledAt: row.proposedScheduledAt });
   const invoke = async () => { const res = response(); await controller.acceptReschedule({ params: { id: learner },
     user: { id: tutor }, body: { proposalId: 'proposal' } }, res); return res; };

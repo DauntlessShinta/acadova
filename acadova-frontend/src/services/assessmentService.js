@@ -4,6 +4,7 @@ export const assessmentService = {
   list: () => api.get('/api/assessments'),
   get: (id) => api.get(`/api/assessments/${id}`),
   submit: (id, answers) => api.post(`/api/assessments/${id}/submit`, { answers }),
+  practice: (id, answers) => api.post(`/api/assessments/${id}/practice`, { answers }),
   getResult: (id) => api.get(`/api/assessments/attempts/${id}`),
   staffList: () => api.get('/api/moderator/assessments'),
   staffGet: (id) => api.get(`/api/moderator/assessments/${id}`),

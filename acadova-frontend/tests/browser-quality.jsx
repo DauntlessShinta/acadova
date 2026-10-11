@@ -170,8 +170,10 @@ try {
       }
     }
     if (['register','login','pending','forgot','reset'].includes(name)) {
-      assert(document.querySelector('.auth-brand-panel') && document.querySelector('.auth-form-inner h2'), 'Restored split Auth hierarchy');
-      assert(document.querySelector('.auth-form-inner').getBoundingClientRect().width <= 465.1, 'Original readable auth width');
+      assert(document.querySelector(name === 'register' ? '.auth-form-inner h1' : '.auth-form-inner h2'), 'Auth form heading');
+      assert(document.querySelector('.auth-brand-panel'), 'Shared Acadova brand panel');
+      if (name === 'register' && innerWidth <= 1050) assert(!visible('.auth-brand-content').length, 'Compact Register hides the long brand content');
+      assert(document.querySelector('.auth-form-inner').getBoundingClientRect().width <= (name === 'register' ? 560.1 : 465.1), 'Readable auth width');
     }
     if (name === 'register') {
       fill('#register-name', 'Sukarno'); fill('#register-email', 'valid@example.test'); await pause();

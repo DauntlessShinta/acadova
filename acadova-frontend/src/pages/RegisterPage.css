@@ -1,0 +1,81 @@
+/* Register only: keep the shared Login and recovery layouts unchanged. */
+.auth-shell--register .auth-brand-panel {
+  justify-content: center;
+  gap: 28px;
+  padding: 32px clamp(28px, 4vw, 56px);
+}
+
+.auth-shell--register .auth-brand-content {
+  width: min(100%, 460px);
+  margin: 0;
+}
+
+.auth-shell--register .auth-brand-content .register-brand-heading {
+  margin: 15px 0;
+  color: var(--acadova-primary);
+  font-family: var(--font-display);
+  font-size: clamp(2rem, 3vw, 2.8rem);
+  font-weight: 800;
+  letter-spacing: -.045em;
+  line-height: 1.15;
+}
+
+.auth-shell--register .auth-visual { margin-top: 24px; padding: 20px; }
+.auth-shell--register .auth-skill-grid { gap: 8px; margin: 16px 0; }
+.auth-shell--register .auth-skill-grid span { padding: 10px 12px; }
+.auth-shell--register .auth-form-panel { padding: 16px 24px; }
+.auth-shell--register .auth-form-inner { width: min(100%, 560px); padding: 20px 24px; }
+.auth-shell--register .register-title { margin: 9px 0 7px; color: var(--acadova-primary); font-size: clamp(1.625rem, 2.3vw, 2rem); font-weight: 700; letter-spacing: -.01em; }
+.auth-shell--register .auth-form-intro { margin-bottom: 14px; }
+
+.register-fields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: start;
+  gap: 14px 16px;
+}
+
+.register-fields .form-group { min-width: 0; margin: 0; gap: 4px; }
+.auth-shell--register .auth-password-field button { width: 44px; height: 44px; right: 1px; }
+.register-password-guidance { margin: 12px 0 16px; }
+.register-password-guidance .form-hint { margin: 0 0 6px; font-weight: 600; }
+.register-password-guidance .auth-password-requirements { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px 12px; margin: 0; }
+.register-password-guidance li { align-items: start; }
+.register-password-guidance li > span[aria-hidden] { flex-shrink: 0; }
+
+.register-form .policy-acknowledgment {
+  gap: 8px;
+  margin: 0 0 14px;
+  padding: 12px;
+  border: 1px solid var(--acadova-soft-blue);
+  border-radius: var(--radius-md);
+  background: var(--acadova-canvas);
+}
+
+.register-form .policy-acknowledgment p { margin: 0; }
+.register-consent-review { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; gap: 12px; }
+.register-consent-review .policy-review-status { font-size: .8rem; }
+.register-form .auth-submit { margin-top: 0; min-height: 46px; }
+.auth-shell--register .auth-switch { display: flex; justify-content: center; align-items: center; flex-wrap: wrap; gap: 8px 14px; margin-top: 16px; padding-top: 12px; }
+.auth-shell--register .auth-switch .btn { min-height: 44px; }
+
+@media (max-width: 1050px) {
+  .auth-shell.auth-shell--register { grid-template-columns: 1fr; grid-template-rows: auto 1fr; }
+  .auth-shell--register .auth-brand-panel { justify-content: start; padding: 16px 24px; border-right: 0; border-bottom: 1px solid var(--acadova-soft-blue); }
+  .auth-shell--register .auth-brand-content,
+  .auth-shell--register .auth-brand-foot { display: none; }
+  .auth-shell--register .auth-form-panel { align-items: start; padding: 20px 24px 28px; }
+}
+
+@media (max-width: 599px) {
+  .register-fields { grid-template-columns: 1fr; gap: 12px; }
+  .register-consent-review { grid-template-columns: 1fr; gap: 8px; }
+  .auth-shell--register .auth-brand-panel { padding: 12px 16px; }
+  .auth-shell--register .auth-form-panel { padding: 16px 16px 24px; }
+  .auth-shell--register .auth-form-inner { padding: 20px 18px; }
+}
+
+@media (max-height: 480px) {
+  /* Wrapped instructions and consent must remain reachable at large zoom. */
+  .register-policy-backdrop .policy-review-dialog { overflow-y: auto; overscroll-behavior: contain; }
+}

@@ -1,6 +1,19 @@
 import { normalizeName, nameValidationMessage } from './nameValidation.js';
 export { normalizeName } from './nameValidation.js';
 export const normalizeEmail = (value) => value.trim().toLowerCase();
+export const isValidEmail = (value) => {
+  const email = normalizeEmail(value);
+  return email.length <= 254 && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)
+    && !/[\p{Cc}\p{Cf}]/u.test(email);
+};
+
+export const validateLogin = ({ email, password }) => {
+  const fields = {};
+  if (!email.trim()) fields.email = 'Enter your email address.';
+  else if (!isValidEmail(email)) fields.email = 'Enter a valid email address.';
+  if (!password) fields.password = 'Enter your password.';
+  return fields;
+};
 
 export const passwordRequirements = (password) => [
   ['At least 8 characters', password.length >= 8],
@@ -16,8 +29,7 @@ export const validateRegistration = ({ name, email, password, confirmPassword, p
   const fields = {};
   const nameError = nameValidationMessage(name);
   if (nameError) fields.name = nameError;
-  if (cleanEmail.length > 254 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleanEmail)
-    || /[\p{Cc}\p{Cf}]/u.test(cleanEmail)) fields.email = 'Enter a valid email address.';
+  if (!isValidEmail(cleanEmail)) fields.email = 'Enter a valid email address.';
   if (!passwordRequirements(password).every(([, met]) => met)
     || password.length > 64 || new TextEncoder().encode(password).length > 72
     || /[\p{Cc}\p{Cf}]/u.test(password)) {

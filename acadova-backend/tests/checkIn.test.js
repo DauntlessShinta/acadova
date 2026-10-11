@@ -1,6 +1,17 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const Session = require('../models/Session');
+const mongoose = require('mongoose');
+const User = require('../models/User');
+const notifications = require('../services/notificationService');
+const originalEnqueue = notifications.enqueueProposalEvent;
+const originalStart = mongoose.startSession;
+const originalLock = User.findOneAndUpdate;
+test.beforeEach(() => {
+  notifications.enqueueProposalEvent = async () => {};
+  mongoose.startSession = async () => ({ withTransaction: async (fn) => fn(), endSession: async () => {} });
+  User.findOneAndUpdate = () => ({ select: async () => ({ _id: 'participant' }) });
+});
 const SessionMessage = require('../models/SessionMessage');
 const controller = require('../controllers/sessionController');
 
@@ -11,6 +22,8 @@ const originalPopulate = Session.prototype.populate;
 const originalMessageCreate = SessionMessage.create;
 
 test.afterEach(() => {
+  notifications.enqueueProposalEvent = originalEnqueue;
+  mongoose.startSession = originalStart; User.findOneAndUpdate = originalLock;
   Session.findById = originalFindById;
   Session.findOneAndUpdate = originalFindOneAndUpdate;
   Session.collection.findOneAndUpdate = originalCollectionFindOneAndUpdate;
@@ -36,6 +49,7 @@ const sessionDoc = (overrides = {}) => ({
 });
 const comparable = (value) => value instanceof Date ? value.getTime() : String(value);
 const matches = (stored, filter) => Object.entries(filter).every(([key, expected]) => {
+  if (key === '$expr') return true;
   const actual = stored[key];
   if (expected === null) return actual == null;
   return comparable(actual) === comparable(expected);
@@ -57,6 +71,7 @@ const mockStore = (stored, onStart = () => {}) => {
       stored.status = 'in_progress';
       stored.startedAt = set.startedAt.$cond[1];
     }
+    for (const [key, value] of Object.entries(set)) if (value === '$$REMOVE') delete stored[key];
     return stored;
   };
 };
@@ -169,17 +184,16 @@ test('15-minute early and 4-hour late window is enforced around scheduledAt', as
   }
 });
 
-test('active reschedule blocks check-in until it is resolved', async () => {
-  const stored = sessionDoc({
-    proposedScheduledAt: new Date(Date.now() + 86400000),
-    rescheduleProposalId: '11111111-2222-4333-8444-555555555555',
-  });
+test('check-in uses the confirmed original time and invalidates the pending alternative', async () => {
+  const stored = sessionDoc({ proposedScheduledAt: new Date(Date.now() + 86400000),
+    rescheduleProposalId: '11111111-2222-4333-8444-555555555555' });
+  const original = stored.scheduledAt;
   mockStore(stored);
-  assert.equal((await invoke(controller.checkIn, stored, stored.learner)).statusCode, 409);
-  assert.equal(stored.learnerCheckedInAt, undefined);
-  delete stored.proposedScheduledAt;
-  delete stored.rescheduleProposalId;
   assert.equal((await invoke(controller.checkIn, stored, stored.learner)).statusCode, 200);
+  assert.ok(stored.learnerCheckedInAt);
+  assert.equal(stored.scheduledAt, original);
+  assert.equal(stored.rescheduleProposalId, undefined);
+  assert.equal(stored.proposedScheduledAt, undefined);
 });
 
 test('cancellation or reschedule racing with check-in causes a stale conflict', async () => {

@@ -120,7 +120,7 @@ try {
   const swap = document.querySelector('.landing-swap-button'); swap.focus(); await key('Enter');
   assert(document.querySelector('.landing-simulator').classList.contains('is-previewed'), 'Existing credit example remains interactive');
   const sessions = [...document.querySelectorAll('.landing-dashboard-nav button')].find((button) => button.textContent.includes('Sessions'));
-  sessions.focus(); await key('Enter'); assert(document.querySelector('.landing-dashboard-content h3').textContent.includes('Follow each exchange'), 'Existing dashboard example works');
+  sessions.focus(); await key('Enter'); assert(document.querySelector('.landing-dashboard-content:not([hidden]) h3').textContent.includes('Follow each exchange'), 'Existing dashboard example works');
   await hover(primary);
   const moves = matchMedia('(hover: hover) and (pointer: fine) and (prefers-reduced-motion: no-preference)').matches;
   await until(() => getComputedStyle(primary).transform === (moves ? 'matrix(1, 0, 0, 1, 0, -2)' : 'none'), 'CTA hover transition reaches its final state');

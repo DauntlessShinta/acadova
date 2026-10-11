@@ -28,7 +28,7 @@ exports.listUsers = async (req, res) => {
 exports.listSessions = async (req, res) => {
   try {
     const sessions = await Session.find()
-      .select('subject learner tutor scheduledAt status creditAmount createdAt completedAt confirmedAt creditsSettledAt awaitingValidationAt learnerConfirmedAt tutorConfirmedAt disputedAt disputeReason resolvedAt resolvedBy resolution resolutionNote')
+      .select('subject learner tutor scheduledAt status creditAmount createdAt completedAt confirmedAt creditsSettledAt awaitingValidationAt learnerConfirmedAt tutorConfirmedAt disputedAt disputeReason resolvedAt resolvedBy resolution resolutionNote reviewReferral validationDeadlineAt reviewVersion startedAt learnerCheckedInAt tutorCheckedInAt')
       .populate('learner', 'name')
       .populate('tutor', 'name')
       .sort({ createdAt: -1 })

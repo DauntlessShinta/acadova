@@ -33,8 +33,8 @@ export const sessionService = {
     api.post('/api/sessions/' + sessionId + '/google-meet', { accessToken })
   ),
 
-  proposeReschedule: async (sessionId, scheduledAt) => (
-    api.post(`/api/sessions/${sessionId}/reschedule`, { scheduledAt: toSessionInstant(scheduledAt) })
+  proposeReschedule: async (sessionId, scheduledAt, proposalId) => (
+    api.post(`/api/sessions/${sessionId}/reschedule`, { scheduledAt: toSessionInstant(scheduledAt), ...(proposalId ? { proposalId } : {}) })
   ),
 
   acceptReschedule: async (sessionId, proposalId) => (
@@ -44,8 +44,13 @@ export const sessionService = {
   declineReschedule: async (sessionId, proposalId) => (
     api.post(`/api/sessions/${sessionId}/reschedule/decline`, { proposalId })
   ),
+  withdrawReschedule: async (sessionId, proposalId) => (
+    api.post(`/api/sessions/${sessionId}/reschedule/withdraw`, { proposalId })
+  ),
 
-  checkIn: async (sessionId) => api.post(`/api/sessions/${sessionId}/check-in`, {}),
+  checkIn: async (sessionId, expectedScheduledAt) => api.post(`/api/sessions/${sessionId}/check-in`, expectedScheduledAt ? { expectedScheduledAt } : {}),
+  submitEvidence: async (sessionId, evidence) => api.post(`/api/sessions/${sessionId}/evidence`, evidence),
+  requestCompletionReview: async (sessionId, reason) => api.post(`/api/sessions/${sessionId}/review-request`, { reason }),
 
   finishSession: async (sessionId) => api.post(`/api/sessions/${sessionId}/finish`, {}),
   reportNoShow: async (sessionId) => api.post(`/api/sessions/${sessionId}/no-show`, {}),

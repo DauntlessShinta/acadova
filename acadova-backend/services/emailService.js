@@ -30,7 +30,7 @@ const escapeHtml = (value) => value.replace(/[&<>"']/g, (char) => ({
   '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
 })[char]);
 
-async function sendEmail({ recipient, name, subject, plain, html }) {
+async function sendEmail({ recipient, name, subject, plain, html, deliveryKey }) {
   const { BREVO_API_KEY, MAIL_FROM } = process.env;
   const senderMatch = typeof MAIL_FROM === 'string'
     ? /^(?:(.+?)\s*<([^<>\s]+@[^<>\s]+)>|([^<>\s]+@[^<>\s]+))$/.exec(MAIL_FROM.trim())
@@ -55,10 +55,16 @@ async function sendEmail({ recipient, name, subject, plain, html }) {
         subject,
         textContent: plain,
         htmlContent: html,
+        ...(deliveryKey ? { headers: { idempotencyKey: deliveryKey } } : {}),
       }),
       signal: AbortSignal.timeout(10000),
     });
-    if (!response.ok) throw new Error('Brevo delivery rejected');
+    if (!response.ok) {
+      // An ambiguous previous send may already have been accepted by Brevo.
+      const result = deliveryKey ? await response.json().catch(() => ({})) : {};
+      if (deliveryKey && result.code === 'duplicate_parameter') return;
+      throw new Error('Brevo delivery rejected');
+    }
   } catch {
     // Provider and network errors may contain secrets or tokens. Do not expose them.
     throw new Error('Verification email delivery failed');
@@ -90,4 +96,19 @@ async function sendPasswordResetEmail({ recipient, name, token }) {
   await sendEmail({ recipient, name, subject: 'Reset your Acadova password', plain, html });
 }
 
-module.exports = { sendVerificationEmail, sendPasswordResetEmail, verificationUrlFor, passwordResetUrlFor };
+function proposalUrlFor(path) {
+  if (typeof path !== 'string' || !/^\/sessions\/[a-f0-9]{24}\?target=proposal&proposalId=[a-f0-9-]{36}#session-proposal$/i.test(path)) {
+    throw new Error('Invalid proposal review path');
+  }
+  // Reuse the existing production/development origin validation, without tokens.
+  const base = new URL(frontendUrlFor('/login', ''));
+  return new URL(path, base.origin).toString();
+}
+async function sendProposalEmail({ recipient, name, title, message, reviewPath, deliveryKey }) {
+  const url = proposalUrlFor(reviewPath);
+  const plain = `Acadova\n${title}\n\nHi ${name},\n\n${message}\nReview this proposal: ${url}\n\nThe confirmed schedule stays in place unless an alternative is accepted. Sign in to review the current state.`;
+  const html = `<h1>Acadova</h1><h2>${escapeHtml(title)}</h2><p>Hi ${escapeHtml(name)},</p><p>${escapeHtml(message)}</p><p><a href="${escapeHtml(url)}">Review this proposal</a></p><p>The confirmed schedule stays in place unless an alternative is accepted. Sign in to review the current state.</p>`;
+  await sendEmail({ recipient, name, subject: `Acadova: ${title}`, plain, html, deliveryKey });
+}
+module.exports = { sendVerificationEmail, sendPasswordResetEmail, verificationUrlFor, passwordResetUrlFor,
+  sendProposalEmail, proposalUrlFor };

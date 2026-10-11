@@ -8,6 +8,11 @@ const { recalculateAverageRating } = require('../utils/ratingReputation');
 const { logSecurityEvent } = require('../utils/securityLogger');
 const { ACTIONS, recordAudit } = require('../services/auditService');
 const notifications = require('../services/notificationService');
+const SessionMessage = require('../models/SessionMessage');
+const completion = require('../services/completionLifecycle');
+const { presentSession } = require('../services/rescheduleLifecycle');
+const { hasCanonicalEvidence } = require('../utils/completionPresentation');
+const { randomUUID } = require('node:crypto');
 
 const populateModerationRating = (query) => query
   .populate('fromUser', 'name')
@@ -78,14 +83,15 @@ exports.updateRatingVisibility = async (req, res) => {
 
 exports.listDisputedSessions = async (req, res) => {
   try {
-    const sessions = await Session.find({ status: 'disputed' })
+    const sessions = await Session.find({ $or: [{ status: 'disputed' },
+      { status: 'awaiting_validation', 'reviewReferral.id': { $exists: true }, 'reviewReferral.closedAt': null }] })
       .populate([{ path: 'learner', select: 'name' }, { path: 'tutor', select: 'name' }, { path: 'disputedBy', select: 'name' }])
       .sort({ disputedAt: -1 })
       .limit(100);
     const payments = sessions.length ? await CreditTransaction.find({ session: { $in: sessions.map((row) => row._id) } })
       .select('session type amount').lean() : [];
     const paymentIds = new Set(payments.map((row) => String(row.session)));
-    const data = sessions.map((row) => ({ ...row.toObject(), reviewIndicators: [
+    const data = sessions.map((row) => ({ ...presentSession(row), reviewIndicators: [
       ...(row.noShowAt ? ['no_show_reported'] : []),
       ...(paymentIds.has(String(row._id)) ? ['prior_credit_transaction'] : []),
     ] }));
@@ -97,8 +103,9 @@ exports.listDisputedSessions = async (req, res) => {
 
 exports.listResolvedSessions = async (req, res) => {
   try {
-    const rows = await Session.find({ status: 'resolved' })
-      .select('subject learner tutor scheduledAt disputedAt resolvedAt resolution resolutionNote creditsSettledAt')
+    const rows = await Session.find({ $or: [{ status: 'resolved' },
+      { status: 'completed', 'reviewReferral.closure': 'participant_completion' }] })
+      .select('subject status learner tutor scheduledAt disputedAt resolvedAt resolution resolutionNote creditsSettledAt reviewReferral completedAt')
       .populate([{ path: 'learner', select: 'name' }, { path: 'tutor', select: 'name' }])
       .sort({ resolvedAt: -1 }).limit(100).lean();
     return res.json({ success: true, data: rows });
@@ -106,6 +113,7 @@ exports.listResolvedSessions = async (req, res) => {
 };
 
 exports.resolveSessionDispute = async (req, res) => {
+  if (!['moderator', 'admin'].includes(req.user?.role)) return res.status(403).json({ success: false, message: 'Only authorized staff can resolve a session review.' });
   if (!isValidObjectId(req.params.id)) {
     return res.status(400).json({ success: false, message: 'Invalid session id.' });
   }
@@ -122,11 +130,14 @@ exports.resolveSessionDispute = async (req, res) => {
       resolvedSession = undefined;
       const session = await Session.findById(req.params.id).session(dbSession);
       if (!session) throw Object.assign(new Error('Session not found.'), { status: 404 });
-      if (session.status !== 'disputed') {
-        throw Object.assign(new Error('Only a disputed session can be resolved.'), { status: 409 });
-      }
-      if (!session.disputedAt || !session.disputedBy || !session.disputeReason
-        || (!session.awaitingValidationAt && !session.noShowAt)
+      const referralReview = session.status === 'awaiting_validation' && session.reviewReferral && !session.reviewReferral.closedAt;
+      if (!completion.isOpenReview(session)) throw completion.conflict();
+      if ([String(session.learner), String(session.tutor)].includes(req.user.id)) throw Object.assign(new Error('A participant cannot approve or reject their own session.'), { status: 403 });
+      const requiresVersion = referralReview || session.reviewVersion != null;
+      if ((requiresVersion && req.body.reviewVersion == null)
+        || (req.body.reviewVersion != null && req.body.reviewVersion !== (session.reviewVersion || 0))) throw completion.conflict();
+      if ((referralReview ? !hasCanonicalEvidence(session) || !session.reviewReferral.id || !session.reviewReferral.createdAt
+        : !session.disputedAt || !session.disputedBy || !session.disputeReason || (!session.awaitingValidationAt && !session.noShowAt))
         || session.resolvedAt || session.resolution || session.completedAt || session.creditsSettledAt) {
         throw Object.assign(new Error('Dispute evidence is incomplete or already resolved.'), { status: 409 });
       }
@@ -143,26 +154,35 @@ exports.resolveSessionDispute = async (req, res) => {
         changes.completedAt = now;
         changes.creditsSettledAt = now;
       }
+      if (session.reviewReferral && !session.reviewReferral.closedAt) {
+        changes['reviewReferral.closedAt'] = now;
+        changes['reviewReferral.closure'] = 'staff_resolution';
+      }
       const claim = await Session.updateOne(
         {
           _id: session._id,
-          status: 'disputed',
-          disputedAt: session.disputedAt,
+          status: session.status,
+          disputedAt: session.disputedAt ?? null,
+          reviewVersion: session.reviewVersion ?? null,
+          ...(referralReview ? { 'reviewReferral.id': session.reviewReferral.id, 'reviewReferral.closedAt': null } : {}),
           resolvedAt: null,
           resolution: null,
           completedAt: null,
           creditsSettledAt: null,
         },
-        { $set: changes },
+        { $set: changes, $inc: { reviewVersion: 1 } },
         { session: dbSession, runValidators: true }
       );
       if (claim.matchedCount !== 1) {
         throw Object.assign(new Error('This session has already changed. Refresh and try again.'), { status: 409 });
       }
-      Object.assign(session, changes);
+      Object.assign(session, Object.fromEntries(Object.entries(changes).filter(([key]) => !key.includes('.'))));
+      session.reviewVersion = (session.reviewVersion || 0) + 1;
+      if (session.reviewReferral) Object.assign(session.reviewReferral, { closedAt: now, closure: 'staff_resolution' });
       if (resolution === 'confirm_session') await transferSessionCredits(session, dbSession);
-      await recordAudit({ actor: req.user, action: ACTIONS.dispute, targetType: 'Session',
-        targetId: session._id, summary: 'Session dispute resolved', metadata: { resolution }, session: dbSession });
+      await recordAudit({ actor: req.user, action: referralReview ? ACTIONS.completionReview : ACTIONS.dispute, targetType: 'Session',
+        targetId: session._id, summary: referralReview ? 'Completion review resolved' : 'Session dispute resolved',
+        metadata: { resolution, reason: resolutionNote.trim() }, session: dbSession });
       resolvedSession = session;
     });
     await resolvedSession.populate([{ path: 'learner', select: 'name' }, { path: 'tutor', select: 'name' }]);
@@ -171,15 +191,61 @@ exports.resolveSessionDispute = async (req, res) => {
     return res.json({
       success: true,
       message: resolution === 'confirm_session'
-        ? 'Dispute resolved as a valid session. Credits transferred once.'
-        : 'Dispute resolved as an invalid session. No credits transferred.',
+        ? 'Session review resolved as valid. Credits transferred once.'
+        : 'Session review resolved as invalid. No credits transferred.',
       data: resolvedSession,
     });
   } catch (error) {
-    if (error.status) return res.status(error.status).json({ success: false, message: error.message });
+    if (error.status) return res.status(error.status).json({ success: false, message: /enough credits/.test(error.message)
+      ? 'The Learner has insufficient credits. This case remains open; request clarification before retrying settlement.' : error.message });
     if (error.code === 11000) return res.status(409).json({ success: false, message: 'This session already has a credit transaction.' });
     return res.status(500).json({ success: false, message: 'Session dispute could not be resolved.' });
   } finally {
     await dbSession.endSession();
   }
+};
+
+exports.getSessionReviewEvidence = async (req, res) => {
+  if (!['moderator', 'admin'].includes(req.user?.role)) return res.status(403).json({ success: false, message: 'Staff access required.' });
+  if (!isValidObjectId(req.params.id)) return res.status(400).json({ success: false, message: 'Invalid session id.' });
+  try {
+    const row = await Session.findById(req.params.id).populate([{ path: 'learner', select: 'name' }, { path: 'tutor', select: 'name' }]);
+    if (!row) return res.status(404).json({ success: false, message: 'Session not found.' });
+    if (!completion.isOpenReview(row) && !(row.status === 'resolved' || row.reviewReferral?.closedAt)) {
+      return res.status(403).json({ success: false, message: 'This session is not a staff review case.' });
+    }
+    const [messages, payments] = await Promise.all([
+      SessionMessage.find({ session: row._id }).select('sender body createdAt').populate('sender', 'name').sort({ createdAt: -1, _id: -1 }).limit(100).lean(),
+      CreditTransaction.find({ session: row._id }).select('type amount fromUser toUser createdAt').lean(),
+    ]);
+    return res.json({ success: true, data: { session: presentSession(row), messages: messages.reverse(), payments,
+      messagesLimit: 100 } });
+  } catch { return res.status(503).json({ success: false, message: 'Review evidence unavailable.' }); }
+};
+
+exports.requestSessionClarification = async (req, res) => {
+  if (!['moderator', 'admin'].includes(req.user?.role)) return res.status(403).json({ success: false, message: 'Staff access required.' });
+  if (!isValidObjectId(req.params.id)) return res.status(400).json({ success: false, message: 'Invalid session id.' });
+  const reason = typeof req.body.reason === 'string' ? req.body.reason.trim() : '';
+  if (reason.length < 10 || reason.length > 500 || !Number.isSafeInteger(req.body.reviewVersion)) return res.status(400).json({ success: false, message: 'Use a clarification reason and current review version.' });
+  try {
+    const updated = await completion.inTransaction(async (dbSession) => {
+      const row = await Session.findById(req.params.id).session(dbSession);
+      if (!row) throw Object.assign(new Error('Session not found.'), { status: 404 });
+      if (!completion.isOpenReview(row) || req.body.reviewVersion !== (row.reviewVersion || 0)) throw completion.conflict();
+      if ([String(row.learner), String(row.tutor)].includes(req.user.id)) throw Object.assign(new Error('A participant cannot act as staff in their own session.'), { status: 403 });
+      const entry = { id: randomUUID(), requestedBy: req.user.id, requestedAt: new Date(), reason };
+      const changed = await Session.findOneAndUpdate({ ...completion.reviewClaim(row),
+        $expr: { $lt: [{ $size: { $ifNull: ['$reviewClarifications', []] } }, 5] } },
+      { $push: { reviewClarifications: entry }, $inc: { reviewVersion: 1 } },
+      { returnDocument: 'after', runValidators: true, session: dbSession });
+      if (!changed) throw completion.conflict();
+      await recordAudit({ actor: req.user, action: ACTIONS.clarification, targetType: 'Session', targetId: row._id,
+        summary: 'Session clarification requested', metadata: { reason }, session: dbSession });
+      await completion.enqueueCompletionEvent('session.review_clarification', changed, [row.learner, row.tutor], dbSession, entry.id);
+      return changed;
+    });
+    await updated.populate([{ path: 'learner', select: 'name' }, { path: 'tutor', select: 'name' }]);
+    return res.json({ success: true, message: 'Clarification requested. The case remains open and no credits changed.', data: presentSession(updated) });
+  } catch (error) { return res.status(error.status || 503).json({ success: false, message: error.status ? error.message : 'Clarification could not be requested.' }); }
 };

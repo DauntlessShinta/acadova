@@ -7,6 +7,8 @@ const {
   listDisputedSessions,
   listResolvedSessions,
   resolveSessionDispute,
+  getSessionReviewEvidence,
+  requestSessionClarification,
 } = require('../controllers/moderatorController');
 const { validateBody, validateParams, validateQuery, schemas } = require('../middleware/validation');
 const { staffActionLimiter } = require('../middleware/writeLimiters');
@@ -20,6 +22,8 @@ router.get('/ratings', listRatingsForModeration);
 router.patch('/ratings/:id/visibility', staffActionLimiter, validateParams(schemas.reviewId), validateBody(schemas.visibility), updateRatingVisibility);
 router.get('/sessions/disputed', listDisputedSessions);
 router.get('/sessions/resolved', listResolvedSessions);
+router.get('/sessions/:id/evidence', validateParams(schemas.sessionId), getSessionReviewEvidence);
+router.post('/sessions/:id/clarify', staffActionLimiter, validateParams(schemas.sessionId), validateBody(schemas.clarification), requestSessionClarification);
 router.post('/sessions/:id/resolve', staffActionLimiter, validateParams(schemas.sessionId), validateBody(schemas.resolution), resolveSessionDispute);
 router.get('/assessments', assessmentController.listStaffAssessments);
 router.get('/assessments/:id', validateParams(schemas.assessmentId), assessmentController.getStaffAssessment);

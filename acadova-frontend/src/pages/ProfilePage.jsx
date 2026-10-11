@@ -5,6 +5,7 @@ import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import userService from '../services/userService';
 import TagInput from '../components/common/TagInput';
+import WeeklyAvailability from '../components/student/WeeklyAvailability';
 import PeerReputation from '../components/common/PeerReputation';
 import { Save, Mail } from 'lucide-react';
 
@@ -21,15 +22,17 @@ const ProfileEditor = () => {
   const [name, setName] = useState(() => user?.name || '');
   const [skillsToTeach, setSkillsToTeach] = useState(() => user?.skillsToTeach || []);
   const [skillsToLearn, setSkillsToLearn] = useState(() => user?.skillsToLearn || []);
+  const [weeklyAvailability, setAvailability] = useState(() => user?.weeklyAvailability || null);
+  const [availabilityError, setAvailabilityError] = useState('');
   const [saving, setSaving] = useState(false);
   const [nameError, setNameError] = useState('');
-  const [saved, setSaved] = useState(() => JSON.stringify([user?.name || '', user?.skillsToTeach || [], user?.skillsToLearn || []]));
-  const dirty = saved !== JSON.stringify([name, skillsToTeach, skillsToLearn]);
+  const [saved, setSaved] = useState(() => JSON.stringify([user?.name || '', user?.skillsToTeach || [], user?.skillsToLearn || [], user?.weeklyAvailability || null]));
+  const dirty = saved !== JSON.stringify([name, skillsToTeach, skillsToLearn, weeklyAvailability]);
   useUnsavedChanges(dirty);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setNameError('');
+    setNameError(''); setAvailabilityError('');
 
     const validationError = nameValidationMessage(name);
     if (validationError) { setNameError(validationError); document.getElementById('name')?.focus(); return; }
@@ -39,16 +42,18 @@ const ProfileEditor = () => {
       await userService.updateMe({
         name: normalizeName(name),
         skillsToTeach,
-        skillsToLearn,
+        skillsToLearn, weeklyAvailability,
       });
 
       // Normalize the saved name, but preserve any newer edit made in flight.
       setName((current) => current === name ? normalizeName(name) : current);
 
       await refreshUser();
-      setSaved(JSON.stringify([normalizeName(name), skillsToTeach, skillsToLearn]));
+      setSaved(JSON.stringify([normalizeName(name), skillsToTeach, skillsToLearn, weeklyAvailability]));
       toast('success', 'Profile and academic skills updated.');
     } catch (err) {
+      setAvailabilityError(err.message || 'Profile could not be saved; your draft is retained.');
+      document.getElementById('availability-timezone')?.focus();
       toast('error', err.message || 'Failed to update profile.');
     } finally {
       setSaving(false);
@@ -136,7 +141,7 @@ const ProfileEditor = () => {
                 Full Display Name
               </label>
               <input
-                id="name"
+                id="name" placeholder="Juan Dela Cruz" autoComplete="name"
                 aria-invalid={Boolean(nameError)} aria-describedby="profile-name-help"
                 type="text"
                 className="form-input"
@@ -173,6 +178,7 @@ const ProfileEditor = () => {
               <span className="form-hint">Describe the skills you want to study.</span>
             </div>
 
+            <WeeklyAvailability value={weeklyAvailability} onChange={setAvailability} disabled={saving} error={availabilityError} />
             <button
               type="submit"
               className="btn btn-primary"

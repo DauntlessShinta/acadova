@@ -7,7 +7,7 @@ import { useAuth } from '../../context/AuthContext';
 import Modal from './Modal';
 import AccountMenu from './AccountMenu';
 import NotificationBell from './NotificationBell';
-import { getRoleNavigation } from '../../config/roleNavigation';
+import { getPageContext, getRoleNavigation } from '../../config/roleNavigation';
 
 const icons = { Home, 'Find Tutors': GraduationCap, Learning: BookOpen, Sessions: CalendarDays, Messages: MessageCircle, Credits: Coins, Profile: User };
 const links = getRoleNavigation('student').map(({ to, label }) => [to, label, icons[label]]);
@@ -21,8 +21,11 @@ const readCompactViewport = () => window.matchMedia(compactQuery).matches;
 export default function StudentNavigation() {
   const compact = useSyncExternalStore(subscribeViewport, readCompactViewport, () => false);
   const location = useLocation();
+  const page = getPageContext(location.pathname, location.search);
+  const messageView = new URLSearchParams(location.search).get('view') === 'messages';
   const isAssessmentArea = location.pathname.replace(/\/$/, '') === '/assessments';
-  const isLearningArea = isAssessmentArea || location.pathname.replace(/\/$/, '') === '/learning';
+  const isStudyArea = location.pathname.startsWith('/study-sets');
+  const isLearningArea = isAssessmentArea || isStudyArea || location.pathname.replace(/\/$/, '') === '/learning';
   const { credits } = useAuth();
   const messagesButton = useRef(null);
   const [messagesOpen, setMessagesOpen] = useState(false);
@@ -33,9 +36,9 @@ export default function StudentNavigation() {
   const navigation = <>
     <Link to="/dashboard" className="staff-brand"><span className="staff-brand-mark"><Layers size={22} aria-hidden="true" /></span><strong>Acadova</strong></Link>
     <nav className="student-nav" aria-label="Student navigation" onClick={(event) => { if (event.target.closest('a')) setMore(false); }}>{links.map(([to, label, Icon]) => {
-      const selected = to.includes('?') ? location.pathname === '/sessions' && location.search.includes('view=messages')
-        : to === '/learning' ? isLearningArea : to === '/sessions' ? location.pathname.startsWith('/sessions') && !location.search.includes('view=messages')
-          : location.pathname === to || location.pathname.startsWith(to + '/');
+      const selected = to.includes('?') ? location.pathname === '/sessions' && messageView
+        : to === '/learning' ? isLearningArea : to === '/sessions' ? location.pathname.startsWith('/sessions') && !messageView
+          : location.pathname.replace(/\/$/, '') === to || location.pathname.startsWith(to + '/');
       return <Link key={to} to={to} aria-current={selected ? 'page' : undefined}
         className={`staff-nav-link${selected ? ' is-active' : ''}`}><Icon size={19} aria-hidden="true" />{label}</Link>;
     })}</nav>
@@ -44,8 +47,8 @@ export default function StudentNavigation() {
   return <>
     <a className="skip-link" href="#main-content">Skip to content</a>
     {!compact && <header className="student-utility-bar" aria-label="Global utilities">{isLearningArea
-      ? <nav className="utility-discovery-shortcut learning-shell-context" aria-label="Current learning area"><Link to="/learning" aria-current={!isAssessmentArea ? 'page' : undefined}><BookOpen size={18} aria-hidden="true" />Learning</Link>{isAssessmentArea && <><span aria-hidden="true">/</span><span aria-current="page">Assessments</span></>}</nav>
-      : <Link className="utility-discovery-shortcut" to="/tutors"><GraduationCap size={18} aria-hidden="true" />Find Tutors</Link>}<nav aria-label="Student utilities"><button ref={searchButton} className="utility-link" type="button" aria-label="Search Acadova" onClick={() => setSearchOpen(true)}><Search size={20} aria-hidden="true" /></button><button className="utility-link" ref={messagesButton} type="button" aria-label="Messages" title="Messages" aria-haspopup="dialog" onClick={() => setMessagesOpen(true)}><MessageCircle size={20} aria-hidden="true" /></button><NotificationBell /><Link className="utility-credits" to="/credits"><Coins size={18} aria-hidden="true" /><span>{credits} Credits</span></Link><AccountMenu /></nav></header>}
+      ? <nav className="utility-discovery-shortcut learning-shell-context" aria-label="Current learning area"><Link to="/learning" aria-current={!isAssessmentArea && !isStudyArea ? 'page' : undefined}><BookOpen size={18} aria-hidden="true" />Learning</Link>{(isAssessmentArea || isStudyArea) && <><span aria-hidden="true">/</span><span aria-current="page">{isStudyArea ? 'Study sets' : 'Assessments'}</span></>}</nav>
+      : <span className="utility-discovery-shortcut" aria-current="page">{page.title}</span>}<nav aria-label="Student utilities"><button ref={searchButton} className="utility-link" type="button" aria-label="Search Acadova" onClick={() => setSearchOpen(true)}><Search size={20} aria-hidden="true" /></button><button className="utility-link" ref={messagesButton} type="button" aria-label="Messages" title="Messages" aria-haspopup="dialog" onClick={() => setMessagesOpen(true)}><MessageCircle size={20} aria-hidden="true" /></button><NotificationBell /><Link className="utility-credits" to="/credits"><Coins size={18} aria-hidden="true" /><span>{credits} Credits</span></Link><AccountMenu /></nav></header>}
     <aside className="student-sidebar">{navigation}</aside>
     {compact && <header className="student-mobile-header"><Link to="/dashboard" className="staff-brand" aria-label="Acadova home"><Layers size={23} aria-hidden="true" /><strong>Acadova</strong></Link>
       <div className="student-mobile-utilities"><button ref={searchButton} className="utility-link" type="button" aria-label="Search Acadova" onClick={() => setSearchOpen(true)}><Search size={20} aria-hidden="true" /></button><NotificationBell /><AccountMenu compact /><button ref={messagesButton} className="utility-link" type="button" aria-label="Messages" aria-haspopup="dialog" onClick={() => setMessagesOpen(true)}><MessageCircle size={20} aria-hidden="true" /></button>

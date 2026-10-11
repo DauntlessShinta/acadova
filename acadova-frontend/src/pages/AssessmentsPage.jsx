@@ -34,6 +34,7 @@ export const AssessmentsPage = () => {
   const [openAttempt, setOpenAttempt] = useState(0);
   const [answers, setAnswers] = useState([]);
   const [result, setResult] = useState(null);
+  const [mode, setMode] = useState('official');
   const [working, setWorking] = useState(false);
   const [answerError, setAnswerError] = useState('');
   const [review, setReview] = useState(null);
@@ -66,7 +67,7 @@ export const AssessmentsPage = () => {
       try {
         const response = await assessmentService.get(openId);
         if (viewVersion.current !== version) return;
-        setSelected(response.data); setAnswers(Array(response.data.questions.length).fill(null));
+        setSelected(response.data); setMode(response.data.rewardEarned ? 'practice' : 'official'); setAnswers(Array(response.data.questions.length).fill(null));
       } catch (err) {
         if (viewVersion.current === version) setAssessmentError(err.message || 'This assessment is unavailable.');
       } finally {
@@ -134,9 +135,10 @@ export const AssessmentsPage = () => {
     const version = viewVersion.current;
     setWorking(true); setAnswerError('');
     try {
-      const response = await assessmentService.submit(selected.id, answers);
+      const response = await assessmentService[mode === 'practice' ? 'practice' : 'submit'](selected.id, answers);
       if (version === viewVersion.current) {
         setResult(response.data);
+        setSelected((current) => ({ ...current, rewardEligible: response.data.rewardEligible, rewardEarned: response.data.rewardEarned }));
         toast(response.data.passed ? 'success' : 'info', response.data.passed ? 'Assessment passed. Your result is ready below.' : 'Attempt recorded. Review your result and try again when ready.');
       }
       await refreshUser();
@@ -181,10 +183,16 @@ export const AssessmentsPage = () => {
       {result ? <div className="assessment-result" role="status">
         <h3>{result.passed ? <CheckCircle2 size={24} aria-hidden="true" /> : <BookOpen size={24} aria-hidden="true" />}{result.passed ? 'Passed' : 'Not passed yet'}</h3><p>Score: {result.score}%</p>
         <p>{result.rewardIssued ? `+${result.creditsAwarded} credits earned` : 'No credits awarded for this attempt.'}</p>
-        {!result.rewardIssued && result.passed && <p>You already earned the one-time reward for this assessment.</p>}
+        {result.rewardEarned && !result.rewardIssued && <p>Reward already earned. You can keep practicing for free.</p>}
+        {result.mode === 'practice' && <p>Free practice: no credits and no reward eligibility consumed.</p>}
+        {result.rewardEligible && <p>You remain eligible for the one-time reward. Failed official attempts may retry without a waiting period.</p>}
         <div className="assessment-card-actions"><Link to="/credits" className="btn btn-secondary btn-sm">View credit wallet</Link>
-          <button type="button" className="btn btn-secondary btn-sm" onClick={() => { setResult(null); setAnswerError(''); setAnswers(Array(selected.questions.length).fill(null)); }}>Try again</button></div>
+          <button type="button" className="btn btn-secondary btn-sm" onClick={() => { setResult(null); setMode(selected.rewardEarned ? 'practice' : 'official'); setAnswerError(''); setAnswers(Array(selected.questions.length).fill(null)); }}>Try again</button></div>
       </div> : <form onSubmit={submit} aria-busy={working}>
+        <fieldset disabled={working}><legend>Attempt mode</legend>
+          {selected.rewardEarned ? <p>Reward already earned: all further attempts are free practice.</p> : <><label className="assessment-option"><input type="radio" name="attempt-mode" checked={mode === 'official'} onChange={() => setMode('official')} />Official attempt eligible for the one-time reward</label><label className="assessment-option"><input type="radio" name="attempt-mode" checked={mode === 'practice'} onChange={() => setMode('practice')} />Free practice (zero credits; eligibility retained)</label></>}
+          <p className="form-hint">The server checks eligibility. Failed official attempts may retry; passing the same assessment can reward you only once.</p>
+        </fieldset>
         <p>Choose one answer for every question. Your answers are graded after you submit.</p>
         {selected.questions.map((question, index) => <fieldset className="card" key={index} disabled={working} aria-describedby={answerError && answers[index] === null ? 'assessment-answer-error' : undefined}>
           <legend><strong>{index + 1}. {question.prompt}</strong></legend>

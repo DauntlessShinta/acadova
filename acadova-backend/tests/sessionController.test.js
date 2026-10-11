@@ -37,7 +37,7 @@ CreditConfig.findById = () => ({ lean: async () => null });
 
 test.beforeEach(() => {
   mongoose.startSession = async () => ({ withTransaction: async (fn) => fn(), endSession: async () => {} });
-  User.findOneAndUpdate = () => ({ select: async () => ({ _id: 'participant' }) });
+  User.findOneAndUpdate = () => ({ select: async () => ({ _id: 'participant', skillsToTeach: ['Java', 'Java demo'] }) });
   Session.find = () => ({ session() { return this; }, lean: async () => [] });
   Session.exists = () => ({ session: async () => null });
 });
@@ -157,7 +157,7 @@ test('new Session price is server-owned even when a legacy client submits anothe
   CreditConfig.findById = () => ({ lean: async () => ({ startingCreditGrant: 120,
     tutoringSessionCost: 25, assessmentReward: 30, version: 1 }) });
   mongoose.startSession = async () => ({ withTransaction: async (fn) => fn(), endSession: async () => {} });
-  User.findOneAndUpdate = () => ({ select: async () => ({ _id: fixture.tutor, role: 'student' }) });
+  User.findOneAndUpdate = () => ({ select: async () => ({ _id: fixture.tutor, role: 'student', skillsToTeach: ['Java', 'Java demo'] }) });
   const stored = [];
   Session.create = async ([data]) => { stored.push(data); return [{ ...data, async populate() {} }]; };
   for (const offered of [undefined, 1, 2, 100, 0, -1, 1.5, NaN]) {
@@ -347,11 +347,11 @@ test('review lookup failure is not reported as an unsubmitted review', async () 
 
 for (const meetingMethod of ['online', 'in-person']) {
   for (const decision of ['accepted', 'scheduled']) {
-  test(`fresh ${meetingMethod} request with ${decision} preserves its UTC instant and supports coordination and messages`, async () => {
+  test(`${meetingMethod === 'online' ? 'fresh online' : 'historical in-person'} request with ${decision} preserves its UTC instant and supports coordination and messages`, async () => {
     const fixture = sessionDoc();
     let session;
     mongoose.startSession = async () => ({ withTransaction: async (fn) => fn(), endSession: async () => {} });
-  User.findOneAndUpdate = () => ({ select: async () => ({ _id: fixture.tutor, role: 'student' }) });
+  User.findOneAndUpdate = () => ({ select: async () => ({ _id: fixture.tutor, role: 'student', skillsToTeach: ['Java', 'Java demo'] }) });
     Session.create = async ([data]) => { session = sessionDoc({ ...data, status: 'pending', meetingLink: undefined }); return [session]; };
     const futureInstant = new Date(Date.now() + 86400000).toISOString();
     const created = response();
@@ -359,7 +359,11 @@ for (const meetingMethod of ['online', 'in-person']) {
       tutorId: fixture.tutor, subject: 'Java demo', scheduledAt: futureInstant,
       meetingMethod, requestMessage: 'Please help with arrays.', creditAmount: 1,
     } }, created);
-    assert.equal(created.statusCode, 201);
+    if (meetingMethod === 'in-person') {
+      assert.equal(created.statusCode, 400);
+      assert.equal(session, undefined, 'New in-person request must not be stored');
+      session = sessionDoc({ subject: 'Java demo', meetingMethod, scheduledAt: new Date(futureInstant), requestMessage: 'Please help with arrays.', status: 'pending', meetingLink: undefined });
+    } else assert.equal(created.statusCode, 201);
     assert.equal(session.scheduledAt.toISOString(), futureInstant);
     assert.equal(session.meetingMethod, meetingMethod);
     assert.equal(session.requestMessage, 'Please help with arrays.');

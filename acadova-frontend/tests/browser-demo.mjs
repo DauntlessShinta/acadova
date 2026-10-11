@@ -9,12 +9,14 @@ import react from '@vitejs/plugin-react';
 
 const browser = process.argv[2] || 'C:/Program Files/Google/Chrome/Application/chrome.exe';
 const fixture = process.argv[3] || 'browser-demo.jsx';
-if (!/^browser-(demo|p71|p71b|correction|hardening|quality|rollback|learning|landing)\.jsx$/.test(fixture)) throw new Error('Unknown browser fixture');
+if (!/^browser-(demo|p71|p71b|correction|hardening|quality|rollback|learning|landing|qa|register|integrity|completion|enhancements|milestone)\.jsx$/.test(fixture)) throw new Error('Unknown browser fixture');
 const width = Number(process.argv[4] || 1366);
 if (!Number.isInteger(width) || width < 320 || width > 3840) throw new Error('Width must be 320â€“3840 pixels');
 if (process.argv[5] && !process.argv[5].endsWith('.png')) throw new Error('Screenshot argument must be a .png path');
 const height = Number(process.argv[6] || (width < 700 ? 844 : 900));
 if (!Number.isInteger(height) || height < 480 || height > 2160) throw new Error('Invalid viewport height');
+const reflowScale = Number(process.env.ACADOVA_REFLOW_SCALE || 1);
+if (![1, 2].includes(reflowScale)) throw new Error('Reflow scale must be 1 or 2');
 const visualBaseline = process.env.ACADOVA_VISUAL_BASELINE === '1';
 const fixtureRoot = visualBaseline ? path.resolve('.ux-rollback-baseline') : process.cwd();
 const profile = await mkdtemp(path.join(tmpdir(), 'acadova-browser-test-'));
@@ -61,7 +63,7 @@ server = await createServer({
   const address = server.httpServer.address();
   child = spawn(browser, [
     '--headless=new', '--disable-gpu', '--no-first-run', '--no-default-browser-check',
-    '--disable-background-networking', '--disable-extensions',
+    '--disable-background-networking', '--disable-extensions', '--disable-popup-blocking',
     `--user-data-dir=${profile}`, '--remote-debugging-port=0', 'about:blank',
   ], { windowsHide: true, stdio: 'ignore' });
   let spawnError;
@@ -92,7 +94,7 @@ server = await createServer({
   });
   const evaluate = (expression) => command('Runtime.evaluate', { expression, returnByValue: true });
   await command('Runtime.enable', {});
-  await command('Emulation.setDeviceMetricsOverride', { width, height, deviceScaleFactor: 1, mobile: process.env.ACADOVA_COARSE_POINTER === '1' });
+  await command('Emulation.setDeviceMetricsOverride', { width: Math.floor(width / reflowScale), height: Math.floor(height / reflowScale), deviceScaleFactor: reflowScale, mobile: process.env.ACADOVA_COARSE_POINTER === '1' });
   if (process.env.ACADOVA_COARSE_POINTER === '1') await command('Emulation.setTouchEmulationEnabled', { enabled: true, maxTouchPoints: 1 });
   await command('Emulation.setFocusEmulationEnabled', { enabled: true });
   if (process.env.ACADOVA_REDUCED_MOTION === '1') await command('Emulation.setEmulatedMedia', {
@@ -110,15 +112,15 @@ server = await createServer({
   let result;
   for (let i = 0; i < 1200; i += 1) {
     const capture = (await evaluate('window.__acadovaCapture')).result?.result?.value;
-    if (capture && process.env.ACADOVA_SCREENSHOT_DIR && /^[a-z-]+$/.test(capture)) {
+    if (capture && process.env.ACADOVA_SCREENSHOT_DIR && /^[a-z0-9-]+$/.test(capture)) {
       const screenshot = await command('Page.captureScreenshot', { format: 'png', captureBeyondViewport: false });
       await writeFile(path.join(process.env.ACADOVA_SCREENSHOT_DIR, `${capture}-${width}.png`), Buffer.from(screenshot.result.data, 'base64'));
       await evaluate('window.__acadovaCapture = null');
     }
     const key = (await evaluate('window.__acadovaKey')).result?.result?.value;
-    if (['Tab', 'Shift+Tab', 'Enter', 'Escape', 'Space'].includes(key)) {
+    if (['Tab', 'Shift+Tab', 'Enter', 'Escape', 'Space', 'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Home', 'End'].includes(key)) {
       const actualKey = key === 'Shift+Tab' ? 'Tab' : key === 'Space' ? ' ' : key;
-      const code = { Tab: 9, Enter: 13, Escape: 27, ' ': 32 }[actualKey];
+      const code = { Tab: 9, Enter: 13, Escape: 27, ' ': 32, ArrowLeft: 37, ArrowUp: 38, ArrowRight: 39, ArrowDown: 40, Home: 36, End: 35 }[actualKey];
       const domCode = key === 'Space' ? 'Space' : actualKey;
       const modifiers = key === 'Shift+Tab' ? 8 : 0;
       await command('Input.dispatchKeyEvent', { type: 'keyDown', key: actualKey, code: domCode, windowsVirtualKeyCode: code, nativeVirtualKeyCode: code, modifiers, ...(actualKey === 'Enter' ? { text: '\r', unmodifiedText: '\r' } : {}) });

@@ -6,10 +6,12 @@ import Footer from '../components/common/Footer';
 import LoadingSpinner from '../components/common/LoadingSpinner';
 import { getRoleHomeRoute } from '../config/roleNavigation';
 import { needsProfileSetup } from '../utils/profileSetup';
+import { safeStudentReturnPath } from '../utils/studyNavigation';
 
 export const AppLayout = ({ allowedRoles = null, requireProfileSetup = true }) => {
   const { user, isAuthenticated, loading } = useAuth();
-  const { pathname } = useLocation();
+  const { pathname, search, hash } = useLocation();
+  const returnTo = safeStudentReturnPath(pathname + search + hash);
 
   if (loading) {
     return (
@@ -20,14 +22,14 @@ export const AppLayout = ({ allowedRoles = null, requireProfileSetup = true }) =
   }
 
   if (!isAuthenticated) {
-    return <Navigate to="/login" replace />;
+    return <Navigate to={returnTo ? `/login?returnTo=${encodeURIComponent(returnTo)}` : '/login'} replace />;
   }
 
   if (allowedRoles && !allowedRoles.includes(user?.role)) {
     return <Navigate to={getRoleHomeRoute(user?.role)} replace />;
   }
   if (requireProfileSetup && needsProfileSetup(user) && pathname.replace(/\/$/, '') !== '/onboarding') {
-    return <Navigate to="/onboarding" replace />;
+    return <Navigate to={returnTo ? `/onboarding?returnTo=${encodeURIComponent(returnTo)}` : '/onboarding'} replace />;
   }
 
   return (

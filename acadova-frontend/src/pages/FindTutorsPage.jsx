@@ -4,6 +4,7 @@ import { useSearchParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import userService from '../services/userService';
 import sessionService from '../services/sessionService';
+import { AvailabilityGuidance } from '../components/student/WeeklyAvailability';
 import { sessionRequestTimeError } from '../utils/sessionRequestTime';
 import Modal from '../components/common/Modal';
 import Alert from '../components/common/Alert';
@@ -47,7 +48,6 @@ export const FindTutorsPage = () => {
   const [selectedTutor, setSelectedTutor] = useState(null);
   const [sessionSubject, setSessionSubject] = useState('');
   const [scheduledAt, setScheduledAt] = useState('');
-  const [meetingMethod, setMeetingMethod] = useState('online');
   const [requestMessage, setRequestMessage] = useState('');
   const submittingRef = useRef(false);
   const [requestedSession, setRequestedSession] = useState(null);
@@ -55,6 +55,7 @@ export const FindTutorsPage = () => {
   const [modalError, setModalError] = useState('');
   const [fieldErrors, setFieldErrors] = useState({});
   const [sessionCost, setSessionCost] = useState(null);
+  const searchVersion = useRef(0);
 
   useEffect(() => {
     creditService.getCurrentRules().then((response) => setSessionCost(response.data.tutoringSessionCost))
@@ -62,10 +63,12 @@ export const FindTutorsPage = () => {
   }, []);
 
   const fetchTutors = useCallback(async (subject = '') => {
+    const version = ++searchVersion.current;
     try {
       setLoading(true);
       setError('');
       const res = await userService.searchTutors(subject);
+      if (version !== searchVersion.current) return;
       // Backend enforcement is authoritative; this is a defensive UI boundary.
       const currentUserId = String(user?._id || user?.id || '');
       const list = (res?.data || []).filter((peer) => (
@@ -73,18 +76,23 @@ export const FindTutorsPage = () => {
       ));
       setTutors(list);
     } catch (err) {
+      if (version !== searchVersion.current) return;
+      setTutors([]);
       setError(err.message || 'Failed to fetch peers');
     } finally {
-      setLoading(false);
+      if (version === searchVersion.current) setLoading(false);
     }
   }, [user]);
 
   useEffect(() => {
+    let active = true;
     Promise.resolve().then(() => {
+      if (!active) return;
       fetchTutors(currentSubjectQuery);
       setSelectedSubjectFilter(currentSubjectQuery || 'All');
       setSearchQuery(currentSubjectQuery);
     });
+    return () => { active = false; searchVersion.current += 1; };
   }, [currentSubjectQuery, fetchTutors]);
 
   const handleSearchSubmit = (e) => {
@@ -109,9 +117,8 @@ export const FindTutorsPage = () => {
     if (submittingRef.current) return;
     setRequestedSession(null);
     setSelectedTutor(tutor);
-    setSessionSubject(tutor.skillsToTeach?.[0] || searchQuery || '');
+    setSessionSubject(tutor.skillsToTeach?.[0] || '');
     setScheduledAt('');
-    setMeetingMethod('online');
     setRequestMessage('');
     setModalError('');
     setFieldErrors({});
@@ -123,11 +130,9 @@ export const FindTutorsPage = () => {
     if (submittingRef.current || requestedSession) return;
     setModalError('');
     const errors = {};
-    if (!sessionSubject.trim()) errors.subject = 'Choose a subject.';
+    if (!selectedTutor?.skillsToTeach?.includes(sessionSubject)) errors.subject = 'Choose one of this peer\'s teaching subjects.';
     const timeError = sessionRequestTimeError(scheduledAt);
     if (timeError) errors.scheduledAt = timeError;
-    if (!meetingMethod) errors.meetingMethod = 'Choose a session method.';
-    if (!requestMessage.trim()) errors.requestMessage = 'Tell your peer what you would like help with.';
     if (requestMessage.trim().length > 500) errors.requestMessage = 'Your message must be 500 characters or fewer.';
     setFieldErrors(errors);
     if (Object.keys(errors).length > 0) {
@@ -146,7 +151,7 @@ export const FindTutorsPage = () => {
         tutorId: selectedTutor._id,
         subject: sessionSubject.trim(),
         scheduledAt: scheduledAt || undefined,
-        meetingMethod,
+        meetingMethod: 'online',
         requestMessage: requestMessage.trim(),
       });
 
@@ -187,6 +192,7 @@ export const FindTutorsPage = () => {
             <input
               id="tutor-search"
               type="search"
+              maxLength={80}
               className="form-input"
               placeholder="Subject or skill, e.g. Java"
               value={searchQuery}
@@ -270,18 +276,20 @@ export const FindTutorsPage = () => {
             <label className="form-label" htmlFor="subject">
               Subject / Topic of Focus
             </label>
-            <input
+            <select
               id="subject"
-              type="text"
               className="form-input"
-              placeholder="e.g. React Component State, Java Recursion"
               value={sessionSubject}
               onChange={(e) => setSessionSubject(e.target.value)}
               aria-invalid={Boolean(fieldErrors.subject)}
-              aria-describedby={fieldErrors.subject ? 'subject-error' : undefined}
+              aria-describedby={`subject-help${fieldErrors.subject ? ' subject-error' : ''}`}
+              disabled={modalSubmitting || !selectedTutor?.skillsToTeach?.length}
               required
-              autoFocus
-            />
+            >
+              <option value="">Choose a teaching subject</option>
+              {(selectedTutor?.skillsToTeach || []).map((skill, index) => <option key={`${skill}-${index}`} value={skill}>{skill}</option>)}
+            </select>
+            <span className="form-hint" id="subject-help">{selectedTutor?.skillsToTeach?.length ? 'Choose a subject this peer currently teaches.' : 'This peer has not listed teaching subjects yet. Find another peer or ask them to update their Profile.'}</span>
             {fieldErrors.subject && <span className="form-error" id="subject-error">{fieldErrors.subject}</span>}
           </div>
 
@@ -303,17 +311,11 @@ export const FindTutorsPage = () => {
             {fieldErrors.scheduledAt && <span className="form-error" id="scheduled-error">{fieldErrors.scheduledAt}</span>}
           </div>
 
-          <div className="form-group">
-            <label className="form-label" htmlFor="meetingMethod">Session Method</label>
-            <select id="meetingMethod" className="form-select" value={meetingMethod} onChange={(e) => setMeetingMethod(e.target.value)} required>
-              <option value="online">Online</option>
-              <option value="in-person">In Person</option>
-            </select>
-            <span className="form-hint">The Tutor will add the meeting link or location after accepting.</span>
-          </div>
+          <AvailabilityGuidance availability={selectedTutor?.weeklyAvailability} selected={scheduledAt} />
+          <p className="form-hint">Online session. The Tutor will add an HTTPS meeting link after accepting.</p>
 
           <div className="form-group">
-            <label className="form-label" htmlFor="requestMessage">Short Request Message</label>
+            <label className="form-label" htmlFor="requestMessage">Message to Tutor (Optional)</label>
             <textarea
               id="requestMessage"
               className="form-textarea"
@@ -324,7 +326,6 @@ export const FindTutorsPage = () => {
               placeholder="Tell your peer what you would like help with."
               aria-invalid={Boolean(fieldErrors.requestMessage)}
               aria-describedby={fieldErrors.requestMessage ? 'request-message-error' : 'request-message-hint'}
-              required
             />
             <span className="form-hint" id="request-message-hint">Example: “I need help understanding Java arrays and loops.” · {500 - requestMessage.length} characters remaining</span>
             {fieldErrors.requestMessage && <span className="form-error" id="request-message-error">{fieldErrors.requestMessage}</span>}
@@ -333,7 +334,7 @@ export const FindTutorsPage = () => {
           <div className="form-group">
             <span className="form-label">Tutoring Session Cost: {sessionCost ?? 'Shown when available'} credits</span>
             <span className="form-hint">
-              Credits remain in your wallet until you confirm the completed session.
+              Credits transfer only after validated completion or an authorized staff resolution.
             </span>
             {sessionCost !== null && credits < sessionCost
               && <p><Link to="/assessments">Explore qualifying assessments</Link> to earn credits.</p>}
@@ -351,7 +352,7 @@ export const FindTutorsPage = () => {
             <button
               type="submit"
               className="btn btn-primary btn-sm"
-              disabled={modalSubmitting}
+              disabled={modalSubmitting || !selectedTutor?.skillsToTeach?.length}
               aria-busy={modalSubmitting}
             >
               {modalSubmitting ? 'Sending Request...' : 'Confirm & Request Session'}

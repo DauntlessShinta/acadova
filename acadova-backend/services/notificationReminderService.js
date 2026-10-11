@@ -1,15 +1,17 @@
 const Session = require('../models/Session');
 const SessionMessage = require('../models/SessionMessage');
 const Notification = require('../models/Notification');
-const { publish, deliverPush } = require('./notificationService');
+const { publish, deliverPush, deliverProposalEmail } = require('./notificationService');
+const { proposalExpired, expiryExpression, expireProposal } = require('./rescheduleLifecycle');
 const { unreadReminderMinutes, sessionReminderMinutes } = require('../config/notificationSettings');
+const { scanCompletion } = require('./completionLifecycle');
 
 const idOf = (value) => String(value?._id || value || '');
 
 async function scanUpcoming(now) {
   const horizon = new Date(now.getTime() + sessionReminderMinutes * 60 * 1000);
   const sessions = await Session.find({ status: { $in: ['scheduled', 'accepted'] },
-    scheduledAt: { $gt: now, $lte: horizon }, rescheduleProposalId: null })
+    scheduledAt: { $gt: now, $lte: horizon } })
     .select('_id learner tutor scheduledAt').limit(200).lean();
   let created = 0;
   for (const session of sessions) {
@@ -58,9 +60,34 @@ async function retryPush() {
   return rows.length;
 }
 
-async function runReminderScan(now = new Date()) {
-  return { upcoming: await scanUpcoming(now), unread: await scanUnreadMessages(now),
-    pushRetried: await retryPush() };
+async function runReminderScan(now) {
+  const scanAt = now || new Date();
+  return { completion: await scanCompletion(now), proposalsExpired: await scanExpiredProposals(scanAt), upcoming: await scanUpcoming(scanAt),
+    unread: await scanUnreadMessages(scanAt), pushRetried: await retryPush(), emailRetried: await retryEmail() };
 }
 
-module.exports = { scanUpcoming, scanUnreadMessages, retryPush, runReminderScan };
+async function scanExpiredProposals(now) {
+  const rows = await Session.find({ status: { $in: ['accepted', 'scheduled'] },
+    $expr: { $lte: [expiryExpression(), now] },
+    $or: [{ rescheduleProposalId: { $ne: null } }, { proposedScheduledAt: { $ne: null } }] })
+    .sort({ rescheduleProposedAt: 1, _id: 1 }).limit(200).lean();
+  let expired = 0;
+  for (const row of rows) {
+    if (!proposalExpired(row, now)) continue;
+    try { await expireProposal(row, now); expired += 1; }
+    catch (error) { if (error.status !== 409) throw error; }
+  }
+  return expired;
+}
+async function retryEmail(now) {
+  const cutoff = now || new Date();
+  const rows = await Notification.find({ $or: [
+    { emailStatus: { $in: ['pending', 'failed'] }, emailAttempts: { $lt: 3 }, emailNextAttemptAt: { $lte: cutoff } },
+    { emailStatus: 'sending', emailAttemptedAt: { $lte: new Date(cutoff.getTime() - 10 * 60000) } },
+  ] }).select('_id').sort({ createdAt: 1 }).limit(50).lean();
+  // Each live claim gets fresh server time, even after a slow provider batch.
+  // The explicit clock argument is used only by deterministic local tests.
+  for (const row of rows) await deliverProposalEmail(row._id, now || new Date());
+  return rows.length;
+}
+module.exports = { scanUpcoming, scanUnreadMessages, retryPush, retryEmail, scanExpiredProposals, runReminderScan };

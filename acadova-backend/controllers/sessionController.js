@@ -12,7 +12,12 @@ const { isValidObjectId } = require('../middleware/validation');
 const notifications = require('../services/notificationService');
 const googleMeet = require('../services/googleMeetService');
 const { availableStudentFilter } = require('../utils/peerEligibility');
-const { rejectDuplicateRequest, commitSchedule } = require('../services/sessionRequestIntegrity');
+const { normalizeSubject, rejectDuplicateRequest, commitSchedule } = require('../services/sessionRequestIntegrity');
+const { rescheduleFields, lifetimeMs, proposalExpiry, proposalExpired, presentSession,
+  attendanceFree, proposalClaim, historyEntry, historyPush, proposalMutation,
+  expireProposal } = require('../services/rescheduleLifecycle');
+const completion = require('../services/completionLifecycle');
+const { completionSettings } = require('../config/completionSettings');
 
 const ALLOWED_TRANSITIONS = {
   // Legacy inputs stay stored as-is so deployed React clients retain their
@@ -36,12 +41,6 @@ const sameUser = (left, right) => String(left?._id || left).toLowerCase()
 const otherParticipant = (session, actorId) => sameUser(session.learner, actorId) ? session.tutor : session.learner;
 const changedSessionMessage = 'This session has already changed. Refresh and try again.';
 const reschedulableStatuses = ['accepted', 'scheduled'];
-const rescheduleFields = {
-  proposedScheduledAt: 1,
-  rescheduleProposedBy: 1,
-  rescheduleProposedAt: 1,
-  rescheduleProposalId: 1,
-};
 // Check-in opens 15 minutes before the agreed start and closes 4 hours after it.
 const CHECK_IN_EARLY_MS = 15 * 60 * 1000;
 const CHECK_IN_LATE_MS = 4 * 60 * 60 * 1000;
@@ -84,7 +83,7 @@ const isHttpsUrl = (value) => {
 exports.createSession = async (req, res) => {
   let dbSession;
   try {
-    const { tutorId, subject, scheduledAt, meetingMethod, requestMessage } = req.body;
+    const { tutorId, subject, scheduledAt, meetingMethod = 'online', requestMessage } = req.body;
     const cleanSubject = typeof subject === 'string' ? subject.trim() : '';
     const cleanMessage = typeof requestMessage === 'string' ? requestMessage.trim() : '';
     const scheduledDate = scheduledAt ? new Date(scheduledAt) : null;
@@ -95,11 +94,11 @@ exports.createSession = async (req, res) => {
     if (!scheduledDate || Number.isNaN(scheduledDate.getTime())) {
       return res.status(400).json({ success: false, message: 'Enter a preferred session date.' });
     }
-    if (!['online', 'in-person'].includes(meetingMethod)) {
-      return res.status(400).json({ success: false, message: 'Choose a session method.' });
+    if (meetingMethod !== 'online') {
+      return res.status(400).json({ success: false, message: 'New tutoring sessions must be online.' });
     }
-    if (!cleanMessage) {
-      return res.status(400).json({ success: false, message: 'Tell your peer what you would like help with.' });
+    if (requestMessage !== undefined && typeof requestMessage !== 'string') {
+      return res.status(400).json({ success: false, message: 'Your message must be text.' });
     }
     if (cleanMessage.length > 500) {
       return res.status(400).json({ success: false, message: 'Your message must be 500 characters or fewer.' });
@@ -120,20 +119,27 @@ exports.createSession = async (req, res) => {
     dbSession = await mongoose.startSession();
     let session;
     await dbSession.withTransaction(async () => {
+      let canonicalSubject;
       // Consistent lock order; actual timestamp writes serialize role/suspension
       // changes with new requests, without new schema fields or credit reserves.
       for (const participantId of [req.user.id, tutorId].map((id) => id.toLowerCase()).sort()) {
         const participant = await User.findOneAndUpdate(
           { _id: participantId, ...availableStudentFilter() },
           { $currentDate: { updatedAt: true } },
-          { session: dbSession, timestamps: false, new: true }).select('_id');
+          { session: dbSession, timestamps: false, new: true }).select('_id skillsToTeach');
         if (!participant) throw Object.assign(new Error('This Student is unavailable for new sessions.'), { status: 409 });
+        if (sameUser(participantId, tutorId)) {
+          canonicalSubject = participant.skillsToTeach?.find((skill) => typeof skill === 'string'
+            && normalizeSubject(skill) === normalizeSubject(cleanSubject));
+          if (!canonicalSubject) throw Object.assign(new Error('Choose one of this Tutor\'s current teaching subjects. Refresh their profile to see available subjects.'), { status: 400 });
+        }
       }
-      await rejectDuplicateRequest(req.user.id, tutorId, cleanSubject, scheduledDate, dbSession);
+      if (scheduledDate.getTime() <= Date.now()) throw Object.assign(new Error('Choose a future session date and time.'), { status: 400 });
+      await rejectDuplicateRequest(req.user.id, tutorId, canonicalSubject, scheduledDate, dbSession);
       [session] = await Session.create([{
         learner: req.user.id,
         tutor: tutorId,
-        subject: cleanSubject,
+        subject: canonicalSubject,
         scheduledAt: scheduledDate,
         meetingMethod,
         requestMessage: cleanMessage,
@@ -157,7 +163,7 @@ exports.getMySessions = async (req, res) => {
     const sessions = await Session.find({ $or: [{ learner: req.user.id }, { tutor: req.user.id }] })
       .populate(SESSION_POPULATE)
       .sort({ createdAt: -1 });
-    res.json({ success: true, message: 'Sessions retrieved.', data: sessions });
+    res.json({ success: true, message: 'Sessions retrieved.', data: sessions.map((row) => presentSession(row)) });
   } catch (error) {
     res.status(500).json({ success: false, message: 'Sessions could not be loaded.' });
   }
@@ -175,7 +181,7 @@ exports.getSessionById = async (req, res) => {
     const payments = ['completed', 'resolved'].includes(result.session.status)
       ? await CreditTransaction.find({ session: result.session._id }) : [];
     const ratingEligible = isSessionRatingEligible(result.session, payments);
-    res.json({ success: true, message: 'Session retrieved.', data: { ...result.session.toObject(), myReview, ratingEligible } });
+    res.json({ success: true, message: 'Session retrieved.', data: { ...presentSession(result.session), myReview, ratingEligible } });
   } catch (error) {
     res.status(500).json({ success: false, message: 'Session could not be loaded.' });
   }
@@ -342,54 +348,61 @@ exports.generateGoogleMeet = async (req, res) => {
   }
 };
 
+const proposalConflict = 'This proposal expired or changed. Refresh to review the latest schedule; your action was not applied to a replacement.';
+const canChangeSchedule = (session) => !session.learnerCheckedInAt && !session.tutorCheckedInAt
+  && !session.startedAt && !session.completedAt && !session.confirmedAt && !session.creditsSettledAt;
+
 exports.proposeReschedule = async (req, res) => {
   try {
     const result = await findParticipantSession(req, res);
     if (!result) return;
-    const { session } = result;
+    let { session } = result;
     if (!reschedulableStatuses.includes(session.status)) {
       return res.status(400).json({ success: false, message: 'Only scheduled sessions can be rescheduled.' });
     }
-    if (session.rescheduleProposalId || session.proposedScheduledAt) {
-      return res.status(409).json({ success: false, message: 'A reschedule proposal is already pending.' });
+    if (!canChangeSchedule(session)) return res.status(409).json({ success: false, message: 'A participant has checked in. Keep the confirmed schedule.' });
+    const expectedId = req.body.proposalId;
+    // A replacement must never degrade into a new proposal after a losing race.
+    if (expectedId && expectedId !== session.rescheduleProposalId) return res.status(409).json({ success: false, message: proposalConflict });
+    if (proposalExpired(session)) {
+      session = await expireProposal(session);
+      if (expectedId) return res.status(409).json({ success: false, message: proposalConflict });
+    }
+    const replacing = Boolean(session.rescheduleProposalId || session.proposedScheduledAt);
+    if (replacing && (!expectedId || expectedId !== session.rescheduleProposalId)) {
+      return res.status(409).json({ success: false, message: 'A proposal is pending. Its proposer can withdraw or replace it; the other participant can respond.' });
+    }
+    if (replacing && !sameUser(session.rescheduleProposedBy, req.user.id)) {
+      return res.status(403).json({ success: false, message: 'Only the proposer can replace this unanswered proposal.' });
     }
     const proposedDate = new Date(req.body.scheduledAt);
-    if (Number.isNaN(proposedDate.getTime())) {
-      return res.status(400).json({ success: false, message: 'Enter a valid proposed date and time.' });
-    }
-    if (proposedDate <= new Date()) {
-      return res.status(400).json({ success: false, message: 'Choose a future date and time.' });
-    }
+    if (!Number.isFinite(proposedDate.getTime())) return res.status(400).json({ success: false, message: 'Enter a valid proposed date and time.' });
     if (session.scheduledAt && proposedDate.getTime() === new Date(session.scheduledAt).getTime()) {
       return res.status(400).json({ success: false, message: 'Choose a different time from the current schedule.' });
     }
-    const updatedSession = await Session.findOneAndUpdate(
-      {
-        _id: session._id,
-        status: session.status,
-        scheduledAt: session.scheduledAt ?? null,
-        rescheduleProposalId: null,
-        proposedScheduledAt: null,
-      },
-      { $set: {
-        proposedScheduledAt: proposedDate,
-        rescheduleProposedBy: req.user.id,
-        rescheduleProposedAt: new Date(),
-        rescheduleProposalId: randomUUID(),
-      } },
-      { new: true, runValidators: true }
-    );
-    if (!updatedSession) return res.status(409).json({ success: false, message: changedSessionMessage });
+    const now = new Date();
+    const original = session.scheduledAt ? new Date(session.scheduledAt).getTime() : NaN;
+    const expiresAt = new Date(Math.min(now.getTime() + lifetimeMs(), proposedDate.getTime(),
+      Number.isFinite(original) ? original + CHECK_IN_LATE_MS : Infinity));
+    if (proposedDate <= now) return res.status(400).json({ success: false, message: 'Choose a future date and time.' });
+    if (expiresAt <= now) return res.status(409).json({ success: false, message: 'The original check-in window ended. Review attendance and report a no-show if needed.' });
+    const updatedSession = await proposalMutation(session, null, (dbSession) => Session.findOneAndUpdate(
+      { ...proposalClaim(session), ...attendanceFree, $expr: { $gt: [expiresAt, '$$NOW'] } },
+      { $set: { proposedScheduledAt: proposedDate, rescheduleProposedBy: req.user.id,
+        rescheduleProposedAt: now, rescheduleProposalId: randomUUID(), rescheduleExpiresAt: expiresAt },
+      ...(replacing ? { $push: historyPush(historyEntry(session, 'replaced', req.user.id, now)) } : {}) },
+      { new: true, runValidators: true, session: dbSession }),
+    { type: replacing ? 'session.reschedule_replaced' : 'session.reschedule_proposed',
+      recipients: [otherParticipant(session, req.user.id)] });
+    if (!updatedSession) return res.status(409).json({ success: false, message: proposalConflict });
     await updatedSession.populate(SESSION_POPULATE);
-    await notifications.notifySession('session.reschedule_proposed', updatedSession,
-      [otherParticipant(updatedSession, req.user.id)], updatedSession.rescheduleProposalId);
-    return res.json({ success: true, message: 'Reschedule proposed. Waiting for your peer to respond.', data: updatedSession });
+    return res.json({ success: true, message: replacing ? 'Proposal replaced. Waiting for your peer to respond.' : 'Reschedule proposed. Waiting for your peer to respond.', data: presentSession(updatedSession) });
   } catch (error) {
-    return res.status(500).json({ success: false, message: 'Reschedule could not be proposed.' });
+    return res.status(error.status || 500).json({ success: false, message: error.status ? error.message : 'Reschedule could not be proposed.' });
   }
 };
 
-const decideReschedule = async (req, res, accept) => {
+const decideReschedule = async (req, res, action) => {
   try {
     const result = await findParticipantSession(req, res);
     if (!result) return;
@@ -399,50 +412,41 @@ const decideReschedule = async (req, res, accept) => {
     }
     if (!session.rescheduleProposalId || session.rescheduleProposalId !== req.body.proposalId
       || !session.proposedScheduledAt || !session.rescheduleProposedBy) {
-      return res.status(409).json({ success: false, message: changedSessionMessage });
+      return res.status(409).json({ success: false, message: proposalConflict });
     }
-    if (sameUser(session.rescheduleProposedBy, req.user.id)) {
-      return res.status(403).json({ success: false, message: 'Only the other participant can respond to this proposal.' });
+    const own = sameUser(session.rescheduleProposedBy, req.user.id);
+    if (action === 'withdrawn' ? !own : own) {
+      return res.status(403).json({ success: false, message: action === 'withdrawn'
+        ? 'Only the proposer can withdraw this proposal.' : 'Only the other participant can respond to this proposal.' });
     }
-    if (accept && new Date(session.proposedScheduledAt) <= new Date()) {
-      return res.status(400).json({ success: false, message: 'This proposed time has passed. Ask for a new proposal.' });
+    if (proposalExpired(session)) {
+      await expireProposal(session);
+      return res.status(409).json({ success: false, message: proposalConflict });
     }
-    const update = { $unset: rescheduleFields };
-    if (accept) {
-      update.$set = { scheduledAt: session.proposedScheduledAt };
-      // Attendance for the old agreed time cannot carry over to a new time.
-      update.$unset = { ...rescheduleFields, learnerCheckedInAt: 1, tutorCheckedInAt: 1 };
-    }
-    const write = (dbSession) => Session.findOneAndUpdate(
-      {
-        _id: session._id,
-        status: session.status,
-        scheduledAt: session.scheduledAt ?? null,
-        proposedScheduledAt: session.proposedScheduledAt,
-        rescheduleProposalId: req.body.proposalId,
-        rescheduleProposedBy: session.rescheduleProposedBy,
-      },
-      update,
-      { new: true, runValidators: true, ...(dbSession ? { session: dbSession } : {}) }
-    );
-    const updatedSession = accept ? await commitSchedule(session, session.proposedScheduledAt, write) : await write();
-    if (!updatedSession) return res.status(409).json({ success: false, message: changedSessionMessage });
+    if (!canChangeSchedule(session)) return res.status(409).json({ success: false, message: 'A participant has checked in. Keep the confirmed schedule.' });
+    const accept = action === 'accepted';
+    const updatedSession = await proposalMutation(session, accept ? session.proposedScheduledAt : null,
+      (dbSession) => Session.findOneAndUpdate(
+        { ...proposalClaim(session), ...attendanceFree, rescheduleProposedBy: session.rescheduleProposedBy,
+          $expr: { $gt: [proposalExpiry(session), '$$NOW'] } },
+        { $unset: rescheduleFields, ...(accept ? { $set: { scheduledAt: session.proposedScheduledAt } } : {}),
+          $push: historyPush(historyEntry(session, action, req.user.id)) },
+        { new: true, runValidators: true, session: dbSession }),
+      { type: `session.reschedule_${action}`, source: session,
+        recipients: [otherParticipant(session, req.user.id)] });
+    if (!updatedSession) return res.status(409).json({ success: false, message: proposalConflict });
     await updatedSession.populate(SESSION_POPULATE);
     if (accept) await notifications.invalidateUpcoming(updatedSession);
-    await notifications.notifySession(accept ? 'session.reschedule_accepted' : 'session.reschedule_declined',
-      updatedSession, [session.rescheduleProposedBy], req.body.proposalId);
-    return res.json({
-      success: true,
-      message: accept ? 'Reschedule accepted. The session time was updated.' : 'Reschedule declined. The original time remains.',
-      data: updatedSession,
-    });
+    return res.json({ success: true, message: accept ? 'Reschedule accepted. The session time was updated.'
+      : action === 'withdrawn' ? 'Proposal withdrawn. The original time remains.' : 'Reschedule declined. The original time remains.',
+    data: presentSession(updatedSession) });
   } catch (error) {
     return res.status(error.status || 500).json({ success: false, message: error.status ? error.message : 'Reschedule response could not be saved.' });
   }
 };
-
-exports.acceptReschedule = (req, res) => decideReschedule(req, res, true);
-exports.declineReschedule = (req, res) => decideReschedule(req, res, false);
+exports.acceptReschedule = (req, res) => decideReschedule(req, res, 'accepted');
+exports.declineReschedule = (req, res) => decideReschedule(req, res, 'declined');
+exports.withdrawReschedule = (req, res) => decideReschedule(req, res, 'withdrawn');
 
 exports.checkIn = async (req, res) => {
   try {
@@ -452,10 +456,10 @@ exports.checkIn = async (req, res) => {
     if (!reschedulableStatuses.includes(session.status)) {
       return res.status(400).json({ success: false, message: 'Check-in is available only for a scheduled session.' });
     }
-    if (session.rescheduleProposalId || session.proposedScheduledAt) {
-      return res.status(409).json({ success: false, message: 'Resolve the reschedule proposal before checking in.' });
-    }
     const scheduledAt = session.scheduledAt ? new Date(session.scheduledAt) : null;
+    if (req.body.expectedScheduledAt && new Date(req.body.expectedScheduledAt).getTime() !== scheduledAt?.getTime()) {
+      return res.status(409).json({ success: false, message: 'The confirmed schedule changed while you were confirming check-in. Refresh and check the new time.' });
+    }
     if (!scheduledAt || Number.isNaN(scheduledAt.getTime())) {
       return res.status(400).json({ success: false, message: 'This session has no valid scheduled time.' });
     }
@@ -473,23 +477,33 @@ exports.checkIn = async (req, res) => {
     // MongoDB serializes these updates on one Session document. The second
     // participant sees the first timestamp and starts the Session atomically.
     const peerHasCheckedIn = { $ne: [{ $ifNull: [`$${peerField}`, null] }, null] };
-    const updatedSession = await Session.findOneAndUpdate(
+    const updatedSession = await proposalMutation(session, null, (dbSession) => Session.findOneAndUpdate(
       {
         _id: session._id,
         status: session.status,
         scheduledAt,
-        rescheduleProposalId: null,
-        proposedScheduledAt: null,
+        rescheduleProposalId: session.rescheduleProposalId ?? null,
+        proposedScheduledAt: session.proposedScheduledAt ?? null,
         [ownField]: null,
         startedAt: null,
+        $expr: { $and: [{ $gte: ['$$NOW', new Date(scheduledAt.getTime() - CHECK_IN_EARLY_MS)] },
+          { $lte: ['$$NOW', new Date(scheduledAt.getTime() + CHECK_IN_LATE_MS)] }] },
       },
       [{ $set: {
         [ownField]: now,
         status: { $cond: [peerHasCheckedIn, 'in_progress', '$status'] },
         startedAt: { $cond: [peerHasCheckedIn, now, '$startedAt'] },
+        ...(session.rescheduleProposalId || session.proposedScheduledAt ? {
+          rescheduleHistory: { $slice: [{ $concatArrays: [{ $ifNull: ['$rescheduleHistory', []] },
+            [{ $literal: historyEntry(session, proposalExpired(session, now) ? 'expired' : 'check_in_locked', req.user.id, now) }]] }, -20] },
+        } : {}),
+        ...Object.fromEntries(Object.keys(rescheduleFields).map((field) => [field, '$$REMOVE'])),
       } }],
-      { new: true, updatePipeline: true }
-    );
+      { new: true, updatePipeline: true, session: dbSession }),
+    session.rescheduleProposalId || session.proposedScheduledAt ? {
+      type: proposalExpired(session, now) ? 'session.reschedule_expired' : 'session.reschedule_check_in_locked', source: session,
+      recipients: proposalExpired(session, now) ? [session.learner, session.tutor] : [otherParticipant(session, req.user.id)],
+    } : null);
     if (!updatedSession) return res.status(409).json({ success: false, message: changedSessionMessage });
     await updatedSession.populate(SESSION_POPULATE);
     if (updatedSession.status === 'in_progress') await notifications.notifySession('session.started',
@@ -499,7 +513,7 @@ exports.checkIn = async (req, res) => {
       message: updatedSession.status === 'in_progress'
         ? 'Both participants checked in. Session in progress.'
         : 'Checked in. Waiting for your peer.',
-      data: updatedSession,
+      data: presentSession(updatedSession),
     });
   } catch (error) {
     console.error('Session check-in failed', {
@@ -526,7 +540,9 @@ exports.finishSession = async (req, res) => {
       || session.completedAt || session.confirmedAt || session.creditsSettledAt) {
       return res.status(409).json({ success: false, message: 'Session check-in evidence is incomplete.' });
     }
-    const updatedSession = await Session.findOneAndUpdate(
+    const finishedAt = new Date();
+    const updatedSession = await completion.inTransaction(async (dbSession) => {
+      const updated = await Session.findOneAndUpdate(
       {
         _id: session._id,
         status: 'in_progress',
@@ -534,6 +550,7 @@ exports.finishSession = async (req, res) => {
         learnerCheckedInAt: session.learnerCheckedInAt,
         tutorCheckedInAt: session.tutorCheckedInAt,
         awaitingValidationAt: null,
+        validationDeadlineAt: null,
         learnerConfirmedAt: null,
         tutorConfirmedAt: null,
         completedAt: null,
@@ -542,14 +559,17 @@ exports.finishSession = async (req, res) => {
         rescheduleProposalId: null,
         proposedScheduledAt: null,
       },
-      { $set: { status: 'awaiting_validation', awaitingValidationAt: new Date() } },
-      { new: true, runValidators: true }
-    );
+      { $set: { status: 'awaiting_validation', awaitingValidationAt: finishedAt,
+        validationDeadlineAt: new Date(finishedAt.getTime() + completionSettings().deadlineHours * 3600000) },
+        $inc: { reviewVersion: 1 } },
+      { returnDocument: 'after', runValidators: true, session: dbSession });
+      if (updated) await completion.enqueueCompletionEvent('session.awaiting_validation', updated,
+        [updated.learner, updated.tutor], dbSession, finishedAt.toISOString());
+      return updated;
+    });
     if (!updatedSession) return res.status(409).json({ success: false, message: changedSessionMessage });
     await updatedSession.populate(SESSION_POPULATE);
-    await notifications.notifySession('session.awaiting_validation', updatedSession,
-      [updatedSession.learner, updatedSession.tutor]);
-    return res.json({ success: true, message: 'Session finished. Both participants must confirm before credits transfer.', data: updatedSession });
+    return res.json({ success: true, message: 'Session finished. Both participants must confirm before credits transfer.', data: presentSession(updatedSession) });
   } catch (error) {
     return res.status(500).json({ success: false, message: 'Session could not be finished.' });
   }
@@ -559,11 +579,12 @@ exports.reportNoShow = async (req, res) => {
   try {
     const result = await findParticipantSession(req, res);
     if (!result) return;
-    const { session } = result;
+    let { session } = result;
     if (!reschedulableStatuses.includes(session.status)) {
       return res.status(400).json({ success: false, message: 'No-show is available only for a scheduled session.' });
     }
-    if (session.rescheduleProposalId || session.proposedScheduledAt || session.startedAt) {
+    session = await expireProposal(session);
+    if (session.startedAt) {
       return res.status(409).json({ success: false, message: 'This session cannot be marked no-show while attendance or rescheduling is active.' });
     }
     const scheduledAt = session.scheduledAt ? new Date(session.scheduledAt) : null;
@@ -608,7 +629,7 @@ exports.reportNoShow = async (req, res) => {
       [otherParticipant(updatedSession, req.user.id)]);
     return res.json({ success: true, message: 'No-show recorded. No credits were transferred.', data: updatedSession });
   } catch (error) {
-    return res.status(500).json({ success: false, message: 'No-show could not be recorded.' });
+    return res.status(error.status || 500).json({ success: false, message: error.status ? error.message : 'No-show could not be recorded.' });
   }
 };
 
@@ -645,7 +666,7 @@ exports.disputeSession = async (req, res) => {
         completedAt: null,
         creditsSettledAt: null,
       },
-      { $set: { status: 'disputed', disputedAt: now, disputedBy: req.user.id, disputeReason: reason } },
+      { $set: { status: 'disputed', disputedAt: now, disputedBy: req.user.id, disputeReason: reason }, $inc: { reviewVersion: 1 } },
       { returnDocument: 'after', runValidators: true }
     );
     if (!updatedSession) return res.status(409).json({ success: false, message: changedSessionMessage });
@@ -743,6 +764,10 @@ exports.confirmSession = async (req, res) => {
             creditsSettledAt: now,
           });
         }
+        if (finalConfirmation && session.reviewReferral && !session.reviewReferral.closedAt) {
+          changes['reviewReferral.closedAt'] = now;
+          changes['reviewReferral.closure'] = 'participant_completion';
+        }
         const claim = await Session.updateOne(
           {
             _id: session._id,
@@ -755,13 +780,15 @@ exports.confirmSession = async (req, res) => {
             confirmedAt: null,
             creditsSettledAt: null,
           },
-          { $set: changes },
+          { $set: changes, $inc: { reviewVersion: 1 } },
           { session: dbSession }
         );
         if (claim.matchedCount !== 1) {
           throw Object.assign(new Error(changedSessionMessage), { status: 409 });
         }
-        Object.assign(session, changes);
+        Object.assign(session, Object.fromEntries(Object.entries(changes).filter(([key]) => !key.includes('.'))));
+        if (finalConfirmation && session.reviewReferral) Object.assign(session.reviewReferral, { closedAt: now, closure: 'participant_completion' });
+        session.reviewVersion = (session.reviewVersion || 0) + 1;
         if (finalConfirmation) await transferSessionCredits(session, dbSession);
         else awaitingPeerConfirmation = true;
         settledSession = session;
@@ -821,7 +848,7 @@ exports.confirmSession = async (req, res) => {
       : alreadySettled
       ? 'Session confirmed. Its existing credit transaction was not repeated.'
       : `Session completed. ${settledSession.creditAmount} credit${settledSession.creditAmount === 1 ? '' : 's'} transferred to ${tutorName}.`;
-    res.json({ success: true, message, data: settledSession });
+    res.json({ success: true, message, data: presentSession(settledSession) });
   } catch (error) {
     if (error.status) return res.status(error.status).json({ success: false, message: error.message });
     if (error.code === 11000) return res.status(409).json({ success: false, message: 'This session has already been confirmed.' });

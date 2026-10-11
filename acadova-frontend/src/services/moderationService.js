@@ -8,8 +8,10 @@ export const moderationService = {
   ),
   getDisputedSessions: async () => api.get('/api/moderator/sessions/disputed'),
   getResolvedSessions: async () => api.get('/api/moderator/sessions/resolved'),
-  resolveSession: async (id, resolution, resolutionNote) => (
-    api.post(`/api/moderator/sessions/${id}/resolve`, { resolution, resolutionNote })
+  getSessionEvidence: async (id) => api.get(`/api/moderator/sessions/${id}/evidence`),
+  requestClarification: async (id, reason, reviewVersion) => api.post(`/api/moderator/sessions/${id}/clarify`, { reason, reviewVersion }),
+  resolveSession: async (id, resolution, resolutionNote, reviewVersion) => (
+    api.post(`/api/moderator/sessions/${id}/resolve`, { resolution, resolutionNote, ...(reviewVersion != null ? { reviewVersion } : {}) })
   ),
 };
 

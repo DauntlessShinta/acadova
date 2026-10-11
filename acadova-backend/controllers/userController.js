@@ -26,8 +26,9 @@ exports.getMe = async (req, res) => {
 // credits, or rating through this endpoint (those need their own flows).
 exports.updateMe = async (req, res) => {
   try {
-    const { name, skillsToTeach, skillsToLearn } = req.body;
+    const { name, skillsToTeach, skillsToLearn, weeklyAvailability } = req.body;
     const updates = {};
+    if (weeklyAvailability !== undefined) updates.weeklyAvailability = require('../utils/weeklyAvailability').validateAvailability(weeklyAvailability);
 
     if (name !== undefined) {
       if (typeof name !== 'string' || !name.trim()) {
@@ -71,7 +72,7 @@ exports.searchTutors = async (req, res) => {
     const tutors = await User.aggregate([
       { $match: filter }, ...reputationStages(),
       { $sort: { rating: -1, ratingCount: -1, _id: 1 } }, { $limit: 50 },
-      { $project: { name: 1, skillsToTeach: 1, rating: 1, ratingCount: 1, role: 1 } },
+      { $project: { name: 1, skillsToTeach: 1, weeklyAvailability: 1, rating: 1, ratingCount: 1, role: 1 } },
     ]);
 
     res.json({ success: true, message: 'Tutors retrieved', data: tutors });
@@ -89,7 +90,7 @@ exports.getUserById = async (req, res) => {
     }
 
     const user = await User.findOne({ _id: id, ...availableStudentFilter() })
-      .select('name rating skillsToTeach skillsToLearn role createdAt');
+      .select('name rating skillsToTeach skillsToLearn weeklyAvailability role createdAt');
     if (!user) {
       return res.status(404).json({ success: false, message: 'Peer profile not found' });
     }

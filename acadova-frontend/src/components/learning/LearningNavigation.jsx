@@ -9,10 +9,11 @@ export default function LearningNavigation({ disabled = false, onNavigate }) {
   browse.delete('view');
   const contribute = new URLSearchParams(browse);
   contribute.set('view', 'contribute');
-  const current = currentPath === '/assessments' ? 'assessments' : params.get('view') === 'contribute' ? 'contribute' : 'library';
+  const current = currentPath.startsWith('/study-sets') ? 'study' : currentPath === '/assessments' ? 'assessments' : params.get('view') === 'contribute' ? 'contribute' : 'library';
   const items = [
     ['library', 'Browse learning', '/learning' + (browse.size ? '?' + browse : '')],
     ['assessments', 'Assessments', '/assessments'],
+    ['study', 'Study sets (free)', '/study-sets'],
     ['contribute', 'Share a resource', '/learning?' + contribute],
   ];
   return <nav className="learning-section-nav" aria-label="Learning sections">{items.map(([key, label, to]) =>

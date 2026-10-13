@@ -1,7 +1,7 @@
 export function discoveryDestination(scope, query) {
   const value = query.trim();
   if (scope === 'learning') return `/learning${value ? `?q=${encodeURIComponent(value)}` : ''}`;
-  return `/tutors${value ? `?subject=${encodeURIComponent(value)}` : ''}`;
+  return `/tutors${value ? `?q=${encodeURIComponent(value)}` : ''}`;
 }
 
 export function discoveryQueryError(scope, query) {

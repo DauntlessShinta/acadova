@@ -29,6 +29,7 @@ test('API protection and role boundaries work without a database connection', as
   const originalFindById = User.findById;
   const originalFindOne = User.findOne;
   const originalFind = User.find;
+  const originalCount = User.countDocuments;
   const originalAggregate = User.aggregate;
   User.aggregate = async () => [];
   const originalResetLogin = loginSecurity.resetAfterSuccess;
@@ -61,9 +62,8 @@ test('API protection and role boundaries work without a database connection', as
     password: bcrypt.hashSync(password, 4),
   } : null });
   loginSecurity.resetAfterSuccess = async (user) => user;
-  User.find = (filter) => filter
-    ? { select: () => ({ sort: () => ({ limit: async () => [] }) }) }
-    : { select: () => ({ sort: async () => [] }) };
+  User.find = () => ({ select() { return this; }, sort() { return this; }, skip() { return this; }, limit() { return this; }, maxTimeMS: async () => [] });
+  User.countDocuments = () => ({ maxTimeMS: async () => 0 });
   Session.findById = async () => {
     roomReads += 1;
     return {
@@ -328,6 +328,7 @@ test('API protection and role boundaries work without a database connection', as
     User.findById = originalFindById;
     User.findOne = originalFindOne;
     User.find = originalFind;
+    User.countDocuments = originalCount;
     User.aggregate = originalAggregate;
     loginSecurity.resetAfterSuccess = originalResetLogin;
     Session.findById = originalSessionFindById;

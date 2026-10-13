@@ -3,22 +3,67 @@ const mongoose = require('mongoose');
 const Session = require('../models/Session');
 const CreditTransaction = require('../models/CreditTransaction');
 const { classifyLegacySession, isSessionRatingEligible } = require('../utils/sessionLifecycleCompatibility');
-const { isValidObjectId } = require('../middleware/validation');
+const { isValidObjectId, escapeRegExp } = require('../middleware/validation');
 const { logSecurityEvent } = require('../utils/securityLogger');
 const { ACTIONS, recordAudit } = require('../services/auditService');
 const notifications = require('../services/notificationService');
 
 const MANAGEABLE_ROLES = new Set(['student', 'moderator']);
 const { hasInFlightSessions } = require('../utils/sessionRoleGuard');
+const { aggregate } = require('../utils/analyticsWindow');
+const LearningResource = require('../models/LearningResource');
+const StudySet = require('../models/StudySet');
+const StudyReport = require('../models/StudyReport');
+
+// Operational counts use current record state, not a date-filtered cohort.
+exports.getOperations = async (req, res) => {
+  try {
+    const [sessions, resources, studySets, studyReports, credits] = await Promise.all([
+      aggregate(Session, [{ $group: { _id: '$status', count: { $sum: 1 } } }]),
+      LearningResource.countDocuments({ reviewStatus: 'submitted' }).maxTimeMS(8000),
+      StudySet.countDocuments({ state: 'pending', deletedAt: null }).maxTimeMS(8000),
+      StudyReport.countDocuments({ state: 'open' }).maxTimeMS(8000),
+      CreditTransaction.find({ type: { $in: ['session_payment', 'assessment_reward', 'learning_unlock', 'initial_grant', 'admin_adjustment'] } })
+        .select('type amount adjustmentDirection createdAt').sort({ createdAt: -1, _id: -1 }).limit(6).lean().maxTimeMS(8000),
+    ]);
+    res.json({ success: true, data: { byStatus: Object.fromEntries(sessions.map(row => [row._id, row.count])),
+      pendingResources: resources, pendingStudySets: studySets, openStudyReports: studyReports, recentCredits: credits } });
+  } catch { res.status(503).json({ success: false, message: 'Operational overview is temporarily unavailable.' }); }
+};
+
+// Database counts do not depend on the downloaded directory or visible filters.
+exports.getOverview = async (req, res) => {
+  try {
+    const rows = await aggregate(User, [{ $group: { _id: '$role', count: { $sum: 1 },
+      suspended: { $sum: { $cond: [{ $ifNull: ['$suspendedAt', false] }, 1, 0] } },
+      unverified: { $sum: { $cond: [{ $eq: ['$emailVerified', false] }, 1, 0] } },
+    } }]);
+    res.json({ success: true, data: { total: rows.reduce((sum, row) => sum + row.count, 0),
+      students: rows.find(row => row._id === 'student')?.count || 0,
+      moderators: rows.find(row => row._id === 'moderator')?.count || 0,
+      suspended: rows.reduce((sum, row) => sum + row.suspended, 0),
+      unverified: rows.reduce((sum, row) => sum + row.unverified, 0),
+    } });
+  } catch { res.status(503).json({ success: false, message: 'Account overview is temporarily unavailable.' }); }
+};
 
 // GET /api/admin/users - lists platform accounts for user management.
 exports.listUsers = async (req, res) => {
   try {
-    const users = await User.find()
+    const { q, id, role, status, page = 1 } = req.validatedQuery || {};
+    const filter = {};
+    if (id) filter._id = id;
+    if (role) filter.role = role;
+    if (status === 'suspended') filter.suspendedAt = { $ne: null };
+    if (status === 'active') filter.suspendedAt = null;
+    if (status === 'unverified') filter.emailVerified = false;
+    if (q) filter.$or = ['name', 'email'].map(key => ({ [key]: { $regex: escapeRegExp(q), $options: 'i' } }));
+    const [users, total] = await Promise.all([User.find(filter)
       .select('name email role credits rating skillsToTeach skillsToLearn emailVerified suspendedAt suspensionReason createdAt +failedLoginAttempts +loginCooldownUntil')
-      .sort({ createdAt: -1 });
+      .sort({ createdAt: -1, _id: -1 }).skip((page - 1) * 25).limit(25).maxTimeMS(8000),
+      User.countDocuments(filter).maxTimeMS(8000)]);
 
-    res.json({ success: true, message: 'Users retrieved', data: users });
+    res.json({ success: true, message: 'Users retrieved', data: users, pagination: { page, pageSize: 25, total, pages: Math.ceil(total / 25) } });
   } catch (error) {
     res.status(500).json({ success: false, message: 'Server error while retrieving users' });
   }
@@ -27,12 +72,23 @@ exports.listUsers = async (req, res) => {
 // Admin session directory exposes coordination metadata, never private messages.
 exports.listSessions = async (req, res) => {
   try {
-    const sessions = await Session.find()
-      .select('subject learner tutor scheduledAt status creditAmount createdAt completedAt confirmedAt creditsSettledAt awaitingValidationAt learnerConfirmedAt tutorConfirmedAt disputedAt disputeReason resolvedAt resolvedBy resolution resolutionNote reviewReferral validationDeadlineAt reviewVersion startedAt learnerCheckedInAt tutorCheckedInAt')
-      .populate('learner', 'name')
-      .populate('tutor', 'name')
-      .sort({ createdAt: -1 })
-      .lean();
+    const { q, status, page = 1 } = req.validatedQuery || {};
+    const statuses = status === 'scheduled' ? ['scheduled', 'accepted'] : status === 'declined' ? ['declined', 'rejected'] : [status];
+    const pipeline = [];
+    if (status) pipeline.push({ $match: { status: { $in: statuses } } });
+    const publicFields = {"subject": 1, "learner": 1, "tutor": 1, "scheduledAt": 1, "status": 1, "creditAmount": 1, "createdAt": 1, "completedAt": 1, "confirmedAt": 1, "creditsSettledAt": 1, "awaitingValidationAt": 1, "learnerConfirmedAt": 1, "tutorConfirmedAt": 1, "disputedAt": 1, "disputeReason": 1, "resolvedAt": 1, "resolvedBy": 1, "resolution": 1, "resolutionNote": 1, "reviewReferral": 1, "validationDeadlineAt": 1, "reviewVersion": 1, "startedAt": 1, "learnerCheckedInAt": 1, "tutorCheckedInAt": 1};
+    pipeline.push({ $project: publicFields });
+    for (const field of ['learner', 'tutor']) pipeline.push(
+      { $lookup: { from: User.collection.name, let: { participantId: '$' + field }, pipeline: [
+        { $match: { $expr: { $eq: ['$_id', '$$participantId'] } } }, { $project: { name: 1 } },
+      ], as: field } },
+      { $set: { [field]: { $arrayElemAt: ['$' + field, 0] } } },
+    );
+    if (q) pipeline.push({ $match: { $or: ['subject', 'learner.name', 'tutor.name'].map(field => ({ [field]: { $regex: escapeRegExp(q), $options: 'i' } })) } });
+    pipeline.push({ $facet: { count: [{ $count: 'total' }], rows: [{ $sort: { createdAt: -1, _id: -1 } }, { $skip: (page - 1) * 25 }, { $limit: 25 }] } });
+    const [result] = await aggregate(Session, pipeline);
+    const sessions = result?.rows || [];
+    const total = result?.count?.[0]?.total || 0;
     const settledIds = sessions.filter((session) => ['completed', 'resolved'].includes(session.status))
       .map((session) => session._id);
     const payments = settledIds.length > 0
@@ -52,7 +108,7 @@ exports.listSessions = async (req, res) => {
         ratingEligible: isSessionRatingEligible(session, evidence),
       };
     });
-    return res.json({ success: true, message: 'Sessions retrieved', data });
+    return res.json({ success: true, message: 'Sessions retrieved', data, pagination: { page, pageSize: 25, total, pages: Math.ceil(total / 25) } });
   } catch (error) {
     return res.status(500).json({ success: false, message: 'Sessions could not be loaded.' });
   }

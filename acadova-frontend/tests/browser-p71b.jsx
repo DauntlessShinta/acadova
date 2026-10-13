@@ -68,6 +68,7 @@ const incoming = (id) => { messages.push({ _id: id, sender: peer, body: 'New stu
 const checks = []; const errors = [];
 window.addEventListener('error', (event) => errors.push(event.message)); window.addEventListener('unhandledrejection', (event) => errors.push(String(event.reason)));
 try {
+  await render('/settings'); await until(() => document.querySelector('[role=switch]'), 'Sound settings'); document.querySelector('[role=switch]').click(); await pause(); assert(localStorage.getItem('acadova:sound:me') === 'on' && sounds === 0, 'Opt-in does not replay history');
   await render('/sessions/test'); await until(() => document.querySelector('#room-tab-overview'), 'Session Room'); await pause(400);
   assert(reads === 0, 'Overview cleared unread chat'); assert(sounds === 0, 'Historical load played sound');
   assert(visible('[role="tab"]').map((node) => node.textContent).join('|') === 'Overview|Chat|Progress|Details', 'Four workflow tabs');
@@ -84,8 +85,8 @@ try {
   assert(document.querySelector('.chat-new-messages').textContent.startsWith('1 new message'), 'New hint count');
   await pause(400); assert(document.querySelector('.chat-new-messages').textContent.startsWith('1 new message'), 'Duplicate poll hint');
   document.querySelector('.chat-new-messages').click(); await pause(); assert(atBottom() && !visible('.chat-new-messages').length, 'Newest-message action');
-  const bell = document.querySelector('.notification-trigger'); bell.click(); await until(() => document.querySelector('.notification-sound'), 'Sound preference');
-  document.querySelector('.notification-sound').click(); await pause();
+  const bell = document.querySelector('.notification-trigger'); bell.click(); await until(() => document.querySelector('.notification-panel'), 'Notification list');
+  assert(!document.querySelector('.notification-sound'), 'Sound preference is only in Settings');
   assert(localStorage.getItem('acadova:sound:me') === 'on' && sounds === 0, 'Opt-in replayed history');
   document.querySelector('.notification-panel-header button[aria-label="Close notifications"]').click();
   incoming('active-chat'); await until(() => document.querySelectorAll('.session-message').length === 38, 'Active-thread poll'); await pause(250); assert(sounds === 0, 'Active Chat sounded');
@@ -122,8 +123,8 @@ try {
   focused = true; visibility = 'hidden'; document.dispatchEvent(new Event('visibilitychange')); await pause(200); const hiddenReads = reads; await pause(400); assert(reads === hiddenReads, 'Hidden document read chat');
   visibility = 'visible'; document.dispatchEvent(new Event('visibilitychange')); await pause(250);
   await tab('details'); incoming('outside-chat'); await until(() => sounds === 1, 'New incoming sound'); incoming('rapid-followup'); await pause(400); assert(sounds === 1, 'Rapid sound spam');
-  bell.click(); await until(() => document.querySelector('.notification-sound'), 'Mute'); document.querySelector('.notification-sound').click(); await pause(); assert(localStorage.getItem('acadova:sound:me') === 'off', 'Mute preference not saved');
-  document.querySelector('.notification-panel-header button[aria-label="Close notifications"]').click();
+  await render('/settings'); await until(() => document.querySelector('[role=switch]'), 'Mute in Settings'); document.querySelector('[role=switch]').click(); await pause(); assert(localStorage.getItem('acadova:sound:me') === 'off', 'Mute preference not saved');
+  await render('/sessions/test'); await until(() => document.getElementById('room-tab-overview'), 'Return to Session'); await tab('messages'); await until(() => document.getElementById('session-message'), 'Chat composer loaded after Settings'); fill('#session-message', 'Preserve this draft'); await pause(); await tab('details'); incoming('settings-return-alert'); await pause(250);
   checks.push('Initial/near-bottom/up-scroll Chat, new hint, send/draft failure, tab/focus/visibility read gating, historical/own/active-thread sound suppression, cooldown and mute');
   openMessages(); await until(() => document.querySelector('.conversation-link'), 'Messages picker');
   await pause(300); const drawer = document.querySelector('.messages-drawer'); assert(drawer && drawer.textContent.includes('Nathan Santos'), 'Participant conversation context');
@@ -137,7 +138,7 @@ try {
   openMessages(); await until(() => document.querySelector('.conversation-link'), 'Same conversation picker');
   document.querySelector('.conversation-link').click();
   await until(() => !document.querySelector('.messages-drawer') && visible('#room-panel-messages').length, 'Same URL/hash must reactivate Chat');
-  assert(document.querySelector('#session-message').value === 'Preserve this draft', 'Same conversation navigation lost draft');
+  await until(() => document.getElementById('session-message'), 'Same conversation composer loaded'); assert(document.querySelector('#session-message').value === 'Preserve this draft', 'Same conversation navigation lost draft');
   checks.push('Same conversation/hash after Details always opens Chat and retains the draft');
   assert(document.querySelectorAll('.message-composer').length === 1, 'Duplicate chat state');
   openMessages(); await until(() => document.querySelector('.messages-drawer'), 'Covered Chat picker');
@@ -146,7 +147,7 @@ try {
   assert(!document.querySelector('.messages-drawer') && document.activeElement.getAttribute('aria-label') === 'Messages', 'Messages Escape/focus restoration');
 
   const meeting = document.querySelector('a[href="https://example.com/meeting"]'); assert(meeting?.target === '_blank' && meeting.rel.includes('noopener') && meeting.rel.includes('noreferrer'), 'Meeting safety');
-  await tab('overview'); document.querySelector('.session-next-step button').click(); await until(() => checkIns === 1, 'Legitimate check-in'); assert(!document.querySelector('[role="dialog"]'), 'Harmless check-in confirmation');
+  await tab('overview'); document.querySelector('.session-next-step button').click(); await until(() => document.querySelector('[role="dialog"]'), 'Self-reported check-in acknowledgement'); [...document.querySelectorAll('[role="dialog"] button')].find(button => button.textContent === 'I am present and ready').click(); await until(() => checkIns === 1, 'Legitimate acknowledged check-in'); assert(!document.querySelector('[role="dialog"]'), 'Check-in dialog closes');
   session = { ...original, meetingMethod: 'in-person', meetingLink: undefined, location: 'University Library - Study Area 2' };
   await render('/sessions/test'); await until(() => document.querySelector('.session-meeting-result strong'), 'Face-to-face location'); assert(document.body.textContent.includes('University Library') && !document.querySelector('a[href="https://example.com/meeting"]'), 'Face-to-face presentation');
   session = { ...original, meetingLink: '' }; await render('/sessions/test', peer); await until(() => document.querySelector('#room-tab-details'), 'Tutor Room'); await tab('details');
@@ -164,5 +165,5 @@ try {
   assert(visible('.student-sidebar').length === (innerWidth > 1024 ? 1 : 0) && visible('.student-mobile-bottom').length === (innerWidth > 1024 ? 0 : 1), 'Shell breakpoint');
   assert(errors.length === 0, 'Runtime errors: ' + errors.join('; '));
   document.getElementById('result').textContent = `PASS: ${innerWidth}x${innerHeight} P7.1B\n${checks.join('\n')}`;
-} catch (error) { document.getElementById('result').textContent = 'FAIL: ' + error.message + '\n' + checks.join('\n'); }
+} catch (error) { document.getElementById('result').textContent = 'FAIL: ' + error.message + ' | checkIns=' + checkIns + ' action=' + document.querySelector('.session-next-step')?.textContent + ' dialogs=' + document.querySelector('[role=dialog]')?.textContent + '\n' + checks.join('\n'); }
 if (document.getElementById('result').textContent.startsWith('PASS:')) document.getElementById('result').hidden = true;

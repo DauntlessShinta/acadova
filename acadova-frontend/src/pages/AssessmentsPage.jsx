@@ -189,12 +189,12 @@ export const AssessmentsPage = () => {
         <div className="assessment-card-actions"><Link to="/credits" className="btn btn-secondary btn-sm">View credit wallet</Link>
           <button type="button" className="btn btn-secondary btn-sm" onClick={() => { setResult(null); setMode(selected.rewardEarned ? 'practice' : 'official'); setAnswerError(''); setAnswers(Array(selected.questions.length).fill(null)); }}>Try again</button></div>
       </div> : <form onSubmit={submit} aria-busy={working}>
-        <fieldset disabled={working}><legend>Attempt mode</legend>
+        <fieldset className="assessment-mode" disabled={working}><legend>Attempt mode</legend>
           {selected.rewardEarned ? <p>Reward already earned: all further attempts are free practice.</p> : <><label className="assessment-option"><input type="radio" name="attempt-mode" checked={mode === 'official'} onChange={() => setMode('official')} />Official attempt eligible for the one-time reward</label><label className="assessment-option"><input type="radio" name="attempt-mode" checked={mode === 'practice'} onChange={() => setMode('practice')} />Free practice (zero credits; eligibility retained)</label></>}
           <p className="form-hint">The server checks eligibility. Failed official attempts may retry; passing the same assessment can reward you only once.</p>
         </fieldset>
         <p>Choose one answer for every question. Your answers are graded after you submit.</p>
-        {selected.questions.map((question, index) => <fieldset className="card" key={index} disabled={working} aria-describedby={answerError && answers[index] === null ? 'assessment-answer-error' : undefined}>
+        {selected.questions.map((question, index) => <fieldset className="card quiz-question" key={index} disabled={working} aria-describedby={answerError && answers[index] === null ? 'assessment-answer-error' : undefined}>
           <legend><strong>{index + 1}. {question.prompt}</strong></legend>
           {question.options.map((option, optionIndex) => <label key={optionIndex} className="assessment-option">
             <input type="radio" name={`question-${index}`} checked={answers[index] === optionIndex}

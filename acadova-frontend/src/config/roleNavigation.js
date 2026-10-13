@@ -13,6 +13,7 @@ const authenticatedNavigation = {
     { to: '/sessions?view=messages', label: 'Messages' },
     { to: '/credits', label: 'Credits' },
     { to: '/profile', label: 'Profile' },
+    { to: '/settings', label: 'Settings' },
   ],
   moderator: [
     { to: '/moderator', label: 'Overview' },
@@ -21,6 +22,7 @@ const authenticatedNavigation = {
     { to: '/moderator/assessments', label: 'Assessments' },
     { to: '/moderator/learning', label: 'Learning content' },
     { to: '/moderator/study-sets', label: 'Study-set reviews' },
+    { to: '/moderator/settings', label: 'Settings' },
   ],
   admin: [
     { to: '/admin', label: 'Overview' },
@@ -28,12 +30,12 @@ const authenticatedNavigation = {
     { to: '/admin/sessions', label: 'Sessions' },
     { to: '/admin/analytics', label: 'Analytics' },
     { to: '/admin/credits', label: 'Credits' },
-    { to: '/admin/audit-logs', label: 'Audit logs' },
-    { to: '/admin/security', label: 'Security' },
+    { to: '/admin/trust-activity', label: 'Trust & Activity' },
     { to: '/admin/moderation', label: 'Moderation' },
     { to: '/admin/assessments', label: 'Assessments' },
     { to: '/admin/learning', label: 'Learning content' },
     { to: '/admin/study-sets', label: 'Study-set reviews' },
+    { to: '/admin/settings', label: 'Settings' },
   ],
 };
 
@@ -50,6 +52,8 @@ export const getRoleNavigation = (role) => authenticatedNavigation[normalizeRole
 export function getPageContext(pathname, search = '') {
   const path = pathname.replace(/\/$/, '') || '/';
   const params = new URLSearchParams(search);
+  if (path === '/admin/disputes') return { title: 'Session disputes', area: 'Administration', to: '/admin/moderation' };
+  if (['/admin/audit-logs', '/admin/security'].includes(path)) return { title: 'Trust & Activity', area: 'Administration', to: '/admin/trust-activity' };
   for (const area of ['admin', 'moderator']) {
     const link = authenticatedNavigation[area].find(({ to }) => to === path);
     if (link) return { title: link.label, area: area === 'admin' ? 'Administration' : 'Moderator', to: link.to };

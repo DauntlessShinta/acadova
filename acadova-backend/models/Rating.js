@@ -9,7 +9,7 @@ const RatingSchema = new mongoose.Schema({
   isHidden: { type: Boolean, default: false, index: true },
   moderatedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
   moderatedAt: { type: Date, default: null },
-}, { timestamps: true });
+}, { timestamps: true, autoIndex: process.env.NODE_ENV !== 'production' });
 
 // One rating per rater per session (prevents duplicate/spam ratings).
 RatingSchema.index({ session: 1, fromUser: 1 }, { unique: true });

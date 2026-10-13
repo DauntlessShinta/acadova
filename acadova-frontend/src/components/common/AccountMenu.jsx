@@ -1,6 +1,6 @@
 import React, { useEffect, useId, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { ChevronDown, LogOut, User } from 'lucide-react';
+import { ChevronDown, LogOut, User, Settings } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useConfirm } from '../../context/confirmAccess';
 
@@ -39,6 +39,7 @@ export default function AccountMenu({ compact = false }) {
     {open && <div id={id} className="account-actions">
       {compact && <p className="account-menu-identity"><strong>{user?.name}</strong><small>{user?.role === 'admin' ? 'Administrator' : user?.role === 'moderator' ? 'Moderator' : 'Student'}</small></p>}
       {user?.role === 'student' && <Link to="/profile" onClick={() => setOpen(false)}><User size={17} aria-hidden="true" />Profile</Link>}
+      <Link to={user?.role === 'admin' ? '/admin/settings' : user?.role === 'moderator' ? '/moderator/settings' : '/settings'} onClick={() => setOpen(false)}><Settings size={17} aria-hidden="true" />Settings</Link>
       <button type="button" onClick={signOut}><LogOut size={17} aria-hidden="true" />Sign out</button>
     </div>}
   </div>;

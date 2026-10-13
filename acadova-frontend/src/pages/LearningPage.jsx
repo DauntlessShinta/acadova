@@ -225,7 +225,7 @@ export const LearningPage = () => {
         {submissionSent && <p className="alert alert-success" role="status">Your resource is awaiting review. You'll receive an in-app notification when it is published or returned with feedback.</p>}
         <label className="form-label" htmlFor="learning-topic">Topic</label>
         <select id="learning-topic" className="form-input" required value={submission.topic} onChange={(event) => setSubmission({ ...submission, topic: event.target.value })}>
-          <option value="">Choose a topic</option>{topics.map((item) => <option key={item.id} value={item.id}>{learningTopicTitle(item)}</option>)}
+          <option value="" disabled hidden>Choose a topic</option>{topics.map((item) => <option key={item.id} value={item.id}>{learningTopicTitle(item)}</option>)}
         </select>
         <label className="form-label" htmlFor="learning-title">Title</label>
         <input id="learning-title" className="form-input" required minLength={3} maxLength={120} value={submission.title} onChange={(event) => setSubmission({ ...submission, title: event.target.value })} />

@@ -1,7 +1,7 @@
 import { useConfirm } from '../../context/confirmAccess';
 import WorkflowTabs from '../../components/common/WorkflowTabs';
 import { useLocation } from 'react-router-dom';
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import assessmentService from '../../services/assessmentService';
 import learningService from '../../services/learningService';
 import Alert from '../../components/common/Alert';
@@ -27,6 +27,33 @@ export const ModeratorAssessmentsPage = () => {
   const [working, setWorking] = useState(false);
   const [error, setError] = useState('');
   const mutationPending = useRef(false);
+  const [questionKeys, setQuestionKeys] = useState([0, 1, 2]);
+  const nextQuestionKey = useRef(3);
+  const pendingFocus = useRef(null);
+
+  useLayoutEffect(() => {
+    if (!pendingFocus.current) return;
+    const input = document.getElementById(pendingFocus.current);
+    pendingFocus.current = null;
+    input?.focus({ preventScroll: true });
+    input?.scrollIntoView({ block: 'nearest' });
+  }, [draft]);
+
+  const replaceDraft = (next) => {
+    setQuestionKeys(next.questions.map(() => nextQuestionKey.current++));
+    setDraft(next);
+  };
+  const addQuestion = () => {
+    const key = nextQuestionKey.current++;
+    setQuestionKeys((current) => [...current, key]);
+    pendingFocus.current = `assessment-prompt-${draft.questions.length}`;
+    setDraft((current) => ({ ...current, questions: [...current.questions, emptyQuestion()] }));
+  };
+  const removeQuestion = (index) => {
+    setQuestionKeys((current) => current.filter((_, i) => i !== index));
+    pendingFocus.current = `assessment-prompt-${Math.min(index, draft.questions.length - 2)}`;
+    setDraft((current) => ({ ...current, questions: current.questions.filter((_, i) => i !== index) }));
+  };
 
   const load = async () => {
     try { const response = await assessmentService.staffList(); setAssessments(response.data || []); setError(''); }
@@ -49,7 +76,7 @@ export const ModeratorAssessmentsPage = () => {
     try {
       if (editingId) await assessmentService.update(editingId, draft);
       else await assessmentService.create(draft);
-      setDraft(initialDraft()); setEditingId(null);
+      replaceDraft(initialDraft()); setEditingId(null);
       toast('success', editingId ? 'Draft updated. Review it before publishing.'
         : 'Draft created. Review it before publishing.'); await load();
     } catch { toast('error', 'Check each question, option, correct answer, and topic, then try again.'); }
@@ -100,7 +127,7 @@ export const ModeratorAssessmentsPage = () => {
         disabled={working} onClick={() => publish(review.id)}>Publish reviewed draft</button>}
       {review.status === 'draft' && <button type="button" className="btn btn-secondary btn-sm"
         disabled={working} onClick={() => {
-          setDraft({ title: review.title, topic: review.topic, passingScore: review.passingScore,
+          replaceDraft({ title: review.title, topic: review.topic, passingScore: review.passingScore,
             ...(review.learningTopic ? { learningTopic: review.learningTopic } : {}),
             questions: review.questions.map((question) => ({ ...question, options: [...question.options] })) });
           setEditingId(review.id); setSection('builder');
@@ -108,18 +135,24 @@ export const ModeratorAssessmentsPage = () => {
         }}>Edit draft</button>}
     </div>}
     </section>
-    <form role="tabpanel" id="assessment-management-panel-builder" aria-labelledby="assessment-management-tab-builder" hidden={section !== 'builder'} className="card" onSubmit={create} style={{ marginTop: 24 }}>
+    <form role="tabpanel" id="assessment-management-panel-builder" aria-labelledby="assessment-management-tab-builder" hidden={section !== 'builder'} className="card assessment-editor" onSubmit={create}>
+      <div className="assessment-editor-intro">
       <h2>{editingId ? 'Edit assessment draft' : 'Create assessment draft'}</h2>
       <p>Use 3–10 questions, 2–5 options per question, and select one correct answer.</p>
       {editingId && <button type="button" className="btn btn-secondary btn-sm"
-        onClick={() => { setDraft(initialDraft()); setEditingId(null); }}>Cancel edit</button>}
+        onClick={() => { replaceDraft(initialDraft()); setEditingId(null); }}>Cancel edit</button>}
+      </div>
+      <div className="assessment-editor-metadata">
+      <div className="assessment-field">
       <label className="form-label" htmlFor="assessment-title">Title</label>
       <input id="assessment-title" className="form-input" value={draft.title} required minLength={3} maxLength={120}
         onChange={(event) => setDraft((current) => ({ ...current, title: event.target.value }))} />
+      </div><div className="assessment-field">
       <label className="form-label" htmlFor="assessment-topic">Topic</label>
       <input id="assessment-topic" className="form-input" value={draft.topic} required minLength={2} maxLength={80}
         disabled={Boolean(draft.learningTopic)}
         onChange={(event) => setDraft((current) => ({ ...current, topic: event.target.value }))} />
+      </div><div className="assessment-field">
       <label className="form-label" htmlFor="assessment-learning-topic">Governed learning topic (optional)</label>
       <select id="assessment-learning-topic" className="form-input" value={draft.learningTopic || ''}
         onChange={(event) => setDraft((current) => {
@@ -132,42 +165,53 @@ export const ModeratorAssessmentsPage = () => {
         <option value="">Legacy topic text only</option>
         {learningTopics.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
       </select>
+      </div><div className="assessment-field">
       <label className="form-label" htmlFor="assessment-passing">Passing score (%)</label>
       <input id="assessment-passing" className="form-input" type="number" min="1" max="100" value={draft.passingScore}
         onChange={(event) => setDraft((current) => ({ ...current, passingScore: Number(event.target.value) }))} />
-      {draft.questions.map((question, index) => <fieldset className="card" key={index} style={{ marginTop: 18 }}>
+      </div></div>
+      <div className="assessment-question-list">
+      {draft.questions.map((question, index) => <fieldset className="card assessment-question" key={questionKeys[index]}>
         <legend>Question {index + 1}</legend>
+        <div className="assessment-question-fields">
+        <div className="assessment-field">
         <label className="form-label" htmlFor={`assessment-prompt-${index}`}>Prompt</label>
         <input id={`assessment-prompt-${index}`} className="form-input" value={question.prompt} required minLength={5} maxLength={300}
           onChange={(event) => updateQuestion(index, { prompt: event.target.value })} />
-        {question.options.map((option, optionIndex) => <div key={optionIndex}>
+        </div>
+        {question.options.map((option, optionIndex) => <div className="assessment-field" key={optionIndex}>
           <label className="form-label" htmlFor={`assessment-option-${index}-${optionIndex}`}>Option {optionIndex + 1}</label>
           <input id={`assessment-option-${index}-${optionIndex}`} className="form-input" value={option} required maxLength={150}
             onChange={(event) => updateQuestion(index, { options: question.options.map((value, i) => i === optionIndex ? event.target.value : value) })} />
         </div>)}
+        <div className="assessment-field">
         <label className="form-label" htmlFor={`assessment-answer-${index}`}>Correct option</label>
         <select id={`assessment-answer-${index}`} className="form-input" value={question.correctIndex}
           onChange={(event) => updateQuestion(index, { correctIndex: Number(event.target.value) })}>
           {question.options.map((_, optionIndex) => <option key={optionIndex} value={optionIndex}>Option {optionIndex + 1}</option>)}
         </select>
+        </div>
         <div className="learning-builder-actions">
           <button type="button" className="btn btn-secondary btn-sm"
-            disabled={question.options.length >= 5} onClick={() =>
-              updateQuestion(index, { options: [...question.options, ''] })}>Add option</button>
+            disabled={question.options.length >= 5} onClick={() => {
+              pendingFocus.current = `assessment-option-${index}-${question.options.length}`;
+              updateQuestion(index, { options: [...question.options, ''] });
+            }}>Add option</button>
           <button type="button" className="btn btn-secondary btn-sm"
-            disabled={question.options.length <= 2} onClick={() =>
+            disabled={question.options.length <= 2} onClick={() => {
+              pendingFocus.current = `assessment-option-${index}-${question.options.length - 2}`;
               updateQuestion(index, { options: question.options.slice(0, -1),
-                correctIndex: Math.min(question.correctIndex, question.options.length - 2) })}>Remove last option</button>
+                correctIndex: Math.min(question.correctIndex, question.options.length - 2) });
+            }}>Remove last option</button>
           <button type="button" className="btn btn-danger btn-sm"
-            disabled={draft.questions.length <= 3} onClick={() =>
-              setDraft((current) => ({ ...current,
-                questions: current.questions.filter((_, i) => i !== index) }))}>Remove question</button>
+            disabled={draft.questions.length <= 3} onClick={() => removeQuestion(index)}>Remove question</button>
+        </div>
         </div>
       </fieldset>)}
-      <div className="learning-builder-actions">
+      </div>
+      <div className="learning-builder-actions assessment-editor-actions">
         <button type="button" className="btn btn-secondary"
-          disabled={draft.questions.length >= 10} onClick={() =>
-            setDraft((current) => ({ ...current, questions: [...current.questions, emptyQuestion()] }))}>
+          disabled={draft.questions.length >= 10} onClick={addQuestion}>
           Add question</button>
         <button type="submit" className="btn btn-primary" disabled={working}>
           {working ? 'Saving...' : editingId ? 'Save draft' : 'Create draft'}</button>

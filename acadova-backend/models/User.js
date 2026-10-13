@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const { YEAR_LEVELS, LANGUAGES } = require('../utils/profileDetails');
 
 const UserSchema = new mongoose.Schema({
   name: { type: String, required: true, trim: true },
@@ -18,6 +19,13 @@ const UserSchema = new mongoose.Schema({
   weeklyAvailability: { type: new mongoose.Schema({ timezone: String, ranges: [{ day: Number, start: String, end: String, _id: false }] }, { _id: false }), default: undefined },
   skillsToTeach: [{ type: String }],
   skillsToLearn: [{ type: String }],
+  // Optional, owner-managed details. Missing visibility never grants public access.
+  bio: { type: String, trim: true, maxlength: 1000 },
+  university: { type: String, trim: true, maxlength: 120 },
+  yearLevel: { type: String, enum: YEAR_LEVELS },
+  languages: { type: [{ type: String, enum: LANGUAGES }], default: undefined,
+    validate: value => !value || (value.length <= 10 && new Set(value).size === value.length) },
+  profileVisibility: { type: new mongoose.Schema({ bio: Boolean, university: Boolean, yearLevel: Boolean, languages: Boolean }, { _id: false }), default: undefined },
   rating: { type: Number, default: 5.0 },
   role: { type: String, enum: ['student', 'moderator', 'admin'], default: 'student' },
   emailVerified: { type: Boolean, default: false },

@@ -71,7 +71,7 @@ const SessionSchema = new mongoose.Schema({
   completedAt: { type: Date },
   confirmedAt: { type: Date },
   creditsSettledAt: { type: Date },
-}, { timestamps: true });
+}, { timestamps: true, autoIndex: process.env.NODE_ENV !== 'production' });
 
 // Speeds up "my sessions" and subject-demand analytics queries.
 SessionSchema.index({ learner: 1 });

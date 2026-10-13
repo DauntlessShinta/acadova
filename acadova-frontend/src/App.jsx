@@ -34,12 +34,12 @@ import AssessmentsPage from './pages/AssessmentsPage';
 import LearningPage from './pages/LearningPage';
 import ProfilePage from './pages/ProfilePage';
 import StudySetsPage from './pages/StudySetsPage';
+import SettingsPage from './pages/SettingsPage';
 
 // Admin Page
 import AdminOverviewPage from './pages/admin/AdminOverviewPage';
 import AdminUsersPage from './pages/admin/AdminUsersPage';
-import AdminAuditLogsPage from './pages/admin/AdminAuditLogsPage';
-import AdminSecurityPage from './pages/admin/AdminSecurityPage';
+import TrustActivityPage, { LegacyTrustRoute } from './pages/admin/TrustActivityPage';
 import AdminSessionsPage from './pages/admin/AdminSessionsPage';
 import AdminAnalyticsPage from './pages/admin/AdminAnalyticsPage';
 import AdminCreditsPage from './pages/admin/AdminCreditsPage';
@@ -103,12 +103,14 @@ export const App = () => {
         <Route path="/study-sets" element={<StudySetsPage />} />
         <Route path="/study-sets/:id" element={<StudySetsPage />} />
         <Route path="/profile" element={<ProfilePage />} />
+        <Route path="/settings" element={<SettingsPage />} />
         <Route path="/onboarding" element={<OnboardingPage />} />
       </Route>
 
       {/* Protected Moderator Routes */}
       <Route path="/moderator" element={<StaffLayout area="moderator" />}>
         <Route index element={<ModeratorOverviewPage />} />
+        <Route path="settings" element={<SettingsPage />} />
         <Route path="reviews" element={<ModeratorReviewsPage />} />
         <Route path="disputes" element={<ModeratorDisputesPage />} />
         <Route path="assessments" element={<ModeratorAssessmentsPage />} />
@@ -119,13 +121,16 @@ export const App = () => {
       {/* Protected Admin Routes */}
       <Route path="/admin" element={<StaffLayout area="admin" />}>
         <Route index element={<AdminOverviewPage />} />
+        <Route path="settings" element={<SettingsPage />} />
         <Route path="users" element={<AdminUsersPage />} />
-        <Route path="audit-logs" element={<AdminAuditLogsPage />} />
-        <Route path="security" element={<AdminSecurityPage />} />
+        <Route path="trust-activity" element={<TrustActivityPage />} />
+        <Route path="audit-logs" element={<LegacyTrustRoute />} />
+        <Route path="security" element={<LegacyTrustRoute />} />
         <Route path="sessions" element={<AdminSessionsPage />} />
         <Route path="analytics" element={<AdminAnalyticsPage />} />
         <Route path="credits" element={<AdminCreditsPage />} />
         <Route path="moderation" element={<AdminModerationPage />} />
+        <Route path="disputes" element={<ModeratorDisputesPage />} />
         <Route path="assessments" element={<ModeratorAssessmentsPage />} />
         <Route path="learning" element={<ModeratorLearningPage />} />
         <Route path="study-sets" element={<ModeratorStudySetsPage />} />

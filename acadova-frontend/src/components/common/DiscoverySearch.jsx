@@ -20,10 +20,10 @@ export default function DiscoverySearch({ onNavigate }) {
   }}>
     <label className="sr-only" htmlFor={`${id}-scope`}>Search in</label>
     <select id={`${id}-scope`} value={scope} onChange={(event) => { setScope(event.target.value); setError(''); }}>
-      <option value="tutors">Tutors by skill</option><option value="learning">Learning topics</option>
+      <option value="tutors">Tutor names or subjects</option><option value="learning">Learning topics</option>
     </select>
-    <label className="sr-only" htmlFor={`${id}-query`}>{scope === 'learning' ? 'Search published learning topics' : 'Search tutors by teaching skill'}</label>
-    <input ref={input} id={`${id}-query`} type="search" maxLength={80} value={query} placeholder={scope === 'learning' ? 'Search topic names or descriptions…' : 'Search a subject or teaching skill…'}
+    <label className="sr-only" htmlFor={`${id}-query`}>{scope === 'learning' ? 'Search published learning topics' : 'Search tutor names or teaching subjects'}</label>
+    <input ref={input} id={`${id}-query`} type="search" maxLength={80} value={query} placeholder={scope === 'learning' ? 'Search topic names or descriptions…' : 'Search a tutor name or subject…'}
       aria-invalid={Boolean(error)} aria-describedby={error ? `${id}-error` : undefined} onChange={(event) => { setQuery(event.target.value); setError(''); }} />
     <button className="btn btn-primary" type="submit" aria-label="Search"><Search size={19} aria-hidden="true" /></button>
     {error && <span className="form-error discovery-search-error" id={`${id}-error`}>{error}</span>}

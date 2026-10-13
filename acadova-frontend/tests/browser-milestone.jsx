@@ -23,7 +23,7 @@ window.fetch = async (url, options = {}) => {
   if (fail && path === fail) return response(null, 503, { message: 'Fixture service unavailable. Retry.' });
   if (path === '/api/users/me') return response(actor);
   if (path === '/api/users/tutors') {
-    const q = parsed.searchParams.get('subject') || '';
+    const q = parsed.searchParams.get('q') || parsed.searchParams.get('subject') || '';
     if (q === delayedSearch) return new Promise(resolve => { releaseSearch = () => resolve(response([peer])); });
     return response(!q || 'java'.includes(q.toLowerCase()) ? [peer] : []);
   }
@@ -31,8 +31,10 @@ window.fetch = async (url, options = {}) => {
   if (path.endsWith('/reviews')) return response([]);
   if (path === '/api/credits/rules') return response({ tutoringSessionCost: 20, startingCreditGrant: 100, assessmentReward: 20 });
   if (path === '/api/sessions') return response(body ? session : []);
-  if (path === '/api/admin/users') return response([student, peer, admin, moderator]);
-  if (path === '/api/admin/sessions') return response([session]);
+  if (path === '/api/admin/users') { const q = parsed.searchParams.get('q')?.toLowerCase(); return response([student, peer, admin, moderator].filter(row => (!q || [row.name, row.email].some(value => value?.toLowerCase().includes(q))) && (!parsed.searchParams.get('role') || row.role === parsed.searchParams.get('role')))); }
+  if (path === '/api/admin/trust-summary') return response({ protectionEvents: 0, roleChanges: 0, adminActions: 0, activeCooldowns: 0 });
+  if (path === '/api/admin/overview') return response({ total: 4, students: 2, moderators: 1, suspended: 0, unverified: 0 });
+  if (path === '/api/admin/sessions') return response(parsed.searchParams.get('status') === 'completed' ? [] : [session]);
   if (path === '/api/admin/audit-logs') { auditQuery = parsed.searchParams; return response([], 200, { pagination: { page: 1, total: 0, limit: 25 } }); }
   if (path === '/api/study-sets') return response([draft]);
   if (path === '/api/study-sets/shared') { const q = parsed.searchParams.get('q') || ''; return response('shared arrays java'.includes(q.toLowerCase()) ? [shared] : []); }
@@ -40,7 +42,9 @@ window.fetch = async (url, options = {}) => {
   if (path === '/api/learning/topics') return response([{ id: 'topic', name: 'Java arrays', description: 'Loops and collections', status: 'published' }]);
   if (path === '/api/notifications/unread-count') return response({ count: 0 });
   if (path.startsWith('/api/notifications') || path.startsWith('/api/moderator') || path.startsWith('/api/assessments') || path.startsWith('/api/learning') || path.startsWith('/api/credits')) return response([]);
-  if (path.startsWith('/api/analytics') || path === '/api/admin/security') return response({});
+  if (path === '/api/admin/security') return response({ counts: {}, events: [] });
+  if (path.startsWith('/api/analytics')) return response({});
+  if (path === '/api/moderator/overview') return response({ counts: {}, queue: [], recent: [], trend: { decisions: [], reports: [] } });
   throw new Error('Unexpected fixture request: ' + path);
 };
 let bridge;
@@ -52,7 +56,7 @@ const visible = el => el && el.getClientRects().length;
 const button = text => [...document.querySelectorAll('button')].find(el => visible(el) && el.textContent.trim() === text);
 const link = text => [...document.querySelectorAll('a')].find(el => visible(el) && el.textContent.trim() === text);
 const fill = (selector, value) => { const el = document.querySelector(selector); assert(el, 'Missing ' + selector); const prototype = el.tagName === 'TEXTAREA' ? HTMLTextAreaElement.prototype : el.tagName === 'SELECT' ? HTMLSelectElement.prototype : HTMLInputElement.prototype; Object.getOwnPropertyDescriptor(prototype, 'value').set.call(el, value); el.dispatchEvent(new Event('input', { bubbles: true })); el.dispatchEvent(new Event('change', { bubbles: true })); };
-const go = async path => { bridge.navigate(path); await until(() => bridge.location.pathname === path.split('?')[0], 'Navigate ' + path); await pause(160); };
+const go = async path => { bridge.navigate(path); await until(() => bridge.location.pathname === (path.startsWith('/admin/audit-logs') || path.startsWith('/admin/security') ? '/admin/trust-activity' : path.split('?')[0]), 'Navigate ' + path); await pause(160); };
 const key = async value => { window.__acadovaKey = value; await until(() => !window.__acadovaKey, 'Native ' + value); await pause(); };
 const layout = () => assert(document.documentElement.scrollWidth <= innerWidth + 1, 'Page horizontal overflow');
 const capture = async name => { document.querySelectorAll('.app-toast button').forEach(el => el.click()); await pause(); if (window.__acadovaCaptureEnabled) { window.__acadovaCapture = name; await until(() => !window.__acadovaCapture, 'Capture ' + name); } };
@@ -115,15 +119,15 @@ try {
   link('Clear search').click(); await until(() => document.getElementById('study-search')?.value === '', 'Shared clear sync');
   fail = '/api/study-sets/shared'; await go('/study-sets?view=shared&q=fail'); await until(() => button('Retry loading'), 'Study failure'); assert(!document.querySelector('.study-card'), 'No stale cards on error'); fail = ''; button('Retry loading').click(); await until(() => !button('Retry loading'), 'Study retry');
   await go('/'); actor = admin; await bridge.auth.refreshUser(); await go('/admin/users'); await until(() => document.querySelector('.admin-user-table'), 'Admin users');
-  fill('input[type="search"]', 'TAyL'); await pause(); assert(document.querySelectorAll('tbody tr').length === 1, 'User partial case search');
-  fill('.staff-filter-select select', 'moderator'); await pause(); assert(document.body.textContent.includes('No users match'), 'User combined filter');
-  fill('input[type="search"]', ''); await pause(); assert(document.querySelectorAll('tbody tr').length === 1, 'User clear retains role');
+  fill('input[type="search"]', 'TAyL'); await until(() => document.querySelectorAll('tbody tr').length === 1, 'Partial name server query'); assert(document.querySelectorAll('tbody tr').length === 1, 'User partial case search');
+  fill('.staff-filter-select select', 'moderator'); await until(() => document.body.textContent.includes('No users match'), 'Combined user query'); assert(document.body.textContent.includes('No users match'), 'User combined filter');
+  fill('input[type="search"]', ''); await until(() => document.querySelectorAll('tbody tr').length === 1, 'Role query clears name'); assert(document.querySelectorAll('tbody tr').length === 1, 'User clear retains role');
   fill('.staff-filter-select select', 'all'); await pause(); layout(); await capture('admin-users');
   for (const badge of document.querySelectorAll('.admin-user-table .badge')) assert(getComputedStyle(badge).whiteSpace === 'nowrap', 'Role badge stays on one line');
   await go('/admin/sessions'); await until(() => document.querySelector('input[type="search"]'), 'Admin sessions'); fill('input[type="search"]', 'aRRa'); await pause(); assert(document.querySelectorAll('tbody tr').length === 1, 'Session partial case search');
-  fill('.staff-filter-select select', 'completed'); await pause(); assert(document.body.textContent.includes('No sessions match'), 'Session combined status');
-  fill('input[type="search"]', ''); fill('.staff-filter-select select', 'all'); await pause(); assert(document.querySelectorAll('tbody tr').length === 1, 'Session clear');
-  await go('/admin/audit-logs'); await until(() => document.getElementById('audit-actor'), 'Audit input'); fill('#audit-actor', 'bad'); await pause(); button('Apply actor').click(); await until(() => document.querySelector('#audit-actor[aria-invalid="true"]'), 'Actor ID validation');
+  fill('.staff-filter-select select', 'completed'); await until(() => document.body.textContent.includes('No sessions match'), 'Stored status server query'); assert(document.body.textContent.includes('No sessions match'), 'Session combined status');
+  fill('input[type="search"]', ''); fill('.staff-filter-select select', 'all'); await until(() => document.querySelectorAll('tbody tr').length === 1, 'Session filters clear'); assert(document.querySelectorAll('tbody tr').length === 1, 'Session clear');
+  await go('/admin/audit-logs'); await until(() => document.querySelector('.trust-advanced'), 'Audit filters'); document.querySelector('.trust-advanced').open = true; await until(() => document.getElementById('audit-actor'), 'Audit input'); fill('#audit-actor', 'bad'); await pause(); button('Apply actor').click(); await until(() => document.querySelector('#audit-actor[aria-invalid="true"]'), 'Actor ID validation');
   fill('#audit-actor', student._id); await pause(); button('Apply actor').click(); await until(() => auditQuery?.get('actor') === student._id, 'Actor exact filter');
   fill('#audit-actor', ''); await pause(); button('Apply actor').click(); await until(() => !auditQuery?.has('actor'), 'Actor clear');
   // Title checks for staff routes exercise the actual router. Data views remain fixture-only.

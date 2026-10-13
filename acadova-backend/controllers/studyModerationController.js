@@ -40,7 +40,7 @@ exports.report = handle(async (req, res) => {
   }); res.json({ success: true, data: { id: idOf(report), state: report.state }, message: 'Report saved. Repeated active reports are grouped.' });
 });
 async function staffView(row) { await row.populate('owner', 'name'); const reports = await StudyReport.find({ studySet: row._id, state: 'open' }).populate('reporter', 'name').sort({ createdAt: 1 }).limit(100).lean();
-  return { ...ownerView(row), authorId: idOf(row.owner), authorName: row.owner?.name || 'Acadova Student', deletedAt: row.deletedAt, reports: reports.map(report => ({ id: idOf(report), reporterName: report.reporter?.name || 'Acadova Student', reason: report.reason, revision: report.revision, cycle: report.cycle, createdAt: report.createdAt })) }; }
+  return { ...ownerView(row), authorId: idOf(row.owner), authorName: row.owner?.name || 'Acadova Student', deletedAt: row.deletedAt, submittedAt: row.submittedAt, reports: reports.map(report => ({ id: idOf(report), reporterName: report.reporter?.name || 'Acadova Student', reason: report.reason, revision: report.revision, cycle: report.cycle, createdAt: report.createdAt })) }; }
 exports.list = handle(async (req, res) => { const reports = await StudyReport.find({ state: 'open' }).select('studySet').sort({ createdAt: 1 }).limit(100).lean();
   const rows = await StudySet.find(req.validatedQuery?.view === 'removed' ? { state: 'removed', deletedAt: null } : { $or: [{ state: 'pending', deletedAt: null }, { _id: { $in: reports.map(report => report.studySet) } }] }).sort({ submittedAt: 1, _id: 1 }).limit(100);
   res.json({ success: true, data: await Promise.all(rows.map(staffView)) }); });

@@ -8,8 +8,10 @@ const { publicReputation, reputationStages } = require('../utils/ratingReputatio
 // GET /api/users/me - the logged-in user's own profile.
 exports.getMe = async (req, res) => {
   try {
+    // Keep historical absence of emailVerified intact; schema hydration would
+    // apply the new-account false default to this otherwise eligible account.
     const user = await User.findById(req.user.id)
-      .select('-password -failedLoginAttempts -lastFailedLoginAt -loginCooldownUntil');
+      .select('-password -failedLoginAttempts -lastFailedLoginAt -loginCooldownUntil').lean();
     if (!user) {
       return res.status(404).json({ success: false, message: 'User not found' });
     }
@@ -27,7 +29,9 @@ exports.getMe = async (req, res) => {
 exports.updateMe = async (req, res) => {
   try {
     const { name, skillsToTeach, skillsToLearn, weeklyAvailability } = req.body;
-    const updates = {};
+    let updates;
+    try { updates = require('../utils/profileDetails').profileUpdates(req.body); }
+    catch (error) { return res.status(400).json({ success: false, message: error.message }); }
     if (weeklyAvailability !== undefined) updates.weeklyAvailability = require('../utils/weeklyAvailability').validateAvailability(weeklyAvailability);
 
     if (name !== undefined) {
@@ -60,7 +64,7 @@ exports.updateMe = async (req, res) => {
 // GET /api/users/tutors?subject=Java - tutor discovery for the matching hub.
 exports.searchTutors = async (req, res) => {
   try {
-    const { subject } = req.validatedQuery;
+    const { subject, q } = req.validatedQuery;
     const filter = {
       ...availableStudentFilter(),
       _id: { $ne: new mongoose.Types.ObjectId(req.user.id) },
@@ -69,6 +73,10 @@ exports.searchTutors = async (req, res) => {
         : { $exists: true, $ne: [] },
     };
 
+    if (q) filter.$or = [
+      { name: { $regex: escapeRegExp(q), $options: 'i' } },
+      { skillsToTeach: { $regex: escapeRegExp(q), $options: 'i' } },
+    ];
     const tutors = await User.aggregate([
       { $match: filter }, ...reputationStages(),
       { $sort: { rating: -1, ratingCount: -1, _id: 1 } }, { $limit: 50 },
@@ -90,13 +98,20 @@ exports.getUserById = async (req, res) => {
     }
 
     const user = await User.findOne({ _id: id, ...availableStudentFilter() })
-      .select('name rating skillsToTeach skillsToLearn weeklyAvailability role createdAt');
+      .select('name skillsToTeach skillsToLearn weeklyAvailability role bio university yearLevel languages profileVisibility');
     if (!user) {
       return res.status(404).json({ success: false, message: 'Peer profile not found' });
     }
 
     const profile = user.toObject ? user.toObject() : user;
-    res.json({ success: true, message: 'User profile retrieved', data: { ...profile, ...await publicReputation(id) } });
+    // Explicit public DTO: even an unexpectedly populated document cannot leak
+    // email, credentials, security/verification metadata or private preferences.
+    res.json({ success: true, message: 'User profile retrieved', data: {
+      _id: profile._id, name: profile.name, role: profile.role,
+      skillsToTeach: profile.skillsToTeach || [], skillsToLearn: profile.skillsToLearn || [],
+      weeklyAvailability: profile.weeklyAvailability ?? null,
+      ...require('../utils/profileDetails').publicProfileDetails(profile), ...await publicReputation(id),
+    } });
   } catch (error) {
     res.status(500).json({ success: false, message: 'Server error while retrieving user profile' });
   }

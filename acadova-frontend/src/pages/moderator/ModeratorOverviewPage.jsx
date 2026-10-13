@@ -1,93 +1,47 @@
-import React, { useEffect, useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
-import moderationService from '../../services/moderationService';
-import learningService from '../../services/learningService';
-import assessmentService from '../../services/assessmentService';
+import React, { useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
+import { FileCheck, Flag, MessagesSquare, CheckCircle2, TriangleAlert, Clock3, BarChart3, ArrowRight } from 'lucide-react';
+import analyticsService from '../../services/analyticsService';
 import Alert from '../../components/common/Alert';
-import LoadingSpinner from '../../components/common/LoadingSpinner';
-import { formatSessionDateTime } from '../../utils/sessionPresentation';
-import { staffLearningHash } from '../../utils/staffLearningNavigation';
-
-const empty = { disputes: [], resolved: [], resources: [], topics: [], modules: [], assessments: [] };
-const names = Object.keys(empty);
-const kind = (item) => item.type === 'activity' ? 'Review recommended'
-  : item.type === 'content' ? 'Learning content' : 'Session exception';
-
+import ModerationQueue from '../../components/staff/ModerationQueue';
+import { DashboardHeader, DashboardKpis, DashboardPanel, RecordIcon } from '../../components/staff/DashboardPrimitives';
+import DashboardTrend from '../../components/staff/DashboardTrend';
+import { useDashboardData } from '../../utils/useDashboardData';
+import { dailyModeration, readableTime, initials, eventLabel, decisionStatus } from '../../utils/staffPresentation';
+import { Link } from 'react-router-dom';
+const sources = [['overview', analyticsService.getModeratorDashboard]];
+const series = [{ key: 'reviews', label: 'Review decisions recorded' }, { key: 'reports', label: 'Study reports created' }, { key: 'sessions', label: 'Session decisions recorded' }];
 export default function ModeratorOverviewPage() {
-  const [data, setData] = useState(empty);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
-  const [availability, setAvailability] = useState({});
-  const [type, setType] = useState('all');
-  const [status, setStatus] = useState('open');
-  const [sort, setSort] = useState('oldest');
-  const load = async () => {
-    setLoading(true);
-    const results = await Promise.allSettled([
-      moderationService.getDisputedSessions(), moderationService.getResolvedSessions(),
-      learningService.staffResources(), learningService.staffTopics(),
-      learningService.staffModules(), assessmentService.staffList(),
-    ]);
-    setAvailability(Object.fromEntries(names.map((name, index) => [name, results[index].status === 'fulfilled'])));
-    setData(Object.fromEntries(names.map((name, index) =>
-      [name, results[index].status === 'fulfilled' ? results[index].value.data || [] : []])));
-    setError(results.some((result) => result.status === 'rejected')
-      ? 'Some queue sections could not be loaded. Refresh to try again.' : '');
-    setLoading(false);
-  };
-  useEffect(() => { Promise.resolve().then(load); }, []);
-  const rows = useMemo(() => {
-    const items = [
-      ...data.disputes.map((row) => ({ id: row._id, type: 'dispute', status: 'open',
-        title: row.subject, detail: row.disputedBy ? `Disputed by ${row.disputedBy.name || 'a participant'}` : 'Unresolved completion review referral',
-        date: row.reviewReferral?.createdAt || row.disputedAt, to: `/moderator/disputes?session=${row._id}`, priority: 1 })),
-      ...data.resources.filter((row) => row.reviewStatus === 'submitted').map((row) => ({
-        id: row.id, type: 'content', status: 'open', title: row.title,
-        detail: 'Resource awaiting review', date: row.createdAt, to: `/moderator/learning${staffLearningHash('resources')}`, priority: 2 })),
-      ...data.topics.filter((row) => row.status === 'draft').map((row) => ({
-        id: row.id, type: 'content', status: 'open', title: row.name,
-        detail: 'Topic draft', date: row.createdAt, to: `/moderator/learning${staffLearningHash('topics')}`, priority: 3 })),
-      ...data.modules.filter((row) => row.status === 'draft').map((row) => ({
-        id: row.id, type: 'content', status: 'open', title: row.title,
-        detail: 'Module draft', date: row.createdAt, to: `/moderator/learning${staffLearningHash('modules')}`, priority: 3 })),
-      ...data.assessments.filter((row) => row.status === 'draft').map((row) => ({
-        id: row.id, type: 'content', status: 'open', title: row.title,
-        detail: 'Assessment draft', date: row.createdAt, to: '/moderator/assessments', priority: 3 })),
-      ...data.disputes.filter((row) => row.reviewIndicators?.includes('prior_credit_transaction'))
-        .map((row) => ({ id: `signal-${row._id}`, type: 'activity', status: 'open',
-          title: row.subject, detail: 'Session exception has a recorded credit transaction',
-          date: row.disputedAt, to: '/moderator/disputes', priority: 0 })),
-      ...data.resolved.map((row) => ({ id: row._id, type: 'dispute', status: 'resolved',
-        title: row.subject, detail: row.status === 'completed' ? 'Closed by participant confirmations' : row.resolution === 'confirm_session' ? 'Resolved as valid' : 'Resolved as invalid',
-        date: row.resolvedAt, to: '/moderator/disputes?status=resolved', priority: 4 })),
-    ];
-    return items.filter((item) => item.status === status && (type === 'all' || item.type === type))
-      .sort((a, b) => sort === 'priority' ? a.priority - b.priority
-        : sort === 'oldest' ? new Date(a.date || 0) - new Date(b.date || 0)
-          : new Date(b.date || 0) - new Date(a.date || 0));
-  }, [data, type, status, sort]);
-
-  return <div className="staff-page"><header className="staff-page-header"><div>
-    <span className="staff-eyebrow">Moderator / Exceptions</span><h1>Needs Attention</h1>
-    <p>Normal tutoring sessions need no Moderator approval. Review exceptions and learning content here.</p>
-  </div></header><Alert type="danger" message={error} />
-    {loading ? <LoadingSpinner text="Loading review queue..." /> : <>
-      <div className="staff-queue-summary card"><strong>{availability.disputes ? data.disputes.length : 'Unavailable'} Session exceptions</strong>
-        <strong>{availability.resources ? data.resources.filter((row) => row.reviewStatus === 'submitted').length : 'Unavailable'} resource reviews</strong>
-        <strong>{availability.disputes ? data.disputes.filter((row) => row.reviewIndicators?.includes('prior_credit_transaction')).length : 'Unavailable'} review recommendations</strong>
-        <Link to="/moderator/reviews">Browse review moderation</Link></div>
-      <div className="staff-queue-filters card">
-        <label>Status <select className="form-select" value={status} onChange={(event) => setStatus(event.target.value)}><option value="open">Open</option><option value="resolved">Resolved</option></select></label>
-        <label>Type <select className="form-select" value={type} onChange={(event) => setType(event.target.value)}><option value="all">All</option><option value="dispute">Session exceptions</option><option value="content">Learning content</option><option value="activity">Review recommended</option></select></label>
-        <label>Sort <select className="form-select" value={sort} onChange={(event) => setSort(event.target.value)}><option value="oldest">Oldest first</option><option value="newest">Newest first</option><option value="priority">Priority</option></select></label>
-        <button type="button" className="btn btn-secondary btn-sm" onClick={load}>Refresh queue</button>
+  const [params, setParams] = useSearchParams();
+  const days = [7, 30, 90].includes(Number(params.get('days'))) ? Number(params.get('days')) : 7;
+  const [showQueue, setShowQueue] = useState(false);
+  const { data, loading, busy, error, updatedAt, refresh } = useDashboardData(sources, { days });
+  const overview = data.overview; const counts = overview?.counts;
+  const openQueue = () => { setShowQueue(true); requestAnimationFrame(() => document.getElementById('full-review-queue')?.scrollIntoView({ block: 'start' })); };
+  return <div className="staff-page operations-dashboard">
+    <DashboardHeader title="Moderator Overview" description="Review submitted content, resolve exceptions, and keep learning resources reliable." updatedAt={updatedAt} busy={busy} onRefresh={refresh} />
+    <Alert type="danger" message={error} />
+    <><span className="sr-only" role="status">{loading ? 'Loading moderation overview...' : ''}</span>
+      <DashboardKpis loading={loading} items={[
+        { label: 'Pending Reviews', value: counts?.pendingReviews, detail: 'Submitted resources and Study Sets', icon: FileCheck, tone: 'blue' },
+        { label: 'Reported Content', value: counts?.reportedContent, detail: 'Open Study Set reports', icon: Flag, tone: 'red' },
+        { label: 'Session Disputes', value: counts?.sessionDisputes, detail: 'Sessions explicitly disputed', icon: MessagesSquare, tone: 'violet' },
+        { label: 'Decisions Today', value: counts?.decisionsToday, detail: 'Recorded staff decisions \u00b7 UTC', icon: CheckCircle2, tone: 'green' },
+      ]} />
+      <div className="dashboard-panel-grid">
+        <DashboardPanel title="Priority Queue" description="Oldest recorded open cases first." icon={TriangleAlert} action={<button className="dashboard-panel-link" onClick={openQueue}>View all cases<ArrowRight size={16} aria-hidden="true" /></button>}>
+          {!overview?.queue ? <p className="dashboard-empty">Review cases are unavailable.</p> : !overview.queue.length ? <p className="dashboard-empty">No open cases in these queues.</p> : <ul className="dashboard-records staff-queue-list">{overview.queue.slice(0, 6).map(row => <li key={row.type + row.id}><Link to={row.href}><RecordIcon icon={row.type === 'dispute' ? MessagesSquare : row.type === 'report' ? Flag : FileCheck} tone={row.type === 'report' ? 'amber' : 'blue'} /><div className="record-copy"><strong>{row.title}</strong><p>{row.detail}</p></div><time dateTime={row.date}>{readableTime(row.date)}</time></Link></li>)}</ul>}
+        </DashboardPanel>
+        <DashboardPanel title="Recent Moderation Activity" description="Latest recorded moderation decisions." icon={Clock3}>
+          {!overview?.recent ? <p className="dashboard-empty">Recorded decisions are unavailable.</p> : !overview.recent.length ? <p className="dashboard-empty">No recorded moderation decisions yet.</p> : <ul className="dashboard-records">{overview.recent.map(row => <li className="dashboard-record" key={row._id}><RecordIcon icon={FileCheck} initials={initials(row.actor?.name)} tone="violet" /><div className="record-copy"><strong>{row.actor?.name || 'Former staff account'}</strong><p>{row.summary || eventLabel(row.action)}</p><time dateTime={row.createdAt}>{readableTime(row.createdAt)}</time></div><span className="dashboard-status">{decisionStatus(row)}</span></li>)}</ul>}
+        </DashboardPanel>
       </div>
-      <p className="form-hint">{rows.length} items from available sources in this view. Review recommendations are not fraud findings.</p>
-      {rows.length ? <div className="staff-queue-list">{rows.map((item) => <article className="card" key={`${item.type}-${item.id}`}>
-        <span className="staff-eyebrow">{kind(item)}</span><h2>{item.title}</h2><p>{item.detail}</p>
-        <p className="form-hint">{formatSessionDateTime(item.date) || 'Time unavailable'}</p>
-        <Link to={item.to} className="btn btn-primary btn-sm">Review</Link>
-      </article>)}</div> : <p className="card">{error ? 'The queue is incomplete. Refresh to load unavailable sources.' : 'No items match this view.'} <Link to="/moderator/reviews">Browse review moderation</Link>.</p>}
-    </>}
+      <DashboardPanel title="Moderation Workload Trend" description="Recorded review decisions, new Study reports and Session decisions." icon={BarChart3} className="dashboard-trend-panel"
+        action={<div className="dashboard-periods" role="group" aria-label="Moderation trend period">{[7, 30, 90].map(value => <button type="button" key={value} aria-pressed={days === value} onClick={() => { const next = new URLSearchParams(params); next.set('days', String(value)); setParams(next); }}>{value} days</button>)}</div>}>
+        {overview?.from && overview?.to ? <DashboardTrend rows={dailyModeration(overview.trend, overview)} series={series} emptyText="No recorded moderation activity in this period." /> : <p className="dashboard-empty">Workload trend is unavailable.</p>}
+      </DashboardPanel>
+      <details className="dashboard-help"><summary>About these moderation records</summary><p>Counts use actual stored states. The queue is ordered by recorded age, with no invented severity. Explicit review referrals can appear alongside disputes. Draft topics, modules and assessments, resolved cases and review recommendations remain available in the full review queue.</p><p>Decisions Today uses the UTC calendar day and includes recorded Administrator and Moderator moderation decisions. Trend dates use UTC. Report creation counts first submissions, not later reopening cycles. Normal sessions need no mandatory Moderator approval. Updates are checked every 45 seconds while visible.</p></details>
+      {showQueue && <ModerationQueue />}
+    </>
   </div>;
 }

@@ -1,6 +1,6 @@
 import React, { useRef, useState, useSyncExternalStore } from 'react';
 import { Link, NavLink, useLocation } from 'react-router-dom';
-import { BookOpen, CalendarDays, Coins, GraduationCap, Home, Layers, Menu, MessageCircle, Search, User } from 'lucide-react';
+import { BookOpen, CalendarDays, Coins, GraduationCap, Home, Layers, Menu, MessageCircle, Search, User, Settings } from 'lucide-react';
 import SessionConversations from '../student/SessionConversations';
 import DiscoverySearch from './DiscoverySearch';
 import { useAuth } from '../../context/AuthContext';
@@ -9,7 +9,7 @@ import AccountMenu from './AccountMenu';
 import NotificationBell from './NotificationBell';
 import { getPageContext, getRoleNavigation } from '../../config/roleNavigation';
 
-const icons = { Home, 'Find Tutors': GraduationCap, Learning: BookOpen, Sessions: CalendarDays, Messages: MessageCircle, Credits: Coins, Profile: User };
+const icons = { Home, 'Find Tutors': GraduationCap, Learning: BookOpen, Sessions: CalendarDays, Messages: MessageCircle, Credits: Coins, Profile: User, Settings };
 const links = getRoleNavigation('student').map(({ to, label }) => [to, label, icons[label]]);
 const compactQuery = '(max-width: 1024px)';
 const subscribeViewport = (changed) => {

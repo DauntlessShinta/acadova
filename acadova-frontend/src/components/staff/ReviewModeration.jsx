@@ -12,7 +12,7 @@ const filters = [
   ['all', 'All reviews'], ['visible', 'Visible'], ['hidden', 'Hidden'],
 ];
 
-export const ReviewModeration = () => {
+export const ReviewModeration = ({ actions }) => {
   const toast = useToast();
   const confirm = useConfirm();
   const [reviews, setReviews] = useState([]);
@@ -64,7 +64,10 @@ export const ReviewModeration = () => {
   return (
     <>
       <Alert type="danger" message={error} onClose={() => setError('')} />
-      <div className="card moderation-filters" aria-label="Review visibility filters">{filters.map(([key, label]) => <button type="button" key={key} className={`btn btn-sm ${filter === key ? 'btn-primary' : 'btn-secondary'}`} aria-pressed={filter === key} onClick={() => setFilter(key)}>{label}</button>)}</div>
+      <div className="card moderation-toolbar">
+        <div className="moderation-filters" role="group" aria-label="Review visibility filters">{filters.map(([key, label]) => <button type="button" key={key} className={`btn btn-sm ${filter === key ? 'btn-primary' : 'btn-secondary'}`} aria-pressed={filter === key} onClick={() => setFilter(key)}>{label}</button>)}</div>
+        {actions && <div className="moderation-actions">{actions}</div>}
+      </div>
       {loading ? <LoadingSpinner text="Loading reviews..." size={34} /> : !available ? <EmptyState icon={MessageSquare} title="Reviews unavailable" description="Review data could not be loaded." actionText="Retry" onAction={load} /> : visible.length === 0 ? <EmptyState icon={MessageSquare} title="No reviews in this view" description="Choose another filter or check back after students submit reviews." /> : <div className="staff-review-list">{visible.map((review) => <article className="card staff-review-card" key={review._id}>
         <div className="staff-review-header"><div><div className="staff-review-meta"><Badge variant={review.isHidden ? 'danger' : 'active'}>{review.isHidden ? 'Hidden' : 'Visible'}</Badge><span><Star size={14} fill="currentColor" /> {review.rating}/5</span><time dateTime={review.createdAt}>{review.createdAt ? new Date(review.createdAt).toLocaleString() : 'Date unavailable'}</time></div><h2>{review.session?.subject || 'Peer learning session'}</h2><p><UserRound size={15} /> From <strong>{review.fromUser?.name || 'Deleted account'}</strong> to <strong>{review.toUser?.name || 'Deleted account'}</strong></p></div><button type="button" className={`btn btn-sm ${review.isHidden ? 'btn-secondary' : 'btn-danger'}`} disabled={Boolean(updatingId)} onClick={() => changeVisibility(review)}>{review.isHidden ? <Eye size={15} /> : <EyeOff size={15} />}{updatingId === review._id ? 'Updating...' : review.isHidden ? 'Restore review' : 'Hide review'}</button></div>
         <blockquote>{review.comment || 'No written comment was provided.'}</blockquote>

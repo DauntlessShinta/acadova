@@ -4,6 +4,7 @@
  */
 
 import { authRecoveryReason } from '../utils/authRecovery';
+import { apiUrl } from '../utils/apiUrl';
 const API_BASE = import.meta.env.VITE_API_URL || '';
 
 let onUnauthorizedCallback = null;
@@ -32,7 +33,7 @@ export async function request(endpoint, options = {}) {
     config.body = JSON.stringify(config.body);
   }
 
-  const url = `${API_BASE}${endpoint.startsWith('/') ? endpoint : `/${endpoint}`}`;
+  const url = apiUrl(API_BASE, endpoint);
 
   try {
     const response = await fetch(url, config);
@@ -52,6 +53,10 @@ export async function request(endpoint, options = {}) {
       throw error;
     }
 
+    if (['POST', 'PATCH', 'PUT', 'DELETE'].includes(config.method) && token
+      && token === localStorage.getItem('acadova_token')) {
+      window.dispatchEvent(new CustomEvent('acadova:data-changed', { detail: { endpoint } }));
+    }
     return data;
   } catch (err) {
     if (!err.status) {

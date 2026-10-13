@@ -20,3 +20,10 @@ test('detail and query views get accurate context without substring query matche
   assert.equal(getPageContext('/study-sets/new').title, 'Create a study set');
   assert.equal(getPageContext('/assessments').learning, true);
 });
+
+test('administrator disputes retain their shell context and moderation destination', () => {
+  assert.deepEqual(getPageContext('/admin/disputes/'), {
+    title: 'Session disputes', area: 'Administration', to: '/admin/moderation',
+  });
+  assert.equal(getPageContext('/moderator/disputes').area, 'Moderator');
+});

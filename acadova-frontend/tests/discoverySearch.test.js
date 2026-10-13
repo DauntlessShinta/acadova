@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { discoveryDestination, discoveryQueryError, filterLearningTopics, learningTopicTitle } from '../src/utils/discoverySearch.js';
 
 test('scoped discovery uses existing routes and safely encodes teaching subjects', () => {
-  assert.equal(discoveryDestination('tutors', '  C++ & Java  '), '/tutors?subject=C%2B%2B%20%26%20Java');
+  assert.equal(discoveryDestination('tutors', '  C++ & Java  '), '/tutors?q=C%2B%2B%20%26%20Java');
   assert.equal(discoveryDestination('learning', '数学'), '/learning?q=%E6%95%B0%E5%AD%A6');
   assert.equal(discoveryDestination('tutors', ' '), '/tutors');
   assert.equal(discoveryDestination('learning', ''), '/learning');

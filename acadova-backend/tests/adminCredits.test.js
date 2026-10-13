@@ -215,14 +215,14 @@ test('adjustment ledger shape and partial uniqueness are explicit', async () => 
 
 test('Admin credit analytics separates tutoring transfers from issuance and adjustments', async () => {
   const original = CreditTransaction.aggregate;
-  CreditTransaction.aggregate = async () => [
+  CreditTransaction.aggregate = async () => [{ rows: [
     { _id: { type: 'session_payment' }, count: 2, amount: 40 },
     { _id: { type: 'initial_grant' }, count: 1, amount: 100 },
     { _id: { type: 'assessment_reward' }, count: 1, amount: 30 },
     { _id: { type: 'learning_unlock' }, count: 1, amount: 15 },
     { _id: { type: 'admin_adjustment', direction: 'credit' }, count: 1, amount: 5 },
     { _id: { type: 'admin_adjustment', direction: 'debit' }, count: 1, amount: 3 },
-  ];
+  ], trend: [] }];
   try {
     const res = response();
     await analytics.getCreditAnalytics({}, res);

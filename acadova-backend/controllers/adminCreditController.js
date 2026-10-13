@@ -134,6 +134,14 @@ exports.getRecentCreditActivity = async (req, res) => {
       'initial_grant', 'session_payment', 'assessment_reward', 'learning_unlock', 'admin_adjustment',
     ] } }).select('type amount fromUser toUser adjustmentTarget adjustmentActor adjustmentDirection adjustmentReason adjustmentReference session assessment resource module createdAt')
       .sort({ createdAt: -1, _id: -1 }).limit(50).lean();
-    return res.json({ success: true, data: rows });
+    // Resolve only participants in these 50 events, independently of the paged picker.
+    const ids = [...new Set(rows.flatMap(row => [row.fromUser, row.toUser, row.adjustmentTarget]).filter(Boolean).map(String))];
+    const people = ids.length ? await User.find({ _id: { $in: ids } }).select('name').limit(150).lean().maxTimeMS(8000) : [];
+    const names = new Map(people.map(person => [String(person._id), person.name]));
+    return res.json({ success: true, data: rows.map(row => ({ ...row,
+      fromUserName: names.get(String(row.fromUser)) || null,
+      toUserName: names.get(String(row.toUser)) || null,
+      adjustmentTargetName: names.get(String(row.adjustmentTarget)) || null,
+    })) });
   } catch { return res.status(503).json({ success: false, message: 'Credit activity unavailable.' }); }
 };

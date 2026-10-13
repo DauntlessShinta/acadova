@@ -3,7 +3,7 @@ import analyticsService from '../../services/analyticsService';
 import Alert from '../../components/common/Alert';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
 
-const actions = ['study.publication_decided', 'study.report_closed', 'session.dispute_resolved', 'credit.rules_changed', 'credit.admin_adjustment',
+const actions = ['study.publication_decided', 'study.report_closed', 'session.dispute_resolved', 'session.completion_review_resolved', 'session.review_clarification_requested', 'credit.rules_changed', 'credit.admin_adjustment',
   'learning.topic_created', 'learning.topic_published', 'learning.topic_archived',
   'learning.resource_approved', 'learning.resource_rejected', 'learning.resource_archived',
   'learning.module_created', 'learning.module_published', 'learning.module_archived',
@@ -13,13 +13,14 @@ const actions = ['study.publication_decided', 'study.report_closed', 'session.di
   'security.login_success_after_failures', 'security.suspended_account_login_attempt',
   'learning.topic_updated', 'learning.resource_created', 'learning.resource_updated',
   'learning.module_updated', 'learning.assessment_updated'];
-const actionLabel = (value) => value.replace(/^[^.]+\./, '').replaceAll('_', ' ');
+const actionLabel = (value) => value.replace('.', ' / ').replaceAll('_', ' ');
 
 export default function AdminAuditLogsPage() {
   const [rows, setRows] = useState([]);
   const [pagination, setPagination] = useState({ page: 1, limit: 25, total: 0 });
   const [page, setPage] = useState(1);
   const [action, setAction] = useState('');
+  const [category, setCategory] = useState('');
   const [actor, setActor] = useState('');
   const [actorDraft, setActorDraft] = useState('');
   const [targetType, setTargetType] = useState('');
@@ -34,22 +35,25 @@ export default function AdminAuditLogsPage() {
       try {
         const response = await analyticsService.getAuditLogs({ page, limit: 25,
           ...(action ? { action } : {}), ...(actor ? { actor } : {}),
+          ...(category ? { category } : {}),
           ...(targetType ? { targetType } : {}) });
         if (active) { setRows(response.data || []); setPagination(response.pagination); setError(''); }
       } catch (err) { if (active) setError(err.message || 'Audit logs could not be loaded.'); }
       finally { if (active) setLoading(false); }
     });
     return () => { active = false; };
-  }, [page, action, actor, targetType, attempt]);
+  }, [page, action, actor, targetType, category, attempt]);
   const updateFilter = (setter) => (event) => { setter(event.target.value.trim()); setPage(1); };
   return <div className="staff-page">
     <header className="staff-page-header"><div><span className="staff-eyebrow">Administration / Audit</span>
       <h1>Audit logs</h1><p>Recorded privileged actions from P4 onward. Historical actions are not backfilled.</p></div></header>
     <Alert type="danger" message={error} />
     <div className="card staff-filter-bar staff-audit-filters">
+      <label>Category <select className="form-select" value={category} onChange={event => { setCategory(event.target.value); setAction(''); setPage(1); }}><option value="">All categories</option>{['session', 'credit', 'learning', 'review', 'user', 'security', 'study'].map(value => <option key={value}>{value}</option>)}</select></label>
       <label>Action <select className="form-select" value={action} onChange={updateFilter(setAction)}>
-        <option value="">All actions</option>{actions.map((value) => <option key={value} value={value}>{actionLabel(value)}</option>)}
+        <option value="">All actions in category</option>{actions.filter(value => !category || value.startsWith(category + '.')).map((value) => <option key={value} value={value}>{actionLabel(value)}</option>)}
       </select></label>
+      <button type="button" className="btn btn-secondary btn-sm" onClick={() => { setCategory(''); setAction(''); setActor(''); setActorDraft(''); setActorError(''); setTargetType(''); setPage(1); }}>Clear filters</button>
       <div className="audit-actor-filter"><label className="form-label" htmlFor="audit-actor">Actor ID</label><div className="staff-inline-search"><input id="audit-actor" aria-invalid={Boolean(actorError)} aria-describedby={actorError ? 'audit-actor-error' : undefined} className="form-input" value={actorDraft} onChange={(event) => setActorDraft(event.target.value)} placeholder="User ID" />
       <button type="button" className="btn btn-secondary btn-sm" onClick={() => {
         const value = actorDraft.trim();

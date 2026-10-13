@@ -17,7 +17,12 @@ export const AdminCreditsPage = () => {
   const [rules, setRules] = useState(null);
   const [draft, setDraft] = useState({});
   const [students, setStudents] = useState([]);
+  const [studentSearch, setStudentSearch] = useState('');
+  const [studentSearchError, setStudentSearchError] = useState('');
+  const studentSearchVersion = useRef({ value: 0 });
   const [activity, setActivity] = useState([]);
+  const [activityType, setActivityType] = useState('all');
+  const [activitySearch, setActivitySearch] = useState('');
   const [targetStudentId, setTargetStudentId] = useState('');
   const [direction, setDirection] = useState('credit');
   const [amount, setAmount] = useState('');
@@ -34,7 +39,7 @@ export const AdminCreditsPage = () => {
       setLoading(true);
       setError('');
       const [ruleResponse, userResponse, activityResponse] = await Promise.all([
-        api.get('/api/admin/credits/rules'), api.get('/api/admin/users'), api.get('/api/admin/credits/activity'),
+        api.get('/api/admin/credits/rules'), api.get('/api/admin/users?role=student'), api.get('/api/admin/credits/activity'),
       ]);
       setRules(ruleResponse.data);
       setDraft(ruleResponse.data);
@@ -44,10 +49,29 @@ export const AdminCreditsPage = () => {
     finally { setLoading(false); }
   };
   useEffect(() => { Promise.resolve().then(load); }, []);
+  useEffect(() => {
+    const ticket = ++studentSearchVersion.current.value;
+    const timer = setTimeout(async () => {
+      try {
+        const query = new URLSearchParams({ role: 'student', ...(studentSearch.trim() ? { q: studentSearch.trim() } : {}) });
+        const response = await api.get('/api/admin/users?' + query);
+        if (ticket !== studentSearchVersion.current.value) return;
+        setStudents(current => [...response.data, ...current.filter(row => row._id === targetStudentId && !response.data.some(found => found._id === row._id))]);
+        setStudentSearchError('');
+      } catch { if (ticket === studentSearchVersion.current.value) setStudentSearchError('Student search is unavailable. Try again.'); }
+    }, 250);
+    const state = studentSearchVersion.current; return () => { clearTimeout(timer); state.value++; };
+  }, [studentSearch, targetStudentId]);
 
   const target = useMemo(() => students.find((student) => student._id === targetStudentId),
     [students, targetStudentId]);
   const numericAmount = Number(amount);
+  const visibleActivity = useMemo(() => activity.filter(row => {
+    const participant = key => row[key + 'Name'] || students.find(student => student._id === row[key])?.name || '';
+    const query = activitySearch.trim().toLowerCase();
+    return (activityType === 'all' || row.type === activityType) && (!query
+      || [row.type, row.adjustmentReason, row.adjustmentDirection, participant('fromUser'), participant('toUser'), row.adjustmentTargetName].some(value => value?.toLowerCase().includes(query)));
+  }), [activity, activityType, activitySearch, students]);
   const projected = target && Number.isSafeInteger(numericAmount)
     ? target.credits + (direction === 'credit' ? numericAmount : -numericAmount) : null;
 
@@ -81,8 +105,8 @@ export const AdminCreditsPage = () => {
     mutationPending.current = true;
     setBusy(true); setAdjustmentError('');
     try {
-      const currentStudents = (await api.get('/api/admin/users')).data.filter((user) => user.role === 'student');
-      setStudents(currentStudents);
+      const currentStudents = (await api.get('/api/admin/users?' + new URLSearchParams({ role: 'student', id: targetStudentId }))).data;
+      setStudents(current => current.map(row => currentStudents.find(fresh => fresh._id === row._id) || row));
       const currentTarget = currentStudents.find((student) => student._id === targetStudentId);
       if (!currentTarget) throw new Error('Student is no longer available. Reload and choose another account.');
       const currentProjected = currentTarget.credits + (direction === 'credit' ? numericAmount : -numericAmount);
@@ -114,9 +138,12 @@ export const AdminCreditsPage = () => {
         <button className="btn btn-primary" disabled={busy || !rules}>Save credit rules</button>
       </form></section>
       <section className="card"><h2>Student balance correction</h2>
+        <label className="form-label">Find a Student by name or email<input type="search" className="form-input" maxLength={80} value={studentSearch} onChange={event => setStudentSearch(event.target.value)} /></label>
+        <p className="form-hint">Up to 25 matching accounts. Search to find another Student; your selected account remains available.</p>
+        <p className="form-error" role="alert">{studentSearchError}</p>
         {!students.length && <p>No Student accounts are available for a balance correction.</p>}
         <fieldset className="prerequisite-fields" disabled={!students.length}><form onSubmit={submitAdjustment}>
-        <div className="form-group"><label className="form-label" htmlFor="targetStudent">Target Student</label><select className="form-select" id="targetStudent" required value={targetStudentId} onChange={(event) => setTargetStudentId(event.target.value)}><option value="">Select a Student</option>{students.map((student) => <option key={student._id} value={student._id}>{student.name} ({student.email})</option>)}</select></div>
+        <div className="form-group"><label className="form-label" htmlFor="targetStudent">Target Student</label><select className="form-select" id="targetStudent" required value={targetStudentId} onChange={(event) => setTargetStudentId(event.target.value)}><option value="" disabled hidden>Select a Student</option>{students.map((student) => <option key={student._id} value={student._id}>{student.name} ({student.email})</option>)}</select></div>
         <div className="form-group"><label className="form-label" htmlFor="direction">Direction</label><select className="form-select" id="direction" value={direction} onChange={(event) => setDirection(event.target.value)}><option value="credit">Credit</option><option value="debit">Debit</option></select></div>
         <div className="form-group"><label className="form-label" htmlFor="amount">Amount</label><input className="form-input" id="amount" type="number" min="1" max="1000" step="1" required value={amount} onChange={(event) => setAmount(event.target.value)} /></div>
         <div className="form-group"><label className="form-label" htmlFor="reason">Reason shown to Student (10–500 characters; no private notes)</label><textarea className="form-input" id="reason" minLength="10" maxLength="500" required value={reason} onChange={(event) => setReason(event.target.value)} /></div>
@@ -125,7 +152,7 @@ export const AdminCreditsPage = () => {
         <button className="btn btn-primary" disabled={busy || !target || projected === null || projected < 0}>Confirm adjustment</button>
       </form></fieldset></section>
     </div>
-    <section className="card"><h2>Recent credit activity</h2><div className="status-list">{activity.map((row) => <div key={row._id}><span>{row.type.replaceAll('_', ' ')} · {row.adjustmentDirection || ''} {row.adjustmentReason || ''}<small> {row.fromUser ? `From ${students.find((item) => item._id === row.fromUser)?.name || row.fromUser} · ` : ''}{row.toUser ? `To ${students.find((item) => item._id === row.toUser)?.name || row.toUser} · ` : ''}{new Date(row.createdAt).toLocaleString()}</small></span><strong className="tabular">{row.amount}</strong></div>)}</div>{activity.length === 0 && <p>No recorded credit events yet.</p>}</section>
+    <section className="card"><h2>Recent credit activity</h2><div className="staff-filter-bar"><label>Event type<select className="form-select" value={activityType} onChange={event => setActivityType(event.target.value)}><option value="all">All events</option>{['session_payment', 'assessment_reward', 'initial_grant', 'learning_unlock', 'admin_adjustment'].map(value => <option key={value} value={value}>{value.replaceAll('_', ' ')}</option>)}</select></label><label>Search loaded activity<input className="form-input" type="search" maxLength={80} value={activitySearch} onChange={event => setActivitySearch(event.target.value)} placeholder="Student, direction or reason" /></label><button type="button" className="btn btn-secondary btn-sm" onClick={() => { setActivityType('all'); setActivitySearch(''); }}>Clear filters</button></div><p className="form-hint" role="status">{visibleActivity.length} of {activity.length} loaded recent events. Use Analytics for period-wide aggregates.</p><div className="status-list">{visibleActivity.map((row) => <div key={row._id}><span>{row.type.replaceAll('_', ' ')} · {row.adjustmentDirection || ''} {row.adjustmentReason || ''}<small> {row.fromUser ? `From ${row.fromUserName || students.find((item) => item._id === row.fromUser)?.name || 'Unavailable account'} · ` : ''}{row.toUser ? `To ${row.toUserName || students.find((item) => item._id === row.toUser)?.name || 'Unavailable account'} · ` : ''}{row.createdAt ? new Date(row.createdAt).toLocaleString() : 'Time unavailable'}</small></span><strong className="tabular">{row.amount}</strong></div>)}</div>{visibleActivity.length === 0 && <p>{activity.length ? 'No loaded credit events match your filters.' : 'No recorded credit events yet.'}</p>}</section>
   </div>;
 };
 

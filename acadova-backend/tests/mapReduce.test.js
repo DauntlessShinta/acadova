@@ -22,14 +22,18 @@ test('subject demand handles ordinary and prototype-named subjects with repeated
   const rows = subjects.map((subject) => ({ subject }));
   assert.deepEqual(runSubjectDemandMapReduce(rows), expected);
 
-  const originalFind = Session.find;
-  Session.find = async () => rows;
+  const originalAggregate = Session.aggregate;
+  Session.aggregate = async (pipeline) => {
+    assert.equal(pipeline.at(-1).$limit, 20);
+    assert.ok(pipeline.some(stage => stage.$group));
+    return expected.map(row => ({ _id: row.subject, requestCount: row.requestCount }));
+  };
   try {
     const res = response();
     await getSubjectAnalytics({}, res);
     assert.equal(res.statusCode, 200);
     assert.deepEqual(res.body.data, expected);
   } finally {
-    Session.find = originalFind;
+    Session.aggregate = originalAggregate;
   }
 });

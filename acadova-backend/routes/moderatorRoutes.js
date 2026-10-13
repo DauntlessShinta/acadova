@@ -16,6 +16,7 @@ const assessmentController = require('../controllers/assessmentController');
 const learningController = require('../controllers/learningController');
 
 router.use(authenticateToken, requireRole('moderator', 'admin'));
+router.get('/overview', require('../controllers/staffDashboardController').getModeratorOverview);
 router.use(validateQuery());
 
 router.get('/ratings', listRatingsForModeration);

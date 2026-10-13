@@ -39,10 +39,7 @@ test('Admin Session directory interprets historical settlement by ledger, not mi
       resolutionNote: 'No tutoring evidence was found.',
     }),
   ];
-  Session.find = () => ({
-    select() { return this; }, populate() { return this; }, sort() { return this; },
-    lean: async () => rows,
-  });
+  Session.aggregate = async () => [{ rows, count: [{ total: rows.length }] }];
   let paymentQuery;
   CreditTransaction.find = (query) => {
     paymentQuery = query;
@@ -74,7 +71,7 @@ test('Admin analytics retains separate stored counts without alias double-counti
     { _id: 'completed', count: 2 }, { _id: 'no_show', count: 1 },
     { _id: 'disputed', count: 1 }, { _id: 'resolved', count: 1 },
   ];
-  Session.aggregate = async () => storedCounts;
+  Session.aggregate = async () => [{ counts: storedCounts, trend: [] }];
   const res = response();
   await getSessionAnalytics({}, res);
   assert.equal(res.statusCode, 200);

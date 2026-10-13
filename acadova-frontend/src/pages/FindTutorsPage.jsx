@@ -12,6 +12,7 @@ import LoadingSpinner from '../components/common/LoadingSpinner';
 import EmptyState from '../components/common/EmptyState';
 import PeerCard from '../components/student/PeerCard';
 import creditService from '../services/creditService';
+import { useSearchDraft } from '../utils/useSearchDraft';
 import { Link } from 'react-router-dom';
 import {
   Search,
@@ -28,7 +29,6 @@ const POPULAR_SUBJECTS = [
   'Database',
   'Networking',
   'Algorithms',
-  'Calculus',
 ];
 
 export const FindTutorsPage = () => {
@@ -36,12 +36,13 @@ export const FindTutorsPage = () => {
   const { user, credits, refreshUser } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
   const currentSubjectQuery = searchParams.get('subject') || '';
+  const search = useSearchDraft(searchParams, setSearchParams);
 
   const [tutors, setTutors] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [searchQuery, setSearchQuery] = useState(currentSubjectQuery);
-  const [selectedSubjectFilter, setSelectedSubjectFilter] = useState(currentSubjectQuery || 'All');
+  const searchQuery = search.value;
+  const selectedSubjectFilter = currentSubjectQuery || 'All';
 
   // Request Session Modal State
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -62,12 +63,12 @@ export const FindTutorsPage = () => {
       .catch(() => setSessionCost(null));
   }, []);
 
-  const fetchTutors = useCallback(async (subject = '') => {
+  const fetchTutors = useCallback(async (subject = '', q = '') => {
     const version = ++searchVersion.current;
     try {
       setLoading(true);
       setError('');
-      const res = await userService.searchTutors(subject);
+      const res = await userService.searchTutors({ subject, q });
       if (version !== searchVersion.current) return;
       // Backend enforcement is authoritative; this is a defensive UI boundary.
       const currentUserId = String(user?._id || user?.id || '');
@@ -88,29 +89,22 @@ export const FindTutorsPage = () => {
     let active = true;
     Promise.resolve().then(() => {
       if (!active) return;
-      fetchTutors(currentSubjectQuery);
-      setSelectedSubjectFilter(currentSubjectQuery || 'All');
-      setSearchQuery(currentSubjectQuery);
+      setLoading(true);
     });
-    return () => { active = false; searchVersion.current += 1; };
-  }, [currentSubjectQuery, fetchTutors]);
+    const timer = setTimeout(() => { if (active) void fetchTutors(currentSubjectQuery, searchQuery.trim()); }, 250);
+    return () => { active = false; clearTimeout(timer); searchVersion.current += 1; };
+  }, [currentSubjectQuery, searchQuery, fetchTutors]);
 
   const handleSearchSubmit = (e) => {
     e.preventDefault();
-    if (searchQuery.trim()) {
-      setSearchParams({ subject: searchQuery.trim() });
-    } else {
-      setSearchParams({});
-    }
+    search.apply();
   };
 
   const handleFilterClick = (subj) => {
-    setSelectedSubjectFilter(subj);
-    if (subj === 'All') {
-      setSearchParams({});
-    } else {
-      setSearchParams({ subject: subj });
-    }
+    const next = new URLSearchParams(searchParams);
+    if (subj === 'All') next.delete('subject'); else next.set('subject', subj);
+    if (searchQuery.trim()) next.set('q', searchQuery.trim()); else next.delete('q');
+    setSearchParams(next);
   };
 
   const openRequestModal = (tutor) => {
@@ -187,16 +181,16 @@ export const FindTutorsPage = () => {
       <div className="card discovery-filters">
         <form onSubmit={handleSearchSubmit} className="discovery-search-form" role="search" aria-label="Find tutors">
           <div className="search-input-wrap">
-            <label className="sr-only" htmlFor="tutor-search">Search by skill or subject</label>
+            <label className="sr-only" htmlFor="tutor-search">Search tutor names or teaching subjects</label>
             <Search size={18} aria-hidden="true" />
             <input
               id="tutor-search"
               type="search"
               maxLength={80}
               className="form-input"
-              placeholder="Subject or skill, e.g. Java"
+              placeholder="Tutor name or subject, e.g. Elizabeth or Java"
               value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
+              onChange={(e) => { search.change(e.target.value); searchVersion.current += 1; }}
             />
           </div>
           <button type="submit" className="btn btn-primary">
@@ -232,7 +226,7 @@ export const FindTutorsPage = () => {
           title="Tutor discovery unavailable"
           description="Tutors could not be loaded. Try your search again."
           actionText="Retry search"
-          onAction={() => fetchTutors(currentSubjectQuery)}
+          onAction={() => fetchTutors(currentSubjectQuery, searchQuery.trim())}
         />
       ) : tutors.length === 0 ? (
         <EmptyState
@@ -240,7 +234,7 @@ export const FindTutorsPage = () => {
           title="No tutors match your search"
           description="Try a broader subject or clear the filter to browse students with teaching skills."
           actionText="View all tutors"
-          onAction={() => handleFilterClick('All')}
+          onAction={() => { search.change(''); setSearchParams({}); }}
         />
       ) : (
         <div className="student-peer-grid">
@@ -286,7 +280,7 @@ export const FindTutorsPage = () => {
               disabled={modalSubmitting || !selectedTutor?.skillsToTeach?.length}
               required
             >
-              <option value="">Choose a teaching subject</option>
+              <option value="" disabled hidden>Choose a teaching subject</option>
               {(selectedTutor?.skillsToTeach || []).map((skill, index) => <option key={`${skill}-${index}`} value={skill}>{skill}</option>)}
             </select>
             <span className="form-hint" id="subject-help">{selectedTutor?.skillsToTeach?.length ? 'Choose a subject this peer currently teaches.' : 'This peer has not listed teaching subjects yet. Find another peer or ask them to update their Profile.'}</span>

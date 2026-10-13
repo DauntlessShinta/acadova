@@ -11,6 +11,7 @@ const { validateQuery, validationErrorHandler } = require('./middleware/validati
 require('dotenv').config();
 const { securityHeaders, corsMiddleware } = require('./middleware/httpSecurity');
 const { apiNotFound, notFound, unexpectedError } = require('./middleware/apiErrors');
+const { apiIdentity } = require('./config/apiIdentity');
 
 const app = express();
 require('./utils/proxyTrust').configureProxyTrust(app);
@@ -59,7 +60,8 @@ app.use('/api/moderator', require('./routes/moderatorRoutes'));
 app.use('/api/admin', require('./routes/adminRoutes'));
 app.use('/api/notifications', require('./routes/notificationRoutes'));
 
-app.get('/api/health', validateQuery(), (req, res) => res.json({ status: 'Acadova API Running' }));
+// Identity describes this code revision, not database/provider readiness.
+app.get('/api/health', validateQuery(), (req, res) => res.json(apiIdentity()));
 
 // The Express service is API-only. The user-facing application is served by Vite.
 app.get('/', (req, res) => {

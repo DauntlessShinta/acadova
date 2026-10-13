@@ -316,9 +316,29 @@ const schemas = {
     name: optional(fullName),
     skillsToTeach: optional(skills('Teaching skills')),
     skillsToLearn: optional(skills('Learning skills')),
+    ...Object.fromEntries(Object.entries(require('../utils/profileDetails').validators).map(([key, validator]) => [key, optional(value => {
+      try { return validator(value); } catch (error) { throw new InvalidInput(error.message); }
+    })])),
     weeklyAvailability: optional((value) => { try { return require('../utils/weeklyAvailability').validateAvailability(value); } catch (error) { throw new InvalidInput(error.message); } }),
   },
-  search: { subject: optional(searchSubject) },
+  search: { subject: optional(searchSubject), q: optional(searchSubject) },
+  userDirectory: {
+    q: optional(requiredText('Search', 80)), id: optional(objectId('user id')),
+    role: optional(oneOf('role', ['student', 'moderator', 'admin'])),
+    status: optional(oneOf('status', ['active', 'suspended', 'unverified'])),
+    page: optional(value => {
+      if (typeof value !== 'string' || !/^[1-9]\d{0,3}$/.test(value)) throw new InvalidInput('Invalid page.');
+      return Number(value);
+    }),
+  },
+  sessionDirectory: {
+    q: optional(requiredText('Search', 80)),
+    status: optional(oneOf('status', ['pending', 'scheduled', 'in_progress', 'awaiting_validation', 'completed', 'declined', 'cancelled', 'no_show', 'disputed', 'resolved'])),
+    page: optional(value => {
+      if (typeof value !== 'string' || !/^[1-9]\d{0,3}$/.test(value)) throw new InvalidInput('Invalid page.');
+      return Number(value);
+    }),
+  },
   session: {
     tutorId: objectId('tutor id'), subject: requiredText('Subject', 120),
     scheduledAt, meetingMethod: optional(oneOf('meeting method; new sessions must be online', ['online'])),

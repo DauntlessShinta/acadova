@@ -1,6 +1,6 @@
 import { useToast } from '../context/toastAccess';
 import React, { useState, useEffect, useRef } from 'react';
-import { useParams, Link, useLocation } from 'react-router-dom';
+import { useParams, Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import userService from '../services/userService';
 import sessionService from '../services/sessionService';
@@ -10,17 +10,27 @@ import { AvailabilityGuidance } from '../components/student/WeeklyAvailability';
 import { sessionRequestTimeError } from '../utils/sessionRequestTime';
 import Alert from '../components/common/Alert';
 import LoadingSpinner from '../components/common/LoadingSpinner';
+import WorkflowTabs from '../components/common/WorkflowTabs';
 import {
-  ArrowLeft,
+  ArrowLeft, MessageSquare, CalendarDays, BookOpen, GraduationCap, Languages,
 } from 'lucide-react';
 
 export const TutorProfilePage = () => {
   const toast = useToast();
   const { id } = useParams();
   const location = useLocation();
-  const { credits, refreshUser } = useAuth();
+  const { user, credits, refreshUser } = useAuth();
+  const navigate = useNavigate();
+  const [params, setParams] = useSearchParams();
+  const section = ['about', 'subjects', 'reviews', 'availability'].includes(params.get('section')) ? params.get('section') : 'about';
+  const isSelf = String(user?._id || user?.id) === id;
+  const eligible = user?.role === 'student' && user.emailVerified !== false && !user.suspendedAt;
+  const [messageBusy, setMessageBusy] = useState(false);
+  const messageGeneration = useRef({ ticket: 0 });
 
   const [tutor, setTutor] = useState(null);
+  const canRequest = eligible && !isSelf && Boolean(tutor?.skillsToTeach?.length);
+  const [reviewsLoading, setReviewsLoading] = useState(true);
   const [reviews, setReviews] = useState([]);
   const [reviewError, setReviewError] = useState('');
   const [loading, setLoading] = useState(true);
@@ -38,31 +48,56 @@ export const TutorProfilePage = () => {
   const [sessionCost, setSessionCost] = useState(null);
 
   useEffect(() => {
-    const fetchTutor = async () => {
-      try {
-        setLoading(true);
-        setError(''); setRequestedSession(null); setRequestError('');
-        const res = await userService.getUserById(id);
-        if (res?.data?.role === 'student') {
-          setTutor(res.data);
-          setReviews([]); setReviewError('');
-          userService.getUserReviews(id).then((reviewResult) => setReviews(reviewResult.data || []))
-            .catch(() => setReviewError('Reviews could not be loaded. Please refresh to try again.'));
-          setSessionSubject(res.data.skillsToTeach?.[0] || '');
-        }
-      } catch (err) {
-        setError(err.message || 'Failed to load peer profile');
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    if (id) {
-      fetchTutor();
-      creditService.getCurrentRules().then((response) => setSessionCost(response.data.tutoringSessionCost))
-        .catch(() => setSessionCost(null));
-    }
+    let active = true;
+    const generation = messageGeneration.current;
+    generation.ticket++;
+    Promise.resolve().then(() => {
+      if (!active) return;
+      setLoading(true); setTutor(null); setError(''); setReviews([]); setReviewsLoading(true);
+      setRequestedSession(null); setRequestError(''); setReviewError(''); setFieldErrors({}); setSessionCost(null);
+      setScheduledAt(''); setRequestMessage(''); setMessageBusy(false);
+    });
+    userService.getUserById(id).then(res => {
+      if (!active) return;
+      if (res?.data?.role !== 'student') { setError('Peer profile not found.'); return; }
+      setTutor(res.data); setSessionSubject(res.data.skillsToTeach?.[0] || '');
+      userService.getUserReviews(id).then(result => { if (active) setReviews(result.data || []); })
+        .catch(() => { if (active) setReviewError('Reviews could not be loaded. Please refresh to try again.'); })
+        .finally(() => { if (active) setReviewsLoading(false); });
+    }).catch(err => { if (active) setError(err.message || 'Failed to load peer profile.'); })
+      .finally(() => { if (active) setLoading(false); });
+    creditService.getCurrentRules().then(response => { if (active) setSessionCost(response.data.tutoringSessionCost); })
+      .catch(() => { if (active) setSessionCost(null); });
+    return () => { active = false; generation.ticket++; };
   }, [id]);
+
+  const openRequest = (message = false) => {
+    if (!canRequest) return;
+    const next = new URLSearchParams(params); next.delete('section');
+    navigate({ search: next.toString(), hash: '#request-session' });
+    requestAnimationFrame(() => {
+      const input = document.getElementById(message ? 'requestMessage' : 'subject');
+      input?.scrollIntoView({ block: 'center' }); input?.focus({ preventScroll: true });
+    });
+  };
+  const openMessage = async () => {
+    if (messageBusy) return;
+    const ticket = messageGeneration.current.ticket;
+    setMessageBusy(true);
+    try {
+      const response = await sessionService.getMySessions();
+      if (ticket !== messageGeneration.current.ticket) return;
+      const ownId = String(user._id || user.id);
+      const conversation = (response.data || []).find(session => {
+        const peers = [session.learner, session.tutor].map(peer => String(peer?._id || peer?.id || peer));
+        return peers.includes(id) && peers.includes(ownId);
+      });
+      if (conversation) navigate(`/sessions/${conversation._id || conversation.id}#session-messages`);
+      else if (canRequest) openRequest(true);
+      else toast('info', 'Messages stay with Sessions. You do not have a Session with this student yet.');
+    } catch { if (ticket === messageGeneration.current.ticket) toast('error', 'Your conversations could not be loaded. Try again from Sessions > Messages.'); }
+    finally { if (ticket === messageGeneration.current.ticket) setMessageBusy(false); }
+  };
 
   useEffect(() => {
     if (tutor && location.hash === '#request-session') {
@@ -72,7 +107,7 @@ export const TutorProfilePage = () => {
 
   const handleRequestSession = async (e) => {
     e.preventDefault();
-    if (submittingRef.current || requestedSession) return;
+    if (submittingRef.current || requestedSession || !canRequest || sessionCost === null) return;
     setRequestError('');
 
 
@@ -113,7 +148,7 @@ export const TutorProfilePage = () => {
     }
   };
 
-  if (loading) {
+  if (loading || (tutor && String(tutor._id || tutor.id) !== id)) {
     return <LoadingSpinner text="Loading peer details..." size={36} />;
   }
 
@@ -128,77 +163,47 @@ export const TutorProfilePage = () => {
     );
   }
 
-  return (
-    <div className="container-narrow tutor-profile-page">
-      <Link to="/tutors" className="btn btn-secondary btn-sm" style={{ marginBottom: 24, display: 'inline-flex', gap: 6 }}>
-        <ArrowLeft size={14} /> Back to Find Tutors
-      </Link>
-
-      <Alert type="danger" message={error} onClose={() => setError('')} />
-
-      <div className="tutor-profile-layout">
-        {/* Left Column: Peer Profile Info */}
-        <div className="card">
-          <div style={{ textAlign: 'center', marginBottom: '24px' }}>
-            <div style={{
-              width: 72,
-              height: 72,
-              borderRadius: '50%',
-              background: 'var(--brass-100)',
-              color: 'var(--brass-700)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              fontWeight: 700,
-              fontFamily: 'var(--font-display)',
-              fontSize: '2rem',
-              margin: '0 auto 14px',
-              border: '2px solid var(--brass-300)',
-            }}>
-              {tutor.name?.charAt(0) || 'T'}
-            </div>
-            <h1 style={{ fontSize: '1.6rem', color: 'var(--navy-900)', marginBottom: '6px' }}>{tutor.name}</h1>
-            <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 8 }}>
-            <PeerReputation peer={tutor} size={18} />
-            </div>
-          </div>
-
-          <div style={{ borderTop: '1px solid var(--border-subtle)', paddingTop: '20px', marginBottom: '20px' }}>
-            <h3 style={{ fontSize: '0.95rem', color: 'var(--ink-800)', marginBottom: '10px' }}>What can this person teach me?</h3>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
-              {(tutor.skillsToTeach || []).map((skill, idx) => (
-                <span key={idx} className="badge badge-brass" style={{ textTransform: 'none', fontSize: '0.82rem' }}>
-                  {skill}
-                </span>
-              ))}
-              {(tutor.skillsToTeach || []).length === 0 && (
-                <span className="form-hint">No specific teaching skills listed.</span>
-              )}
-            </div>
-          </div>
-
-          <div style={{ borderTop: '1px solid var(--border-subtle)', paddingTop: '20px' }}>
-            <h3 style={{ fontSize: '0.95rem', color: 'var(--ink-800)', marginBottom: '10px' }}>Also learning</h3>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
-              {(tutor.skillsToLearn || []).map((skill, idx) => (
-                <span key={idx} className="badge badge-navy" style={{ textTransform: 'none', fontSize: '0.82rem' }}>
-                  {skill}
-                </span>
-              ))}
-              {(tutor.skillsToLearn || []).length === 0 && (
-                <span className="form-hint">None listed.</span>
-              )}
-            </div>
-          </div>
+  return <div className="container-narrow tutor-profile-page public-peer-profile">
+    <Link to="/tutors" className="public-profile-back"><ArrowLeft size={16} aria-hidden="true" />Back to Find Tutors</Link>
+    <Alert type="danger" message={error} onClose={() => setError('')} />
+    <section className="card public-profile-hero" aria-label="Student profile">
+      <div className="public-profile-cover" aria-hidden="true"><span /><span /></div>
+      <div className="public-profile-header">
+        <div className="public-profile-avatar" aria-hidden="true">{tutor.name?.charAt(0) || 'S'}</div>
+        <div className="public-profile-identity"><span className="student-eyebrow">Student · Peer learning</span><h1>{tutor.name}</h1><PeerReputation peer={tutor} size={18} />
+          <div className="public-profile-skills" aria-label="Self-listed teaching subjects">{(tutor.skillsToTeach || []).slice(0, 4).map(skill => <span className="badge badge-blue" key={skill}>{skill}</span>)}{tutor.skillsToTeach?.length > 4 && <button type="button" onClick={() => { const next = new URLSearchParams(params); next.set('section', 'subjects'); setParams(next); }}>View all {tutor.skillsToTeach.length} subjects</button>}</div>
         </div>
-
-        {/* Right Column: Request Session Form */}
+        <div className="public-profile-actions">{isSelf ? <Link className="btn btn-primary" to="/profile">Edit Profile</Link> : <>
+          {canRequest && <button type="button" className="btn btn-primary" onClick={() => openRequest()}><CalendarDays size={18} aria-hidden="true" />Request Session</button>}
+          {eligible && <button type="button" className="btn btn-secondary" disabled={messageBusy} onClick={openMessage}><MessageSquare size={18} aria-hidden="true" />{messageBusy ? 'Opening...' : 'Message'}</button>}
+        </>}</div>
+      </div>
+      <WorkflowTabs id="public-profile" tabs={[["about", "About"], ["subjects", "Subjects"], ["reviews", "Reviews"], ["availability", "Availability"]]} active={section} onChange={value => { const next = new URLSearchParams(params); next.set('section', value); setParams(next); }} />
+    </section>
+    <section role="tabpanel" id="public-profile-panel-about" aria-labelledby="public-profile-tab-about" hidden={section !== 'about'} className="public-profile-about">
+      <article className="card"><h2>About {tutor.name?.split(' ')[0]}</h2><p className="public-profile-bio">{tutor.bio || 'This student has not shared a biography yet.'}</p>
+        <h3>Also learning</h3><div className="public-profile-skills">{(tutor.skillsToLearn || []).map(skill => <span className="badge badge-navy" key={skill}>{skill}</span>)}{!tutor.skillsToLearn?.length && <p className="form-hint">No learning subjects listed.</p>}</div>
+      </article>
+      <aside className="card public-profile-details"><h2>Profile details</h2><dl>
+        {tutor.university && <><dt><GraduationCap size={18} aria-hidden="true" />University</dt><dd>{tutor.university}</dd></>}
+        {tutor.yearLevel && <><dt><BookOpen size={18} aria-hidden="true" />Year level</dt><dd>{tutor.yearLevel}</dd></>}
+        {tutor.languages?.length > 0 && <><dt><Languages size={18} aria-hidden="true" />Languages</dt><dd>{tutor.languages.join(', ')}</dd></>}
+      </dl>{!tutor.university && !tutor.yearLevel && !tutor.languages?.length && <p>No optional academic details shared.</p>}<p className="form-hint">Students choose which optional details to share. Teaching subjects are self-listed.</p></aside>
+    </section>
+    <section role="tabpanel" id="public-profile-panel-subjects" aria-labelledby="public-profile-tab-subjects" hidden={section !== 'subjects'} className="card">
+      <h2>Teaching subjects</h2><p>Subjects this student offers to teach. A listing is not an Acadova certification.</p><ul className="public-subject-list">{(tutor.skillsToTeach || []).map(skill => <li key={skill}><BookOpen size={20} aria-hidden="true" /><strong>{skill}</strong></li>)}</ul>{!tutor.skillsToTeach?.length && <p>No teaching subjects listed. Session requests are unavailable for this student.</p>}
+    </section>
+    <section role="tabpanel" id="public-profile-panel-reviews" aria-labelledby="public-profile-tab-reviews" hidden={section !== 'reviews'} className="card peer-reviews">
+      <h2 id="peer-reviews-heading">Peer reviews</h2>{reviewsLoading ? <LoadingSpinner text="Loading reviews..." /> : reviewError ? <Alert type="danger" message={reviewError} /> : reviews.length === 0 ? <p>No visible reviews yet.</p> : reviews.map(review => <article key={review.id}><strong>{review.reviewerName}</strong><span> · {review.rating} out of 5</span>{review.comment && <p>{review.comment}</p>}</article>)}{reviews.length === 20 && <p className="form-hint">Showing the latest 20 visible reviews.</p>}
+    </section>
+    <section role="tabpanel" id="public-profile-panel-availability" aria-labelledby="public-profile-tab-availability" hidden={section !== 'availability'} className="card"><h2>Availability</h2><AvailabilityGuidance availability={tutor.weeklyAvailability} /><p>Propose a future online session. Usual availability is guidance, not a reservation; the tutor must accept your request.</p></section>
+    {canRequest && (
         <div className="card" id="request-session">
           <h3 style={{ fontSize: '1.25rem', color: 'var(--navy-900)', marginBottom: '14px' }}>
             Request a Study Session
           </h3>
           <p style={{ fontSize: '0.88rem', color: 'var(--ink-600)', marginBottom: '20px' }}>
-            Book a 1-on-1 collaborative study room with {tutor.name}. Credits transfer after both participants confirm a verified session, or after a valid Moderator resolution.
+            Request an online peer tutoring session with {tutor.name}. Credits transfer after both participants confirm a verified session, or after a valid Moderator resolution.
           </p>
 
           {requestedSession ? <div className="session-request-success" role="status"><h2>Session request sent</h2><p>{tutor.name} will receive your request and proposed schedule.</p><Link className="btn btn-primary" to={`/sessions/${requestedSession._id || requestedSession.id}`}>View requested session</Link></div> : <form onSubmit={handleRequestSession} aria-busy={submitting}>
@@ -215,7 +220,7 @@ export const TutorProfilePage = () => {
               disabled={!tutor.skillsToTeach?.length || submitting}
               required
               >
-                <option value="">Choose a teaching subject</option>
+                <option value="" disabled hidden>Choose a teaching subject</option>
                 {(tutor.skillsToTeach || []).map((skill, index) => <option key={`${skill}-${index}`} value={skill}>{skill}</option>)}
               </select>
               <span className="form-hint" id="subject-help">{tutor.skillsToTeach?.length ? 'Choose a subject this peer currently teaches.' : 'This peer has not listed teaching subjects yet. Find another peer or ask them to update their Profile.'}</span>
@@ -280,24 +285,16 @@ export const TutorProfilePage = () => {
               type="submit"
               className="btn btn-primary"
               style={{ width: '100%' }}
-              disabled={submitting || !tutor.skillsToTeach?.length}
+              disabled={submitting || sessionCost === null || !canRequest}
               aria-busy={submitting}
             >
               {submitting ? 'Sending Request...' : 'Send Session Request'}
             </button>
           </form>}
         </div>
-      </div>
-      <section className="card peer-reviews" aria-labelledby="peer-reviews-heading">
-        <h2 id="peer-reviews-heading">Peer reviews</h2>
-        {reviewError ? <Alert type="danger" message={reviewError} /> : reviews.length === 0 ? <p>No visible reviews yet.</p>
-          : reviews.map((review) => <article key={review.id}>
-            <strong>{review.reviewerName}</strong> · {review.rating} out of 5
-            {review.comment && <p>{review.comment}</p>}
-          </article>)}
-      </section>
-    </div>
-  );
+    )}
+    {!isSelf && !canRequest && <p className="form-hint">{!tutor.skillsToTeach?.length ? 'This student has not listed any teaching subjects.' : 'Session requests require an eligible Student account.'}</p>}
+  </div>;
 };
 
 export default TutorProfilePage;

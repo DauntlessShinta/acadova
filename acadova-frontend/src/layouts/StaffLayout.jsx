@@ -1,12 +1,15 @@
 import React, { useRef, useState } from 'react';
 import { Link, NavLink, Navigate, Outlet, useLocation } from 'react-router-dom';
-import { ArrowLeft, Layers, Menu } from 'lucide-react';
+import { ArrowLeft, Layers, Menu, Home, Users, CalendarDays, BarChart3, Coins, ShieldCheck, Flag, FileCheck, BookOpen, Star, Settings, MessageSquare } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { canAccessStaffArea, getPageContext, getRoleHomeRoute, getRoleNavigation } from '../config/roleNavigation';
 import LoadingSpinner from '../components/common/LoadingSpinner';
 import AccountMenu from '../components/common/AccountMenu';
 import Modal from '../components/common/Modal';
 import NotificationBell from '../components/common/NotificationBell';
+const icons = { Overview: Home, Users, Sessions: CalendarDays, Analytics: BarChart3, Credits: Coins,
+  'Trust & Activity': ShieldCheck, Moderation: Flag, Assessments: FileCheck, 'Learning content': BookOpen,
+  'Study-set reviews': Star, Settings, Reviews: MessageSquare, 'Session disputes': Flag };
 
 export const StaffLayout = ({ area }) => {
   const { user, isAuthenticated, loading } = useAuth();
@@ -16,7 +19,8 @@ export const StaffLayout = ({ area }) => {
   const isAdminArea = area === 'admin';
   const allowed = canAccessStaffArea(user?.role, area);
   const links = getRoleNavigation(area);
-  const current = getPageContext(location.pathname, location.search).title;
+  const pageContext = getPageContext(location.pathname, location.search);
+  const current = pageContext.title;
 
 
 
@@ -32,8 +36,8 @@ export const StaffLayout = ({ area }) => {
       </Link>
       <nav className="staff-nav" aria-label={`${isAdminArea ? 'Administration' : 'Moderator'} sections`}>
         {links.map((link) => (
-          <NavLink key={link.to} to={link.to} end className={({ isActive }) => `staff-nav-link${isActive ? ' is-active' : ''}`} onClick={() => setMenuOpen(false)}>
-            {link.label}
+          <NavLink key={link.to} to={link.to} end aria-current={pageContext.to === link.to ? 'page' : undefined} className={({ isActive }) => `staff-nav-link${isActive || pageContext.to === link.to ? ' is-active' : ''}`} onClick={() => setMenuOpen(false)}>
+            {React.createElement(icons[link.label] || BookOpen, { size: 20, 'aria-hidden': true })}{link.label}
           </NavLink>
         ))}
       </nav>

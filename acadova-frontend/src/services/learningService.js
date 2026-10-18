@@ -1,6 +1,10 @@
 import api from './api';
 
 const learningService = {
+  staffTopic: (id) => api.get(`/api/moderator/learning/topics/${id}`),
+  topicProgress: (id) => api.get(`/api/learning/topics/${id}/progress`),
+  moduleProgress: (id) => api.get(`/api/learning/modules/${id}/progress`),
+  completeLesson: (module, resource) => api.post(`/api/learning/modules/${module}/resources/${resource}/complete`, {}),
   topics: () => api.get('/api/learning/topics'),
   topic: (id) => api.get(`/api/learning/topics/${id}`),
   resource: (id) => api.get(`/api/learning/resources/${id}`),

@@ -22,6 +22,25 @@
 .learning-module-summary:has(button:disabled) { cursor: progress; }
 .learning-shell-context { color: var(--acadova-primary); }
 .learning-shell-context a { display: inline-flex; align-items: center; gap: var(--space-2); min-height: 44px; }
+.learning-authoring-guide { margin-bottom: var(--space-4); padding: var(--space-3); border: 1px solid var(--border-subtle); border-radius: var(--radius-md); background: var(--acadova-canvas); }
+.learning-authoring-guide h2 { font-size: 1.1rem; }
+.learning-authoring-guide ol, .learning-module-outline ol { padding-left: 24px; margin-block: var(--space-3); }
+.learning-authoring-guide li { margin-block: var(--space-2); }
+.learning-lesson-editor { padding-left: 24px; margin-block: var(--space-3); }
+.learning-lesson-editor li { padding-block: var(--space-3); border-bottom: 1px solid var(--border-subtle); }
+.learning-lesson-editor strong { display: block; overflow-wrap: anywhere; }
+.learning-lesson-editor .learning-builder-actions { margin-top: var(--space-2); }
+.learning-module-outline { margin-block: var(--space-3); }
+.learning-curriculum-label, .learning-lesson-position { color: var(--acadova-primary); font-size: .875rem; font-weight: 700; }
+.learning-curriculum-label { display: block; margin-bottom: var(--space-1); }
+.learning-curriculum-assessment { width: 100%; white-space: normal; }
+.learning-curriculum :is(h2, p) { margin-bottom: var(--space-2); }
+.learning-assessment h2 { scroll-margin-top: 140px; }
+.learning-lesson-actions .btn { white-space: normal; }
+.learning-module-layout > section { min-width: 0; }
+@media (min-width: 1280px) {
+  .learning-page .learning-module-layout { grid-template-columns: minmax(260px, 1fr) minmax(0, 1.7fr); }
+}
 @media (max-width: 700px) {
   .learning-section-nav { gap: var(--space-1); }
   .learning-section-nav a { flex: 1 1 100px; padding-inline: 8px; }

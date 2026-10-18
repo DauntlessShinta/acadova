@@ -1,6 +1,8 @@
 const mongoose = require('mongoose');
 
 const SessionSchema = new mongoose.Schema({
+  // Explicitly set by request creation, never defaulted onto historical records.
+  lifecycleVersion: { type: Number, enum: [1], immutable: true },
   learner: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
   tutor: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
   subject: { type: String, required: true, trim: true },

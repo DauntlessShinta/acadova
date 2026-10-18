@@ -4,10 +4,15 @@ const { authenticateToken, requireRole } = require('../middleware/authMiddleware
 const { validateBody, validateParams, validateQuery, schemas } = require('../middleware/validation');
 const { staffActionLimiter } = require('../middleware/writeLimiters');
 const controller = require('../controllers/learningController');
+const progressController = require('../controllers/learningProgressController');
 const unlockController = require('../controllers/learningUnlockController');
 
 router.use(authenticateToken, requireRole('student'), validateQuery());
 router.get('/topics', controller.listTopics);
+router.get('/topics/:id/progress', validateParams(schemas.learningId), progressController.topicProgress);
+router.get('/modules/:id/progress', validateParams(schemas.learningId), progressController.moduleProgress);
+router.post('/modules/:id/resources/:resourceId/complete', staffActionLimiter,
+  validateParams(schemas.learningCompletion), validateBody({}), progressController.completeLesson);
 router.get('/topics/:id', validateParams(schemas.learningId), controller.getTopic);
 router.get('/resources/:id', validateParams(schemas.learningId), controller.getResource);
 router.get('/modules/:id', validateParams(schemas.learningId), controller.getModule);

@@ -9,10 +9,8 @@ import PublicBrandLogo from './PublicBrandLogo';
 
 const publicLinks = [
   { to: '/#how-it-works', label: 'How It Works' },
-  { to: '/#credit-system', label: 'Credit Model' },
   { to: '/#features', label: 'Features' },
-  { to: '/#skill-network', label: 'Explore Skills' },
-  { to: '/about', label: 'About' },
+  { to: '/#faq', label: 'FAQ' },
 ];
 
 const roleLabels = {
@@ -81,8 +79,8 @@ export const Navbar = () => {
         <div className="site-nav-actions">
           {!isAuthenticated ? (
             <>
-              <Link to="/login" className="btn btn-secondary btn-sm">Log In</Link>
-              <Link to="/register" className="btn btn-primary btn-sm">Get Started</Link>
+              <Link to="/login" className="btn btn-secondary btn-sm">Sign In</Link>
+              <Link to="/register" className="btn btn-primary btn-sm">Create Account</Link>
             </>
           ) : (
             <>

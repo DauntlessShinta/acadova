@@ -240,9 +240,13 @@ try {
   checks.push('Scheduled cancellation confirmation, Cancel/Confirm, first check-in cutoff and terminal Progress');
   for (const [section, kind] of [['topics', 'topic'], ['resources', 'resource'], ['modules', 'module']]) {
     await render(`/admin/learning#manage-panel-${section}`, { ...student, role: 'admin' });
+    if (section === 'resources') {
+      await until(() => document.querySelector('#manage-panel-resources .learning-management-item button'), 'Resource review row');
+      document.querySelector('#manage-panel-resources .learning-management-item button').click(); await pause();
+    }
     await until(() => visible(`#manage-panel-${section} button`).some((button) => button.textContent === 'Publish'), 'Publication button');
     assert(document.querySelector('.staff-eyebrow').textContent.includes('Administration'), 'Admin Learning context');
-    assert(!visible(`#manage-panel-${section} form`).length, 'Inactive editor disclosed');
+    assert(visible(`#manage-panel-${section} form`).length === (section === 'topics' ? 1 : 0), 'Topic creation is visible; optional editors stay undisclosed');
     const button = visible(`#manage-panel-${section} button`).find((node) => node.textContent === 'Publish'); const count = publicationWrites;
     button.click(); await until(() => document.querySelector('[role="dialog"]'), 'Publication confirmation');
     assert(document.querySelector('[role="dialog"]').textContent.includes('Students'), 'Publication audience');
@@ -335,13 +339,16 @@ try {
   }
   checks.push('Moderator/Admin shared Hide/Restore review confirmation and Cancel without mutation');
   await render('/moderator/learning#manage-panel-resources', { ...student, role: 'moderator' });
+  await until(() => document.querySelector('#manage-panel-resources .learning-management-item button'), 'Submission review row');
+  document.querySelector('#manage-panel-resources .learning-management-item button').click(); await pause();
   await until(() => document.querySelector('.learning-submission-meta'), 'Submission review metadata');
   const reviewPanel = document.querySelector('#manage-panel-resources');
   assert(reviewPanel.textContent.includes('Awaiting review (1)') && reviewPanel.textContent.includes('Nathan Santos') && reviewPanel.textContent.includes('Java') && reviewPanel.querySelector('time'), 'Submission context/title/topic/creator/date');
   assert(reviewPanel.querySelectorAll('.learning-management-item').length === 1, 'Pending submissions are the default review list');
   [...reviewPanel.querySelectorAll('.learning-review-filters button')].find((button) => button.textContent === 'Published').click();
   await until(() => reviewPanel.querySelector('.learning-management-item h3')?.textContent === 'Java basics', 'Published review filter');
-  assert(reviewPanel.querySelector('.learning-management-item .btn-danger').textContent === 'Archive', 'Published resource danger action');
+  reviewPanel.querySelector('.learning-management-item button').click(); await pause();
+  assert(reviewPanel.querySelector('.learning-resource-review .btn-danger').textContent === 'Archive', 'Published resource danger action');
   checks.push('Pending-review filter and title/topic/submitter/type/date/preview metadata; reviewed-resource filters');
   for (const [path, endpoint, expected] of [
     ['/admin/audit-logs', '/api/admin/audit-logs', 'Audit records are unavailable'],

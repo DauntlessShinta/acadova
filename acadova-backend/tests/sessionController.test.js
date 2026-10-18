@@ -98,6 +98,36 @@ const mockAtomicSession = (session) => {
   };
 };
 
+test('marked requests canonicalize legacy acceptance and cannot use direct completion', async () => {
+  const stored = sessionDoc({ lifecycleVersion: 1, status: 'pending' });
+  Session.findById = async () => stored;
+  mockAtomicSession(stored);
+  const accepted = response();
+  await controller.updateSessionStatus({ params: { id: stored._id }, user: { id: stored.tutor }, body: { status: 'accepted' } }, accepted);
+  assert.equal(accepted.statusCode, 200);
+  assert.equal(stored.status, 'scheduled');
+  for (const status of ['scheduled', 'accepted']) {
+    stored.status = status; // Even malformed marked historical status cannot bypass validation.
+    const completed = response();
+    await controller.updateSessionStatus({ params: { id: stored._id }, user: { id: stored.tutor }, body: { status: 'completed' } }, completed);
+    assert.equal(completed.statusCode, 400);
+    assert.equal(stored.status, status);
+    assert.equal(stored.completedAt, undefined);
+  }
+});
+
+test('a marked completed record without canonical validation cannot settle through legacy confirmation', async () => {
+  const stored = sessionDoc({ lifecycleVersion: 1, status: 'completed' });
+  Session.findById = () => ({ session: async () => stored });
+  Session.updateOne = async () => assert.fail('No Session claim expected');
+  CreditTransaction.find = () => assert.fail('No legacy settlement expected');
+  const result = response();
+  await controller.confirmSession({ params: { id: stored._id }, user: { id: stored.learner } }, result);
+  assert.equal(result.statusCode, 409);
+  assert.equal(stored.creditsSettledAt, undefined);
+  assert.equal(new Session({ subject: 'Historical' }).lifecycleVersion, undefined);
+});
+
 test('a request to the exact or uppercase equivalent of the learner ID is rejected before lookup', async () => {
   const learnerId = '507f1f77bcf86cd799439abc';
   let lookups = 0;
@@ -169,6 +199,7 @@ test('new Session price is server-owned even when a legacy client submits anothe
     } }, res);
     assert.equal(res.statusCode, 201);
     assert.equal(stored.at(-1).creditAmount, 25);
+    assert.equal(stored.at(-1).lifecycleVersion, 1);
   }
   const insufficient = response();
   await controller.createSession({ user: { id: fixture.learner, credits: 24 }, body: {
@@ -372,7 +403,7 @@ for (const meetingMethod of ['online', 'in-person']) {
     const accepted = response();
     await controller.updateSessionStatus({ params: { id: session._id }, user: { id: fixture.tutor }, body: { status: decision } }, accepted);
     assert.equal(accepted.statusCode, 200);
-    assert.equal(session.status, decision);
+    assert.equal(session.status, meetingMethod === 'online' ? 'scheduled' : decision);
     const details = meetingMethod === 'online' ? { meetingLink: 'https://meet.example.com/demo' } : { location: 'Library room 2' };
     const coordinated = response();
     await controller.updateCoordination({ params: { id: session._id }, user: { id: fixture.tutor }, body: details }, coordinated);

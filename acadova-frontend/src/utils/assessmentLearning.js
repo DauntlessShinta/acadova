@@ -21,12 +21,23 @@ export function learningReviewHref(context) {
 }
 
 export function candidateAssessmentTopic(assessment, topics) {
+  if (Object.hasOwn(assessment, 'learningTopic')) return assessment.learningTopic != null
+    ? topics.find((topic) => String(topic.id) === String(assessment.learningTopic)) || null : null;
   const matches = topics.filter((topic) => learningTopicTitle(topic) === assessment.topic);
   return matches.length === 1 ? matches[0] : null;
 }
 
-export function verifiedAssessmentReview(assessmentId, topic, module, lesson = 0) {
+export function assessmentBelongsToTopic(assessment, topic) {
+  if (!assessment || !topic?.id) return false;
+  return Object.hasOwn(assessment, 'learningTopic') ? assessment.learningTopic != null
+    && String(assessment.learningTopic) === String(topic.id) : assessment.topic === learningTopicTitle(topic);
+}
+
+export function verifiedAssessmentReview(assessmentId, topic, module, lesson = 0, assessment = null) {
   if (!assessmentId || !topic?.id) return null;
+  const belongs = assessment ? String(assessment.id) === String(assessmentId) && assessmentBelongsToTopic(assessment, topic)
+    : topic.assessments?.some((item) => String(item.id) === String(assessmentId));
+  if (!belongs) return null;
   if (module?.id && String(module.topic) === String(topic.id) && String(module.assessment) === String(assessmentId)) {
     const last = Math.max(0, (module.resources || []).length - 1);
     return { topicId: topic.id, moduleId: module.id, lessonIndex: Math.min(last, Math.max(0, Number.parseInt(lesson, 10) || 0)) };

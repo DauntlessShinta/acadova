@@ -1,0 +1,14 @@
+const router = require('express').Router();
+const { authenticateToken, requireRole } = require('../middleware/authMiddleware');
+const { validateBody, validateParams, validateQuery, schemas, InvalidInput } = require('../middleware/validation');
+const { sessionActionLimiter, ratingLimiter } = require('../middleware/writeLimiters');
+const { version } = require('../utils/studyCircleValidation');
+const c = require('../controllers/studySharingController');
+const token = v => { if (typeof v !== 'string' || !/^[a-f0-9]{64}$/.test(v)) throw new InvalidInput('Shared set unavailable.'); return v; };
+router.use(authenticateToken, requireRole('student'), (req, res, next) => { res.set('Cache-Control', 'private, no-store'); res.set('Referrer-Policy', 'no-referrer'); next(); }, validateQuery());
+router.use('/:id', validateParams(schemas.assessmentId));
+router.get('/:id', c.settings);
+router.put('/:id', sessionActionLimiter, validateBody({ version, visibility: v => { if (!['private', 'unlisted'].includes(v)) throw new InvalidInput('Choose private or unlisted; public sharing requires publication review.'); return v; }, rightsAcknowledged: v => { if (v === undefined) return undefined; if (typeof v !== 'boolean') throw new InvalidInput('Confirm sharing rights.'); return v; } }), c.change);
+router.post('/:id/open', sessionActionLimiter, validateBody({ token }), c.open);
+router.post('/:id/report', ratingLimiter, validateBody({ token, reason: schemas.dispute.reason }), c.report);
+module.exports = router;

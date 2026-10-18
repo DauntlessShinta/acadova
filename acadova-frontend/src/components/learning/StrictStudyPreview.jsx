@@ -1,0 +1,21 @@
+export function SourceEvidence({ item, format }) {
+  if (!item.sourceQuote) return item.sourceRef ? <p className="form-hint">Source {format === 'pptx' ? 'slide' : 'page'} {item.sourceRef} · Review against the original material.</p> : null;
+  return <details className="ai-source-evidence"><summary>Source {format === 'pptx' ? 'slide' : 'page'} {item.sourceRef} · Show exact snippet</summary><blockquote>{item.sourceQuote}</blockquote><p className="form-hint">Document fingerprint: {item.sourceId}</p></details>;
+}
+export default function StrictStudyPreview({ content, onChange, disabled, edited, format, strict = true }) {
+  const update = (kind, index, key, value) => onChange({ ...content, [kind]: content[kind].map((item, i) => i === index ? { ...item, [key]: value } : item) });
+  const remove = (kind, index) => onChange({ ...content, [kind]: content[kind].filter((_, i) => i !== index) });
+  return <div className="ai-strict-preview"><p role="status">{strict ? edited ? 'Edited preview · source match pending server revalidation when saved.' : 'Source text matched · exact quotation-completion practice.' : 'Review and edit private practice before saving. Standard generation is not an exact-source certification.'}</p><p>{strict ? 'Answers preserve extracted wording. Text matching does not prove conceptual correctness or mastery. Check the source before saving.' : 'Remove inaccurate items and check all answers against the original material. Saving validates the format and source references, not conceptual accuracy.'}</p>
+    {['flashcards', 'questions'].map(kind => <section key={kind}><h3>{kind === 'flashcards' ? 'Flashcards' : 'Practice questions'}</h3>{!content[kind].length && <p>No supported {kind} in this preview.</p>}{content[kind].map((item, index) => <fieldset key={index} disabled={disabled} className="card ai-strict-item"><legend>{kind === 'flashcards' ? 'Card' : 'Question'} {index + 1}</legend>
+      <label className="form-label" htmlFor={`strict-${kind}-${index}-prompt`}>{strict ? 'Quotation-completion prompt' : 'Prompt'}<textarea id={`strict-${kind}-${index}-prompt`} className="form-input" maxLength={300} value={item.front ?? item.prompt} onChange={event => update(kind, index, kind === 'flashcards' ? 'front' : 'prompt', event.target.value)} /></label>
+      {kind === 'flashcards' ? <label className="form-label" htmlFor={`strict-card-${index}-answer`}>{strict ? 'Exact answer' : 'Answer'}<input id={`strict-card-${index}-answer`} className="form-input" value={item.back} maxLength={strict?300:1000} onChange={event => update(kind, index, 'back', event.target.value)} /></label> : <>
+        {item.options.map((option, optionIndex) => <label className="form-label" key={optionIndex} htmlFor={`strict-q-${index}-option-${optionIndex}`}>Choice {optionIndex + 1}<input className="form-input" id={`strict-q-${index}-option-${optionIndex}`} maxLength={300} value={option} onChange={event => update(kind, index, 'options', item.options.map((value, i) => i === optionIndex ? event.target.value : value))} /></label>)}
+        <label className="form-label" htmlFor={`strict-q-${index}-correct`}>Correct choice<select id={`strict-q-${index}-correct`} className="form-select" value={item.correctIndex} onChange={event => update(kind, index, 'correctIndex', Number(event.target.value))}>{item.options.map((_, i) => <option key={i} value={i}>{i + 1}</option>)}</select></label>
+        {strict ? <p className="form-hint">Explanation repeats the exact source quote. Evidence and document identity cannot be edited here.</p> : <label className="form-label" htmlFor={`standard-explanation-${index}`}>Explanation<textarea id={`standard-explanation-${index}`} className="form-input" maxLength={1000} value={item.explanation} onChange={event => update(kind,index,'explanation',event.target.value)} /></label>}
+      </>}
+      <SourceEvidence item={item} format={format} />
+      {item.optionEvidence && <details><summary>Choice provenance</summary>{item.optionEvidence.map((proof, i) => <div key={i}><strong>Choice {i + 1}</strong><SourceEvidence item={proof} format={format} /></div>)}</details>}
+      <button className="btn btn-secondary" type="button" onClick={() => remove(kind, index)}>Remove {kind === 'flashcards' ? 'card' : 'question'} {index + 1}</button>
+    </fieldset>)}</section>)}
+  </div>;
+}

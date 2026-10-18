@@ -33,6 +33,7 @@ router.patch('/assessments/:id', staffActionLimiter, validateParams(schemas.asse
   validateBody(schemas.assessmentCreate), assessmentController.updateAssessment);
 router.post('/assessments/:id/publish', staffActionLimiter, validateParams(schemas.assessmentId),
   validateBody({}), assessmentController.publishAssessment);
+router.get('/learning/topics/:id', validateParams(schemas.learningId), learningController.getStaffTopic);
 router.get('/learning/topics', learningController.listStaffTopics);
 router.post('/learning/topics', staffActionLimiter, validateBody(schemas.learningTopic), learningController.createTopic);
 router.patch('/learning/topics/:id', staffActionLimiter, validateParams(schemas.learningId),

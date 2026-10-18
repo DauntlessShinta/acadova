@@ -23,13 +23,19 @@ export const passwordRequirements = (password) => [
   ['A special character', /[^A-Za-z0-9\s]/.test(password)],
 ];
 
-export const validateRegistration = ({ name, email, password, confirmPassword, policyAccepted }) => {
+export const isInstitutionalEmail = (value, domains) => {
+  const email=normalizeEmail(value);
+  const match=/^([a-z0-9](?:[a-z0-9._-]*[a-z0-9])?)@([a-z0-9.-]+)$/.exec(email);
+  return Boolean(match && email.length<=254 && match[1].length<=64 && !match[1].includes('..') && Array.isArray(domains) && domains.includes(match[2]));
+};
+export const validateRegistration = ({ name, email, password, confirmPassword, policyAccepted, allowedDomains }) => {
   const cleanName = normalizeName(name);
   const cleanEmail = normalizeEmail(email);
   const fields = {};
   const nameError = nameValidationMessage(name);
   if (nameError) fields.name = nameError;
   if (!isValidEmail(cleanEmail)) fields.email = 'Enter a valid email address.';
+  else if (allowedDomains !== undefined && !isInstitutionalEmail(cleanEmail, allowedDomains)) fields.email = 'Use your approved PHINMAED email address without a plus alias.';
   if (!passwordRequirements(password).every(([, met]) => met)
     || password.length > 64 || new TextEncoder().encode(password).length > 72
     || /[\p{Cc}\p{Cf}]/u.test(password)) {

@@ -8,6 +8,7 @@ import { formatSessionDateTime } from '../../utils/sessionPresentation';
 import { SessionEvidence } from '../../components/student/SessionCompletionPanel';
 import { completionCopy } from '../../utils/completionPresentation';
 import { useToast } from '../../context/toastAccess';
+import SessionReviewRecord from '../../components/staff/SessionReviewRecord';
 
 const participantName = (value) => value?.name || 'Student account';
 
@@ -25,12 +26,14 @@ export const ModeratorDisputesPage = () => {
   const [notes, setNotes] = useState({});
   const [caseErrors, setCaseErrors] = useState({});
   const [fullEvidence, setFullEvidence] = useState({});
+  const [evidenceLoading, setEvidenceLoading] = useState(null);
   const selectedSession = new URLSearchParams(search).get('session');
   const focusedCase = useRef('');
   const mutationPending = useRef(false);
 
   const load = useCallback(async () => {
     setLoading(true);
+    setFullEvidence({});
     try {
       const response = viewStatus === 'resolved'
         ? await moderationService.getResolvedSessions() : await moderationService.getDisputedSessions();
@@ -91,12 +94,15 @@ export const ModeratorDisputesPage = () => {
   };
 
   const loadEvidence = async (session) => {
-    if (mutationPending.current) return;
+    if (mutationPending.current || evidenceLoading) return;
+    setEvidenceLoading(session._id);
     try {
       const result = await moderationService.getSessionEvidence(session._id);
       setFullEvidence((current) => ({ ...current, [session._id]: result.data }));
       setSessions((current) => current.map((row) => row._id === session._id ? { ...row, ...result.data.session } : row));
+      setError('');
     } catch (failure) { setError(failure.message || 'Review evidence could not be loaded.'); }
+    finally { setEvidenceLoading(null); }
   };
   const clarify = async (session) => {
     if (mutationPending.current) return;
@@ -131,7 +137,11 @@ export const ModeratorDisputesPage = () => {
               {['resolved', 'completed'].includes(session.status) || (viewStatus === 'resolved' && !session.status) ? <><p role="status">This review is already closed. No further decision or payment can be submitted here.</p><p><strong>Outcome:</strong> {session.status === 'completed' ? 'Closed by participant confirmations' : session.resolution === 'confirm_session' ? 'Session valid' : 'Session invalid'}</p>
                 <p><strong>Decision:</strong> {session.resolutionNote || 'No note recorded'}</p>
                 <p><strong>Credits:</strong> {session.creditsSettledAt ? 'Transferred' : 'Not transferred'}</p>
-                <p><strong>Resolved:</strong> {formatSessionDateTime(session.resolvedAt || session.reviewReferral?.closedAt) || 'Time unavailable'}</p></> : <>
+                <p><strong>Resolved:</strong> {formatSessionDateTime(session.resolvedAt || session.reviewReferral?.closedAt) || 'Time unavailable'}</p>
+                <button type="button" className="btn btn-secondary btn-sm" onClick={() => loadEvidence(session)} disabled={Boolean(evidenceLoading)}>{evidenceLoading === session._id ? 'Loading case record...' : 'View case record and audit'}</button>
+                {fullEvidence[session._id] && <SessionEvidence session={fullEvidence[session._id].session} />}
+                <SessionReviewRecord record={fullEvidence[session._id]} />
+              </> : <>
               <h3>Review evidence</h3>
               <p role="status">{completionCopy(session)}</p>
               {session.validationDeadlineAt && <p><strong>Response deadline:</strong> {formatSessionDateTime(session.validationDeadlineAt)}</p>}
@@ -140,15 +150,8 @@ export const ModeratorDisputesPage = () => {
                 <p>{session.completionReview?.staffTargetOverdue ? 'Staff response target passed. This remains an open exception.' : 'The target guides staff response; it does not guarantee payment or adjudication.'}</p>
                 <p><strong>Referral reason:</strong> {session.reviewReferral.reason}</p></>}
               <SessionEvidence session={session} />
-              <button type="button" className="btn btn-secondary btn-sm" onClick={() => loadEvidence(session)} disabled={Boolean(workingId)}>View messages and ledger</button>
-              {fullEvidence[session._id] && <div className="session-review-messages">
-                <h4>Latest session messages (up to 100)</h4>
-                {fullEvidence[session._id].messages.map((message) => <p key={message._id}><strong>{message.sender?.name || 'Participant'}:</strong> {message.body} <span className="form-hint">{formatSessionDateTime(message.createdAt)}</span></p>)}
-                {!fullEvidence[session._id].messages.length && <p>No recorded messages.</p>}
-                <h4>Recorded credit ledger</h4>
-                {fullEvidence[session._id].payments.map((payment) => <p key={payment._id}>{payment.type}: {payment.amount} credits | {formatSessionDateTime(payment.createdAt)}</p>)}
-                {!fullEvidence[session._id].payments.length && <p>No Session credit transaction.</p>}
-              </div>}
+              <button type="button" className="btn btn-secondary btn-sm" onClick={() => loadEvidence(session)} disabled={Boolean(workingId) || Boolean(evidenceLoading)}>{evidenceLoading === session._id ? 'Loading case record...' : 'View messages and ledger'}</button>
+              <SessionReviewRecord record={fullEvidence[session._id]} />
               <p><strong>Check-ins:</strong> Learner {formatSessionDateTime(session.learnerCheckedInAt) || 'none'}; Tutor {formatSessionDateTime(session.tutorCheckedInAt) || 'none'}</p>
               <p><strong>Session started:</strong> {formatSessionDateTime(session.startedAt) || 'No'} · <strong>Finished:</strong> {formatSessionDateTime(session.awaitingValidationAt) || 'No'}</p>
               <p><strong>Confirmations:</strong> Learner {formatSessionDateTime(session.learnerConfirmedAt) || 'none'}; Tutor {formatSessionDateTime(session.tutorConfirmedAt) || 'none'}</p>

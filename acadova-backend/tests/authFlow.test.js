@@ -127,7 +127,7 @@ test('email verification account flow without MongoDB or Gmail', async (t) => {
   };
 
   const password = 'ValidSecret1!';
-  const email = 'marie@example.test';
+  const email = 'marie@phinmaed.com';
   const verifyDirect = async (token) => {
     const res = { statusCode: 200, status(code) { this.statusCode = code; return this; },
       json(body) { this.body = body; return this; } };
@@ -144,7 +144,7 @@ test('email verification account flow without MongoDB or Gmail', async (t) => {
   };
   try {
     await t.test('registration stores a hash and grants no JWT or privileged role', async () => {
-      const result = await call('/auth/register', { name: '  María O’Neil   Smith  ', email: ' MARIE@EXAMPLE.TEST ', password });
+      const result = await call('/auth/register', { name: '  María O’Neil   Smith  ', email: ' MARIE@PHINMAED.COM ', password });
       assert.equal(result.status, 201);
       assert.equal(result.data.data, undefined);
       const user = accounts.get(email);
@@ -166,16 +166,16 @@ test('email verification account flow without MongoDB or Gmail', async (t) => {
       assert.equal((await call('/protected', undefined,
         { authorization: `Bearer ${jwt.sign({ id: user._id, role: 'admin' }, process.env.JWT_SECRET)}` })).status, 403);
     });
-    await t.test('duplicate unverified registration resumes verification without changing the account', async () => {
+    await t.test('duplicate unverified registration returns a generic receipt without changing the account', async () => {
       const user = accounts.get(email);
       const original = { name: user.name, password: user.password,
         hash: user.emailVerificationTokenHash, sentAt: user.emailVerificationSentAt };
       const sentCount = sent.length;
       const result = await call('/auth/register', {
-        name: 'Another User', email: ' MARIE@EXAMPLE.TEST ', password: 'DifferentPassword2!',
+        name: 'Another User', email: ' MARIE@PHINMAED.COM ', password: 'DifferentPassword2!',
       });
-      assert.equal(result.status, 409);
-      assert.equal(result.data.code, 'REGISTRATION_PENDING_VERIFICATION');
+      assert.equal(result.status, 201);
+      assert.equal(result.data.code, undefined);
       assert.equal(result.data.data, undefined);
       assert.equal(result.data.token, undefined);
       assert.equal(accounts.size, 1);
@@ -186,12 +186,12 @@ test('email verification account flow without MongoDB or Gmail', async (t) => {
       assert.equal(await bcrypt.compare('DifferentPassword2!', user.password), false);
       assert.equal(user.emailVerificationTokenHash, original.hash);
       assert.equal(user.emailVerificationSentAt, original.sentAt);
-      assert.equal((await call('/auth/register', { name: 'Another User', email: 'other@example.test', password, role: 'admin' })).status, 400);
+      assert.equal((await call('/auth/register', { name: 'Another User', email: 'other@phinmaed.com', password, role: 'admin' })).status, 400);
       assert.equal(accounts.size, 1);
     });
     await t.test('wrong credentials are generic and unverified login has no token', async () => {
       const wrong = await call('/auth/login', { email, password: 'WrongSecret1!' });
-      const unknown = await call('/auth/login', { email: 'absent@example.test', password: 'WrongSecret1!' });
+      const unknown = await call('/auth/login', { email: 'absent@phinmaed.com', password: 'WrongSecret1!' });
       assert.equal(wrong.status, 401);
       assert.deepEqual(wrong.data, unknown.data);
       const blocked = await call('/auth/login', { email, password });
@@ -231,14 +231,14 @@ test('email verification account flow without MongoDB or Gmail', async (t) => {
       const result = await call('/auth/register', {
         name: 'Changed Name', email, password: 'DifferentPassword2!',
       });
-      assert.equal(result.status, 409);
+      assert.equal(result.status, 201);
       assert.equal(result.data.code, undefined);
-      assert.match(result.data.message, /already exists/);
+      assert.match(result.data.message, /sign in if you already registered/);
       assert.deepEqual(accounts.get(email), before);
       assert.equal(sent.length, sentCount);
     });
     await t.test('failed grant rolls back verification and remains retryable', async () => {
-      const { token, account } = await createGrantCandidate('retry-grant@example.test');
+      const { token, account } = await createGrantCandidate('retry-grant@phinmaed.com');
       const before = grants.length;
       grantFails = true;
       assert.equal(await verifyDirect(token), 500);
@@ -252,7 +252,7 @@ test('email verification account flow without MongoDB or Gmail', async (t) => {
       assert.equal(grants.length, before + 1);
     });
     await t.test('concurrent verification grants once', async () => {
-      const { token, account } = await createGrantCandidate('concurrent-grant@example.test');
+      const { token, account } = await createGrantCandidate('concurrent-grant@phinmaed.com');
       const before = grants.length;
       const outcomes = await Promise.all([
         verifyDirect(token), verifyDirect(token),
@@ -262,13 +262,13 @@ test('email verification account flow without MongoDB or Gmail', async (t) => {
       assert.equal(grants.length, before + 1);
     });
     await t.test('new registrations snapshot a changed grant while earlier pending users keep 100', async () => {
-      const older = await createGrantCandidate('older-pending@example.test');
+      const older = await createGrantCandidate('older-pending@phinmaed.com');
       configuredRules = { startingCreditGrant: 120, tutoringSessionCost: 25,
         assessmentReward: 30, version: 1 };
       const registered = await call('/auth/register', { name: 'New Student',
-        email: 'new-grant@example.test', password });
+        email: 'new-grant@phinmaed.com', password });
       assert.equal(registered.status, 201);
-      const newer = accounts.get('new-grant@example.test');
+      const newer = accounts.get('new-grant@phinmaed.com');
       assert.equal(newer.openingGrantAmount, 120);
       assert.equal(await verifyDirect(older.token), 200);
       assert.equal(older.account.credits, 100);
@@ -283,7 +283,7 @@ test('email verification account flow without MongoDB or Gmail', async (t) => {
         ['student', 2, false], ['moderator', 0, true], ['admin', 0, true],
       ]) {
         const token = randomBytes(32).toString('hex');
-        const address = `${role}-verification@example.test`;
+        const address = `${role}-verification@phinmaed.com`;
         accounts.set(address, { _id: new mongoose.Types.ObjectId(), email: address,
           role, credits: startingBalance, openingGrantEligible: eligible,
           emailVerified: false, emailVerificationTokenHash: hashVerificationToken(token),
@@ -298,11 +298,11 @@ test('email verification account flow without MongoDB or Gmail', async (t) => {
       const legacyPassword = 'legacy-password';
       const legacy = {
         _id: '507f1f77bcf86cd799439018', name: 'Demo moderator',
-        email: 'legacy@example.test', role: 'moderator', credits: 2,
+        email: 'legacy@phinmaed.com', role: 'moderator', credits: 2,
         password: await bcrypt.hash(legacyPassword, 4),
       };
       accounts.set(legacy.email, legacy);
-      const result = await call('/auth/login', { email: ' LEGACY@EXAMPLE.TEST ', password: legacyPassword });
+      const result = await call('/auth/login', { email: ' LEGACY@PHINMAED.COM ', password: legacyPassword });
       assert.equal(result.status, 200);
       assert.equal(result.data.data.user.role, 'moderator');
       assert.equal(jwt.verify(result.data.data.token, process.env.JWT_SECRET).role, 'moderator');
@@ -313,7 +313,7 @@ test('email verification account flow without MongoDB or Gmail', async (t) => {
       const duplicate = await call('/auth/register', {
         name: 'Changed Name', email: legacy.email, password: 'DifferentPassword2!',
       });
-      assert.equal(duplicate.status, 409);
+      assert.equal(duplicate.status, 201);
       assert.equal(duplicate.data.code, undefined);
       assert.deepEqual(accounts.get(legacy.email), legacy);
       assert.equal(sent.length, sentCount);
@@ -321,27 +321,27 @@ test('email verification account flow without MongoDB or Gmail', async (t) => {
     await t.test('legacy admin remains an existing account without registration mutation', async () => {
       const legacy = {
         _id: '507f1f77bcf86cd799439019', name: 'Demo admin',
-        email: 'admin@example.test', role: 'admin', credits: 2,
+        email: 'admin@phinmaed.com', role: 'admin', credits: 2,
         password: await bcrypt.hash('AdminSecret1!', 4),
       };
       accounts.set(legacy.email, legacy);
       const sentCount = sent.length;
       const result = await call('/auth/register', {
-        name: 'Changed Name', email: ' ADMIN@EXAMPLE.TEST ', password: 'DifferentPassword2!',
+        name: 'Changed Name', email: ' ADMIN@PHINMAED.COM ', password: 'DifferentPassword2!',
       });
-      assert.equal(result.status, 409);
+      assert.equal(result.status, 201);
       assert.equal(result.data.code, undefined);
       assert.deepEqual(accounts.get(legacy.email), legacy);
       assert.equal(sent.length, sentCount);
     });
     await t.test('resend replaces old token and gives an enumeration-safe response', async () => {
-      const secondEmail = 'second@example.test';
+      const secondEmail = 'second@phinmaed.com';
       const before = grants.length;
       assert.equal((await call('/auth/register', { name: 'Second User', email: secondEmail, password })).status, 201);
       const oldToken = sent.at(-1).token;
       accounts.get(secondEmail).emailVerificationSentAt = new Date(Date.now() - 61_000);
       const resent = await call('/auth/resend-verification', { email: secondEmail });
-      const unknown = await call('/auth/resend-verification', { email: 'absent@example.test' });
+      const unknown = await call('/auth/resend-verification', { email: 'absent@phinmaed.com' });
       assert.equal(resent.status, 200);
       assert.deepEqual(resent.data, unknown.data);
       assert.notEqual(sent.at(-1).token, oldToken);
@@ -352,20 +352,20 @@ test('email verification account flow without MongoDB or Gmail', async (t) => {
     });
     await t.test('delivery failure retains recoverable account without logging secrets', async () => {
       deliveryFails = true;
-      const result = await call('/auth/register', { name: 'Third User', email: 'third@example.test', password });
+      const result = await call('/auth/register', { name: 'Third User', email: 'third@phinmaed.com', password });
       assert.equal(result.status, 503);
       assert.equal(result.data.code, 'VERIFICATION_EMAIL_UNAVAILABLE');
-      assert.equal(accounts.get('third@example.test').emailVerified, false);
-      assert.equal(accounts.get('third@example.test').emailVerificationSentAt, undefined);
+      assert.equal(accounts.get('third@phinmaed.com').emailVerified, false);
+      assert.equal(accounts.get('third@phinmaed.com').emailVerificationSentAt, undefined);
       deliveryFails = false;
-      assert.equal((await call('/auth/resend-verification', { email: 'third@example.test' })).status, 200);
-      assert.equal(sent.at(-1).recipient, 'third@example.test');
+      assert.equal((await call('/auth/resend-verification', { email: 'third@phinmaed.com' })).status, 200);
+      assert.equal(sent.at(-1).recipient, 'third@phinmaed.com');
       assert.doesNotMatch(logs.join('\n'), /private Gmail|ValidSecret1!|Bearer |mongodb|[a-f0-9]{64}/);
     });
     await t.test('resend endpoint is rate limited', async () => {
       let limited = false;
       for (let attempt = 0; attempt < 6; attempt += 1) {
-        const result = await call('/auth/resend-verification', { email: 'absent@example.test' });
+        const result = await call('/auth/resend-verification', { email: 'absent@phinmaed.com' });
         if (result.status === 429) { limited = true; break; }
         assert.equal(result.status, 200);
       }

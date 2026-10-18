@@ -1,0 +1,51 @@
+.academic-workspace { display: grid; gap: 24px; max-width: 1200px; margin-inline: auto; min-width: 0; }
+.academic-workspace h1, .academic-workspace h2, .academic-workspace h3, .academic-workspace h4 { overflow-wrap: anywhere; margin-top: 0; }
+.academic-workspace p { line-height: 1.6; }
+.academic-header { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 16px; }
+.academic-header p { margin-bottom: 0; }
+.academic-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
+.academic-actions .btn, .academic-workspace .btn { min-height: 44px; }
+.academic-term { display: flex; flex-wrap: wrap; align-items: end; gap: 16px; padding: 24px; }
+.academic-term > label { flex: 1 1 260px; }
+.academic-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 270px), 1fr)); gap: 16px; }
+.academic-workspace .card { padding: 24px; min-width: 0; }
+.academic-subject { display: grid; align-content: start; gap: 12px; }
+.academic-subject h3, .academic-subject p { margin: 0; }
+.academic-subject progress { width: 100%; accent-color: var(--acadova-action); }
+.academic-open { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; }
+.academic-empty { text-align: center; padding-block: 40px !important; }
+.academic-form { display: grid; gap: 16px; }
+.academic-form label, .academic-term label, .academic-search { display: grid; gap: 8px; }
+.academic-workspace .form-input, .academic-workspace .form-select, .academic-form .form-input, .academic-form .form-select { width: 100%; min-width: 0; min-height: 44px; font-size: 1rem; }
+.academic-search { max-width: 420px; margin-block: 16px; }
+.academic-period, .academic-module { display: grid; gap: 16px; }
+.academic-module { scroll-margin-top: 100px; margin-block: 16px; }
+.academic-module > label { max-width: 300px; display: grid; gap: 8px; }
+.academic-resource { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: start; gap: 12px; padding-block: 16px; border-bottom: 1px solid var(--border-subtle); overflow-wrap: anywhere; }
+.academic-resource > div:first-child { min-width: 0; flex: 1 1 250px; }
+.academic-resource a { display: inline-flex; align-items: center; gap: 6px; min-height: 44px; }
+.academic-note { white-space: pre-wrap; }
+.academic-source-choice { display: flex; align-items: center; gap: 8px; min-height: 44px; }
+.academic-workspace :focus-visible, .academic-form :focus-visible { outline: 3px solid var(--acadova-action); outline-offset: 3px; }
+@media (max-width: 600px) {
+  .academic-workspace { gap: 20px; }
+  .academic-workspace .card { padding: 16px; }
+  .academic-header { align-items: start; }
+  .academic-header > div { max-width: 100%; }
+  .academic-actions .btn { white-space: normal; text-align: left; }
+}
+.study-plan-widget { display: grid; gap: 16px; }
+.study-plan-list { list-style: none; padding: 0; margin: 0; }
+.study-plan-list > li { display: flex; flex-wrap: wrap; align-items: start; justify-content: space-between; gap: 16px; padding-block: 16px; border-bottom: 1px solid var(--border-subtle); overflow-wrap: anywhere; }
+.study-plan-list > li > div:first-child { flex: 1 1 240px; min-width: 0; }
+.ac-material-info { min-width:0; flex:1; }
+.ac-material-primary { gap:8px; margin-top:8px; align-items:flex-start; }
+.ac-action-menu { min-width:0; }
+.ac-action-menu > summary { cursor:pointer; list-style:none; width:fit-content; min-height:44px; }
+.ac-action-menu > summary::-webkit-details-marker { display:none; }
+.ac-action-menu > summary::after { content:'⌄'; margin-left:8px; }
+.ac-action-menu[open] > summary::after { content:'⌃'; }
+.ac-menu-items { display:flex; flex-wrap:wrap; gap:4px; margin-top:6px; padding:6px; border:1px solid var(--border-strong); border-radius:var(--radius-sm); background:var(--bg-surface); }
+.ac-add-material { margin-block:12px; }
+.ac-action-menu summary:focus-visible { outline:3px solid var(--acadova-action); outline-offset:3px; }
+@media(max-width:600px) { .ac-material-row { flex-wrap:wrap; } .ac-material-more { width:100%; } .ac-material-primary > .btn, .ac-material-primary > details { flex:1 1 180px; } .ac-material-primary summary { width:100%; } }

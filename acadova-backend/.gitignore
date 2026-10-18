@@ -1,6 +1,14 @@
+# Dependencies
 node_modules/
+
+# Environment variables and secrets
 .env
 .env.*
+env.ai-qa
 !.env.example
+
+# Logs
 *.log
+
+# OS files
 .DS_Store

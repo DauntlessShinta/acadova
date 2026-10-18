@@ -94,7 +94,7 @@ export const AssessmentsPage = () => {
           catch { /* A published topic can still be reviewed if its module is unavailable. */ }
         }
         if (!active) return;
-        const context = verifiedAssessmentReview(selected.id, topic, module, originLesson);
+        const context = verifiedAssessmentReview(selected.id, topic, module, originLesson, selected);
         if (context) setReview({ context, title: context.moduleId ? module.title : learningTopicTitle(topic) });
         else setReviewNotice('A related learning topic could not be confirmed. Browse Learning for supporting material.');
       } catch {
@@ -112,7 +112,7 @@ export const AssessmentsPage = () => {
     try {
       const response = await learningService.topic(topic.id);
       if (version !== viewVersion.current) return;
-      const context = verifiedAssessmentReview(assessment.id, response.data);
+      const context = verifiedAssessmentReview(assessment.id, response.data, null, 0, assessment);
       if (context) navigate(learningReviewHref(context));
       else {
         toast('info', 'Browse published topics for related learning material.');
@@ -172,7 +172,7 @@ export const AssessmentsPage = () => {
       {listLoading ? <LoadingSpinner text="Loading assessments..." /> : listError ? <>
         <Alert type="danger" message={listError} /><EmptyState title="Assessments unavailable" description="Try loading the published assessment list again." actionText="Retry" onAction={() => { setListLoading(true); setLoadAttempt((value) => value + 1); }} />
       </> : list.length === 0 ? <div className="card"><h2>No published assessments yet</h2><p>Explore Learning while staff prepare assessments.</p><Link className="btn btn-secondary" to="/learning">Browse learning</Link></div>
-        : <div className="assessment-hub-list">{list.map((item) => <AssessmentCard key={item.id} assessment={item}
+        : <div className="assessment-hub-list">{list.map((item) => <AssessmentCard key={item.id} assessment={item} topicName={candidateAssessmentTopic(item, topics) ? learningTopicTitle(candidateAssessmentTopic(item, topics)) : item.topic}
           onReview={candidateAssessmentTopic(item, topics) ? reviewTopic : undefined} reviewBusy={reviewingId === item.id} />)}</div>}
     </> : assessmentLoading ? <LoadingSpinner text="Loading assessment..." /> : assessmentError ? <>
       <Alert type="danger" message={assessmentError} /><div className="assessment-review-actions"><button type="button" className="btn btn-secondary" onClick={() => { setAssessmentLoading(true); setOpenAttempt((value) => value + 1); }}>Retry assessment</button><Link className="btn btn-secondary" to="/assessments">Back to assessments</Link></div>

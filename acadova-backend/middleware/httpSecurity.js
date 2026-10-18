@@ -30,7 +30,7 @@ if (process.env.FRONTEND_ORIGIN) {
 
 const corsMiddleware = cors({
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'Idempotency-Key'],
   // Authentication uses bearer JWTs, not cross-origin cookies.
   credentials: false,
   origin(origin, callback) {

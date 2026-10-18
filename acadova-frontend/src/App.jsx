@@ -1,3 +1,5 @@
+import { AiGenerationProvider, AiGenerationTray } from './context/AiGenerationContext';
+import GrowthPage from './pages/GrowthPage';
 import React, { useEffect } from 'react';
 import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import PublicLayout from './layouts/PublicLayout';
@@ -25,6 +27,7 @@ import OnboardingPage from './pages/OnboardingPage';
 
 // Authenticated Pages
 import DashboardPage from './pages/DashboardPage';
+import { AcademicHomePage, MySubjectsPage, SubjectWorkspacePage } from './pages/AcademicWorkspace';
 import FindTutorsPage from './pages/FindTutorsPage';
 import TutorProfilePage from './pages/TutorProfilePage';
 import SessionsPage from './pages/SessionsPage';
@@ -33,7 +36,11 @@ import CreditsPage from './pages/CreditsPage';
 import AssessmentsPage from './pages/AssessmentsPage';
 import LearningPage from './pages/LearningPage';
 import ProfilePage from './pages/ProfilePage';
+import StudyTogetherPage from './pages/StudyTogetherPage';
+import SharedStudySetPage from './pages/SharedStudySetPage';
+import ModeratorCirclesPage from './pages/moderator/ModeratorCirclesPage';
 import StudySetsPage from './pages/StudySetsPage';
+import AiStudyPage from './pages/AiStudyPage';
 import SettingsPage from './pages/SettingsPage';
 
 // Admin Page
@@ -70,7 +77,7 @@ export const App = () => {
     if (!hash) window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
   }, [pathname, hash]);
   return (
-    <NotificationProvider key={user?._id || user?.id || 'guest'}><Routes>
+    <NotificationProvider key={user?._id || user?.id || 'guest'}><AiGenerationProvider><Routes>
       {/* Public Marketing & Auth Routes */}
       <Route element={<PublicLayout />}>
         <Route path="/" element={<LandingPage />} />
@@ -92,15 +99,23 @@ export const App = () => {
 
       {/* Student peer-learning routes */}
       <Route element={<AppLayout allowedRoles={['student']} />}>
-        <Route path="/dashboard" element={<DashboardPage />} />
+        <Route path="/dashboard" element={<AcademicHomePage />} />
+        <Route path="/study-together" element={<StudyTogetherPage />} />
+        <Route path="/study-share/:id" element={<SharedStudySetPage />} />
+        <Route path="/dashboard/peer" element={<DashboardPage />} />
+        <Route path="/subjects" element={<MySubjectsPage />} />
+        <Route path="/subjects/:id" element={<SubjectWorkspacePage />} />
         <Route path="/tutors" element={<FindTutorsPage />} />
         <Route path="/tutors/:id" element={<TutorProfilePage />} />
         <Route path="/sessions" element={<SessionsPage />} />
         <Route path="/sessions/:id" element={<SessionRoomPage />} />
         <Route path="/credits" element={<CreditsPage />} />
+        <Route path="/growth" element={<GrowthPage />} />
         <Route path="/assessments" element={<AssessmentsPage />} />
         <Route path="/learning" element={<LearningPage />} />
         <Route path="/study-sets" element={<StudySetsPage />} />
+        <Route path="/learning/ai-study" element={<AiStudyPage />} />
+        <Route path="/learning/ai-study/:id" element={<AiStudyPage />} />
         <Route path="/study-sets/:id" element={<StudySetsPage />} />
         <Route path="/profile" element={<ProfilePage />} />
         <Route path="/settings" element={<SettingsPage />} />
@@ -116,6 +131,7 @@ export const App = () => {
         <Route path="assessments" element={<ModeratorAssessmentsPage />} />
         <Route path="learning" element={<ModeratorLearningPage />} />
         <Route path="study-sets" element={<ModeratorStudySetsPage />} />
+        <Route path="study-circles" element={<ModeratorCirclesPage />} />
       </Route>
 
       {/* Protected Admin Routes */}
@@ -134,11 +150,12 @@ export const App = () => {
         <Route path="assessments" element={<ModeratorAssessmentsPage />} />
         <Route path="learning" element={<ModeratorLearningPage />} />
         <Route path="study-sets" element={<ModeratorStudySetsPage />} />
+        <Route path="study-circles" element={<ModeratorCirclesPage />} />
       </Route>
 
       {/* Fallback */}
       <Route path="*" element={<Navigate to="/" replace />} />
-    </Routes></NotificationProvider>
+    </Routes><AiGenerationTray/></AiGenerationProvider></NotificationProvider>
   );
 };
 

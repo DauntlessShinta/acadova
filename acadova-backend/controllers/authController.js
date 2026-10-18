@@ -16,6 +16,7 @@ const googleIdentity = require('../services/googleIdentityService');
 const { isValidEmail } = require('../middleware/validation');
 const { policyVersion } = require('../config/policy');
 const { validAuthVersion } = require('../utils/authVersion');
+const { registrationDomains, normalizeInstitutionalEmail } = require('../config/institutionalRegistration');
 
 // Unknown accounts still perform a password comparison to avoid an obvious
 // fast path that reveals whether an email is registered.
@@ -48,20 +49,25 @@ function publicUser(user) {
     role: user.role, skillsToLearn: user.skillsToLearn || [], skillsToTeach: user.skillsToTeach || [] };
 }
 
-function existingRegistrationResponse(res, user) {
-  if (user?.emailVerified === false) {
-    return res.status(409).json({
-      success: false,
-      code: 'REGISTRATION_PENDING_VERIFICATION',
-      message: 'Your Acadova account is waiting for email verification.',
-    });
-  }
-  return res.status(409).json({ success: false, message: 'An account with this email already exists.' });
+function existingRegistrationResponse(res) {
+  // Do not disclose whether an eligible institutional address already exists,
+  // or overwrite an existing account's password or verification state.
+  return res.status(201).json({ success: true, message: 'Check your email to verify your account, or sign in if you already registered.' });
 }
+
+exports.registrationPolicy = (req, res) => {
+  res.set('Cache-Control', 'no-store');
+  try { return res.json({ success: true, data: { domains: registrationDomains(), aliasesAllowed: false } }); }
+  catch { return res.status(503).json({ success: false, message: 'Institutional registration is temporarily unavailable.' }); }
+};
 
 exports.register = async (req, res) => {
   try {
-    const { name, email, password } = req.body;
+    const { name, password } = req.body;
+    const email = normalizeInstitutionalEmail(req.body.email);
+    if (!email) return res.status(400).json({ success: false, code: 'INSTITUTIONAL_EMAIL_REQUIRED',
+      message: 'Use your approved PHINMAED institutional email address without a plus alias.' });
+    req.body.email = email;
     const existing = await User.findOne({ email }).lean();
     if (existing) return existingRegistrationResponse(res, existing);
     const verification = createVerificationToken();
@@ -93,16 +99,13 @@ exports.register = async (req, res) => {
         message: 'Account created, but the verification email could not be sent. Please try resending shortly.',
       });
     }
-    return res.status(201).json({ success: true, message: 'Account created. Check your email to verify your address.' });
+    return existingRegistrationResponse(res, null);
   } catch (error) {
+    if (error.status === 503) return res.status(503).json({ success: false, code: 'REGISTRATION_POLICY_UNAVAILABLE',
+      message: 'Institutional registration is temporarily unavailable. Try again later.' });
     if (error.code === 11000) {
-      // A concurrent registration may have won the unique-email race.
-      try {
-        const existing = await User.findOne({ email: req.body.email }).lean();
-        return existingRegistrationResponse(res, existing);
-      } catch {
-        return existingRegistrationResponse(res, null);
-      }
+      // The unique-email race has the same non-enumerating receipt.
+      return existingRegistrationResponse(res);
     }
     logSecurityEvent('auth.registration_failed', req, { status: 500 });
     return res.status(500).json({ success: false, message: 'Server error during registration' });
@@ -369,6 +372,7 @@ exports.googleLogin = async (req, res) => {
           type: 'initial_grant', toUser: account._id, amount: grantAmount,
         }], { session: dbSession });
       } else {
+        if (!normalizeInstitutionalEmail(email)) { denied = 'INSTITUTIONAL_EMAIL_REQUIRED'; return; }
         if (req.body.policyAccepted !== true) { denied = 'POLICY_ACCEPTANCE_REQUIRED'; return; }
         // Unknown local password is never disclosed; password recovery can set one later.
         const password = await bcrypt.hash(randomBytes(48).toString('hex'), 10);
@@ -385,6 +389,8 @@ exports.googleLogin = async (req, res) => {
         account = created;
       }
     });
+    if (denied === 'INSTITUTIONAL_EMAIL_REQUIRED') return res.status(400).json({ success: false,
+      code: denied, message: 'Use your approved PHINMAED institutional email address without a plus alias.' });
     if (denied === 'POLICY_ACCEPTANCE_REQUIRED') return res.status(409).json({ success: false,
       code: denied, message: 'Please accept the account policies to create your account.' });
     if (denied === 'ACCOUNT_SUSPENDED') {

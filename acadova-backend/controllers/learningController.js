@@ -17,6 +17,7 @@ const resourceView = (row, staff = false, entitled = false) => ({
   resourceType: row.resourceType, creditCost: row.creditCost, locked: row.creditCost > 0 && !entitled,
   ...(entitled ? { unlocked: true } : {}),
   ...(staff ? { reviewStatus: row.reviewStatus, submittedBy: id(row.submittedBy),
+    creationOrigin: row.creationOrigin || null, authorRole: row.authorRole || null,
     reviewedBy: row.reviewedBy ? id(row.reviewedBy) : null, reviewNote: row.reviewNote || null } : {}),
   ...(staff || row.creditCost === 0 || entitled ? {
     ...(row.resourceType === 'text' ? { textContent: row.textContent } : { externalUrl: row.externalUrl }),
@@ -121,7 +122,7 @@ exports.submitResource = async (req, res) => {
       return res.status(400).json({ success: false, message: 'Provide only the selected resource content.' });
     }
     const row = await LearningResource.create({ ...body, submittedBy: req.user.id,
-      reviewStatus: 'submitted', creditCost: 0 });
+      reviewStatus: 'submitted', creditCost: 0, creationOrigin: 'student', authorRole: req.user.role });
     return res.status(201).json({ success: true, data: { id: id(row._id), reviewStatus: 'submitted' } });
   } catch { return failure(res); }
 };
@@ -206,13 +207,13 @@ exports.createStaffResource = async (req, res) => {
   try {
     const body = req.body;
     if (!await LearningTopic.exists({ _id: body.topic, status: 'published' })) return unavailable(res);
-    if ((body.resourceType === 'text' && (!body.textContent || body.externalUrl))
-      || (body.resourceType === 'url' && (!body.externalUrl || body.textContent))) {
+    if ((body.resourceType === 'text' && body.externalUrl)
+      || (body.resourceType === 'url' && body.textContent)) {
       return res.status(400).json({ success: false, message: 'Provide only the selected resource content.' });
     }
     const row = await auditedContentChange(req, ACTIONS.resourceCreated, 'LearningResource',
       'Learning resource draft created', async (session) => (await LearningResource.create([{
-        ...body, submittedBy: req.user.id, reviewStatus: 'submitted', creditCost: 0,
+        ...body, submittedBy: req.user.id, reviewStatus: 'draft', creditCost: 0, creationOrigin: 'staff', authorRole: req.user.role,
       }], { session }))[0]);
     return res.status(201).json({ success: true, data: resourceView(row, true) });
   } catch { return failure(res); }
@@ -221,27 +222,33 @@ exports.updateStaffResource = async (req, res) => {
   try {
     const body = req.body;
     if (!await LearningTopic.exists({ _id: body.topic, status: 'published' })) return unavailable(res);
-    if ((body.resourceType === 'text' && (!body.textContent || body.externalUrl))
-      || (body.resourceType === 'url' && (!body.externalUrl || body.textContent))) {
+    if ((body.resourceType === 'text' && body.externalUrl)
+      || (body.resourceType === 'url' && body.textContent)) {
       return res.status(400).json({ success: false, message: 'Provide only the selected resource content.' });
     }
+    const hasContent = body.resourceType === 'text' ? Boolean(body.textContent) : Boolean(body.externalUrl);
     const row = await auditedContentChange(req, ACTIONS.resourceUpdated, 'LearningResource',
       'Learning resource submission updated',
-      (session) => LearningResource.findOneAndUpdate({ _id: req.params.id, reviewStatus: 'submitted' },
+      (session) => LearningResource.findOneAndUpdate({ _id: req.params.id, reviewStatus: hasContent ? { $in: ['draft', 'submitted'] } : 'draft' },
         { $set: body, $unset: body.resourceType === 'text'
-          ? { externalUrl: 1 } : { textContent: 1 } },
+          ? { externalUrl: 1, ...(!body.textContent ? { textContent: 1 } : {}) } : { textContent: 1, ...(!body.externalUrl ? { externalUrl: 1 } : {}) } },
         { new: true, runValidators: true, session }));
     return row ? res.json({ success: true, data: resourceView(row, true) }) : unavailable(res);
   } catch { return failure(res); }
 };
 exports.publishResource = async (req, res) => {
   try {
-    const existing = await LearningResource.findOne({ _id: req.params.id, reviewStatus: 'submitted' }).lean();
+    const existing = await LearningResource.findOne({ _id: req.params.id, reviewStatus: { $in: ['draft', 'submitted'] } }).lean();
     if (!existing || !await LearningTopic.exists({ _id: existing.topic, status: 'published' })) return unavailable(res);
-    const row = await auditedContentChange(req, ACTIONS.resourcePublished, 'LearningResource', 'Learning resource approved',
-      (session) => LearningResource.findOneAndUpdate({ _id: existing._id, reviewStatus: 'submitted' },
+    const content = new LearningResource({ ...existing, reviewStatus: 'published' });
+    try { await content.validate(); } catch {
+      return res.status(400).json({ success: false, message: 'Complete the selected resource content before publishing.' });
+    }
+    const row = await auditedContentChange(req, ACTIONS.resourcePublished, 'LearningResource',
+      existing.reviewStatus === 'draft' ? 'Official learning resource published' : 'Learning resource approved',
+      (session) => LearningResource.findOneAndUpdate({ _id: existing._id, reviewStatus: existing.reviewStatus, ...(existing.updatedAt ? { updatedAt: existing.updatedAt } : {}) },
       { $set: { reviewStatus: 'published', reviewedBy: req.user.id, publishedAt: new Date(),
-        creditCost: req.body.creditCost } }, { new: true, session }), { creditCost: req.body.creditCost });
+        creditCost: req.body.creditCost } }, { new: true, session }), { creditCost: req.body.creditCost, previousStatus: existing.reviewStatus, newStatus: 'published' });
     if (!row) return unavailable(res);
     logSecurityEvent('moderation.resource_published', req, { resourceId: id(row._id) });
     await notifications.notifySafely({ recipient: row.submittedBy, type: 'learning.content_status',
@@ -341,5 +348,23 @@ exports.archiveModule = async (req, res) => {
     if (!row) return unavailable(res);
     logSecurityEvent('moderation.module_archived', req, { moduleId: id(row._id) });
     return res.json({ success: true, data: moduleView(row, true) });
+  } catch { return failure(res); }
+};
+
+exports.getStaffTopic = async (req, res) => {
+  try {
+    const topic = await LearningTopic.findById(req.params.id).lean();
+    if (!topic) return unavailable(res);
+    const [resources, modules, assessments] = await Promise.all([
+      LearningResource.find({ topic: topic._id }).sort({ createdAt: -1 }).lean(),
+      LearningModule.find({ topic: topic._id }).sort({ createdAt: -1 }).lean(),
+      Assessment.find({ $or: [{ learningTopic: topic._id },
+        { learningTopic: { $exists: false }, topic: topic.name }] }).select('_id title topic learningTopic status questions').lean(),
+    ]);
+    return res.json({ success: true, data: { ...topicView(topic),
+      resources: await staffResourceViews(resources), modules: modules.map((row) => moduleView(row, true)),
+      assessments: assessments.map((row) => ({ id: id(row._id), title: row.title, topic: row.topic,
+        ...(row.learningTopic !== undefined ? { learningTopic: row.learningTopic ? id(row.learningTopic) : null } : {}),
+        status: row.status, questionCount: row.questions.length })) } });
   } catch { return failure(res); }
 };

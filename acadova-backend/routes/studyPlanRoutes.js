@@ -1,0 +1,12 @@
+const router = require('express').Router();
+const controller = require('../controllers/studyPlanController');
+const { validateQuery, validateParams, validateBody, InvalidInput } = require('../middleware/validation');
+const { objectId } = require('../utils/academicValidation'); const { sessionActionLimiter } = require('../middleware/writeLimiters');
+router.use(validateQuery({ subjectId: value => value === undefined ? undefined : objectId(value) }));
+router.get('/', controller.list);
+router.post('/', sessionActionLimiter, controller.create);
+router.patch('/preferences', sessionActionLimiter, validateBody({ enabled: controller.validators.boolean }), controller.preferences);
+router.post('/nudges/dismiss', sessionActionLimiter, validateBody({ key: value => { if (typeof value !== 'string' || !/^(?:task|module|practice):[a-f0-9]{24}(?::\d{1,16})?$/.test(value)) throw new InvalidInput('Choose a current study suggestion.'); return value; } }), controller.dismiss);
+router.patch('/:id', sessionActionLimiter, validateParams({ id: objectId }), controller.edit);
+router.delete('/:id', sessionActionLimiter, validateParams({ id: objectId }), validateBody({ version: controller.validators.version }), controller.remove);
+module.exports = router;

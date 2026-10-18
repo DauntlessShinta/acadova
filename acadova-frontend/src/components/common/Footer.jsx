@@ -34,7 +34,7 @@ export const Footer = () => {
               {!isAuthenticated ? <PublicBrandLogo /> : <><span className="site-brand-mark"><Layers size={19} /></span>
               <span>Acadova</span></>}
             </Link>
-            <p>Peer-to-peer academic skill and knowledge sharing, powered by reciprocal learning credits.</p>
+            <p>Organize your subjects, practise with learning materials, and collaborate with peers.</p>
             <span className="site-footer-purpose"><BookOpen size={15} /> Supporting accessible, student-led learning</span>
           </div>
 
@@ -42,7 +42,7 @@ export const Footer = () => {
             <h2>Platform</h2>
             <ul>
               <li><Link to="/#how-it-works">How It Works</Link></li>
-              <li><Link to="/#credit-system">Credit Model</Link></li>
+              <li><Link to="/#faq">FAQ &amp; current access</Link></li>
               <li><Link to="/#features">Features</Link></li>
               <li><Link to={!isAuthenticated ? "/#dashboard-preview" : "/features"}>{!isAuthenticated ? "Dashboard Preview" : "Platform features"}</Link></li>
               <li><Link to="/about">About Acadova</Link></li>
@@ -50,10 +50,9 @@ export const Footer = () => {
           </div>
 
           <div>
-            <h2>{!isAuthenticated ? "Explore Skills" : "Learning"}</h2>
+            <h2>Learning</h2>
             <ul>
-              {!isAuthenticated ? ['Web Development', 'Mathematics', 'Networking', 'Cybersecurity', 'Databases'].map((skill) =>
-                <li key={skill}><Link to="/#skill-network">{skill}</Link></li>) : <>
+              {!isAuthenticated ? <><li><Link to="/#features">Subjects &amp; study tools</Link></li><li><Link to="/#community">Privacy &amp; trust</Link></li><li><Link to="/about#contact">Contact</Link></li></> : <>
                 <li><Link to="/tutors">Find Tutors</Link></li>
                 <li><Link to="/learning">Learning library</Link></li>
                 <li><Link to="/#features">Two ways to learn</Link></li>
@@ -64,9 +63,9 @@ export const Footer = () => {
           <div>
             <h2>Learning & Trust</h2>
             <ul>
-              <li><Link to="/#community">{!isAuthenticated ? "Community Reputation" : "Community accountability"}</Link></li>
+              <li><Link to="/#community">{!isAuthenticated ? "Privacy & Trust" : "Community accountability"}</Link></li>
               <li><Link to="/#sdg-section">SDG 4 Quality Education</Link></li>
-              {!isAuthenticated && <><li><span>Credit-based exchange</span></li><li><span>Peer accountability</span></li></>}
+
               <li><Link to="/community-guidelines">Community Guidelines</Link></li>
             </ul>
           </div>

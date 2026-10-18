@@ -94,7 +94,7 @@ test('Google identity links existing users and grants only new or pending verifi
   AuditLog.create = async ([entry]) => [entry];
   const users = [];
   const grants = [];
-  let identity = { sub: 'google-student-1', email: 'new@example.test', name: 'Google Student' };
+  let identity = { sub: 'google-student-1', email: 'new@phinmaed.com', name: 'Google Student' };
   googleIdentity.verifyGoogleCredential = async () => identity;
   loginSecurity.resetAfterSuccess = async (account) => account.suspendedAt
     || account.loginCooldownUntil > new Date() ? null : account;

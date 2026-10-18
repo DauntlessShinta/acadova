@@ -2,11 +2,13 @@ import React from 'react';
 import { Outlet, Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import StudentNavigation from '../components/common/StudentNavigation';
+import '../components/learning/studentV2.css';
 import Footer from '../components/common/Footer';
 import LoadingSpinner from '../components/common/LoadingSpinner';
 import { getRoleHomeRoute } from '../config/roleNavigation';
 import { needsProfileSetup } from '../utils/profileSetup';
 import { safeStudentReturnPath } from '../utils/studyNavigation';
+import StudyTogetherNavigation from '../components/student/StudyTogetherNavigation';
 
 export const AppLayout = ({ allowedRoles = null, requireProfileSetup = true }) => {
   const { user, isAuthenticated, loading } = useAuth();
@@ -33,10 +35,11 @@ export const AppLayout = ({ allowedRoles = null, requireProfileSetup = true }) =
   }
 
   return (
-    <div className={`app-shell app-shell-${user?.role || 'student'}`}>
+    <div className={`app-shell app-shell-${user?.role || 'student'}${pathname === '/dashboard' || pathname === '/subjects' || pathname.startsWith('/subjects/') || pathname === '/study-together' ? ' student-v2' : ''}`}>
       <StudentNavigation />
       <main className="app-main" id="main-content" tabIndex={-1}>
         <div className="container">
+          {(pathname === '/profile' && hash === '#profile-skills-teach' || ['/tutors','/sessions','/dashboard/peer'].some(path => pathname === path || pathname.startsWith(path + '/'))) && <StudyTogetherNavigation/>}
           <Outlet />
         </div>
       </main>

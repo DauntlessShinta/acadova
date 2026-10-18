@@ -137,6 +137,7 @@ exports.createSession = async (req, res) => {
       if (scheduledDate.getTime() <= Date.now()) throw Object.assign(new Error('Choose a future session date and time.'), { status: 400 });
       await rejectDuplicateRequest(req.user.id, tutorId, canonicalSubject, scheduledDate, dbSession);
       [session] = await Session.create([{
+        lifecycleVersion: 1,
         learner: req.user.id,
         tutor: tutorId,
         subject: canonicalSubject,
@@ -192,7 +193,15 @@ exports.updateSessionStatus = async (req, res) => {
     const result = await findParticipantSession(req, res);
     if (!result) return;
     const { session, isTutor } = result;
-    const { status } = req.body;
+    // Older clients may still say "accepted". New marked Sessions must enter
+    // the canonical lifecycle; only unmarked historical records retain the shortcut.
+    const status = session.lifecycleVersion != null && req.body.status === 'accepted'
+      ? 'scheduled' : req.body.status;
+
+    if (session.lifecycleVersion != null && status === 'completed') {
+      return res.status(400).json({ success: false,
+        message: 'Check in, finish the session, and confirm completion through the validation workflow.' });
+    }
 
     if (!ALLOWED_TRANSITIONS[session.status]?.includes(status)) {
       return res.status(400).json({ success: false, message: `This session cannot move from ${session.status} to ${status}.` });
@@ -223,6 +232,7 @@ exports.updateSessionStatus = async (req, res) => {
       update.$unset = rescheduleFields;
     }
     const filter = { _id: session._id, status: session.status };
+    if (status === 'completed') filter.lifecycleVersion = null;
     if (status === 'cancelled' && session.status === 'scheduled') Object.assign(filter, {
       startedAt: null, learnerCheckedInAt: null, tutorCheckedInAt: null,
       creditsSettledAt: null, confirmedAt: null,
@@ -794,7 +804,7 @@ exports.confirmSession = async (req, res) => {
         settledSession = session;
         return;
       }
-      if (session.awaitingValidationAt) {
+      if (session.lifecycleVersion != null || session.awaitingValidationAt) {
         throw Object.assign(new Error('This Session cannot use the legacy confirmation flow.'), { status: 409 });
       }
       if (!isLearner) throw Object.assign(new Error('Only the Learner can confirm this session.'), { status: 403 });
@@ -807,7 +817,7 @@ exports.confirmSession = async (req, res) => {
 
       const markConfirmed = async (confirmedAt, creditsSettledAt) => {
         const result = await Session.updateOne(
-          { _id: session._id, status: 'completed', confirmedAt: null, creditsSettledAt: null },
+          { _id: session._id, status: 'completed', lifecycleVersion: null, confirmedAt: null, creditsSettledAt: null },
           { $set: { confirmedAt, creditsSettledAt } },
           { session: dbSession }
         );

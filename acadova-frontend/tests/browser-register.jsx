@@ -19,6 +19,7 @@ let responseStatus = 201;
 let responseCode;
 window.fetch = async (url, options = {}) => {
   const route = new URL(String(url), location.origin).pathname;
+  if(route==='/api/auth/registration-policy')return new Response(JSON.stringify({success:true,data:{domains:['phinmaed.com'],aliasesAllowed:false}}),{status:200});
   if (route !== '/api/auth/register') throw new Error('Unexpected auth fixture API: ' + route);
   registerCalls++; requestBody = JSON.parse(options.body);
   return new Promise((resolve) => { releaseRegistration = () => {
@@ -42,6 +43,7 @@ async function render(path) {
   window.history.replaceState({}, '', path);
   root.render(<BrowserRouter key={++renderKey}><AuthProvider><ToastProvider><ConfirmProvider><App /><Probe /></ConfirmProvider></ToastProvider></AuthProvider></BrowserRouter>);
   await until(() => document.getElementById('register-probe') !== previous && document.querySelector(path === '/login' ? '#login-email' : '#register-name'), 'Auth route ' + path);
+  if(path==='/register'&&!baseline)await until(()=>!document.querySelector('.auth-submit').disabled,'Institutional registration policy ready');
   window.scrollTo({ top: 0, behavior: 'instant' }); await pause(200);
 }
 const rect = (selector) => {
@@ -112,7 +114,7 @@ try {
     fill('register-name', 'QA Learner'); fill('register-email', 'not-an-email'); fill('register-password', 'weak'); fill('register-confirm-password', 'different'); await pause();
     await submit(); assert(registerCalls === 0 && document.activeElement.id === 'register-email', 'Malformed email focus and no API');
     assert(document.getElementById('register-email-error').textContent === 'Enter a valid email address.', 'Specific malformed email');
-    fill('register-email', ' LEARNER@EXAMPLE.TEST '); await pause(); await submit();
+    fill('register-email', ' LEARNER@PHINMAED.COM '); await pause(); await submit();
     assert(document.activeElement.id === 'register-password' && document.getElementById('register-password-error'), 'Weak password preserved');
     fill('register-password', 'ValidSecret1!'); await pause(); await submit();
     assert(document.activeElement.id === 'register-confirm-password' && document.getElementById('register-confirm-password-error').textContent.includes('do not match'), 'Password mismatch focus');
@@ -148,7 +150,7 @@ try {
     assert(!document.getElementById('register-policy-error') && document.querySelector('.policy-review-status.is-accepted'), 'Consent status and error clearing');
     await submit(); assert(registerCalls === 1 && document.querySelector('.auth-submit').disabled && document.querySelector('.auth-submit').textContent === 'Creating account...', 'Loading and disabled state');
     await submit(); assert(registerCalls === 1, 'Repeated pending submit suppressed');
-    assert(requestBody.name === 'QA Learner' && requestBody.email === 'learner@example.test' && requestBody.policyAccepted === true && !Object.hasOwn(requestBody, 'confirmPassword'), 'Unchanged normalized registration contract');
+    assert(requestBody.name === 'QA Learner' && requestBody.email === 'learner@phinmaed.com' && requestBody.policyAccepted === true && !Object.hasOwn(requestBody, 'confirmPassword'), 'Unchanged normalized registration contract');
     responseStatus = 503; releaseRegistration(); await until(() => !document.querySelector('.auth-submit').disabled, 'Failure enables retry');
     assert(document.getElementById('register-password').value === 'ValidSecret1!' && document.querySelector('.policy-review-status.is-accepted'), 'Draft and consent survive retry');
     responseStatus = 409; responseCode = 'REGISTRATION_PENDING_VERIFICATION'; await submit(); releaseRegistration();
@@ -156,7 +158,7 @@ try {
     assert(!localStorage.getItem('acadova_token'), 'Registration does not authenticate');
 
     await render('/register');
-    for (const [id, value] of [['name','QA Learner'], ['email','learner@example.test'], ['password','ValidSecret1!'], ['confirm-password','ValidSecret1!']]) fill('register-' + id, value);
+    for (const [id, value] of [['name','QA Learner'], ['email','learner@phinmaed.com'], ['password','ValidSecret1!'], ['confirm-password','ValidSecret1!']]) fill('register-' + id, value);
     await pause(); document.getElementById('register-policy-review').click();
     await until(() => document.querySelector('.policy-review-scroll'), 'New-account policy review');
     const newPolicy = document.querySelector('.policy-review-scroll'); newPolicy.scrollTop = newPolicy.scrollHeight; newPolicy.dispatchEvent(new Event('scroll'));
@@ -165,12 +167,15 @@ try {
     [...document.querySelectorAll('.policy-review-buttons button')].find((button) => button.textContent.includes('Agree')).click(); await pause();
     responseStatus = 201; responseCode = undefined; await submit(); releaseRegistration();
     await until(() => location.pathname === '/verify-email/pending', 'New registration verification navigation');
-    assert(!localStorage.getItem('acadova_token') && sessionStorage.getItem('acadova_pending_email') === 'learner@example.test', 'New registration awaits verification without authenticating');
+    assert(!localStorage.getItem('acadova_token') && sessionStorage.getItem('acadova_pending_email') === 'learner@phinmaed.com', 'New registration awaits verification without authenticating');
 
     await render('/register'); document.querySelector('.auth-switch a').click();
     await until(() => location.pathname === '/login' && document.getElementById('login-email'), 'Login navigation');
     assert(!document.querySelector('.auth-shell--register'), 'Register styling does not follow Login');
-    assert(JSON.stringify(measure()) === JSON.stringify(loginMetrics), 'Login layout remains exactly unchanged within run');
+    // Match the initial render's scroll/layout settling before exact geometry comparison.
+    window.scrollTo({ top: 0, behavior: 'instant' }); await pause(200);
+    const returnedLoginMetrics = measure();
+    assert(JSON.stringify(returnedLoginMetrics) === JSON.stringify(loginMetrics), 'Login layout remains exactly unchanged within run: ' + JSON.stringify({ initial: loginMetrics, returned: returnedLoginMetrics }));
     await render('/register'); layout(); await capture('register-final');
     assert(errors.length === 0, 'Runtime errors: ' + errors.join('; '));
     document.getElementById('result').textContent = 'PASS: Register grouping/layout, focus/visibility, empty/malformed/weak/mismatch, policy keyboard/consent, loading/retry/verification and unchanged Login\n' + JSON.stringify({ login: loginMetrics, register: registerMetrics });

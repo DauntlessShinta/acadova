@@ -1844,3 +1844,40 @@
   .landing-delight *, .landing-delight *::before, .landing-delight *::after, .landing-public-navbar *, .landing-public-navbar *::after { animation: none !important; transition: none !important; }
   .landing-delight .landing-hero::before, .landing-delight .landing-peer-visual, .landing-delight .btn, .landing-public-navbar .btn { transform: none !important; }
 }
+
+/* Learning-first public surface; existing brand tokens, no fabricated metrics. */
+.landing-v2 .landing-hero { padding:48px 0; min-height:0; }
+.landing-v2-hero-grid { display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1.1fr); align-items:center; gap:40px; }
+.landing-v2 h1 { font-size:clamp(2.1rem,3.8vw,3.6rem); line-height:1.12; letter-spacing:-.045em; margin:12px 0 20px; }
+.landing-v2-intro { font-size:18px; line-height:1.65; color:var(--ink-600); max-width:560px; }
+.landing-v2 .landing-action-row { flex-wrap:wrap; margin-top:24px; }
+.landing-v2-eligibility { display:flex; align-items:center; gap:8px; font-weight:600; margin-top:18px; }
+.landing-v2-limit { max-width:510px; line-height:1.6; }
+.landing-v2-product { min-width:0; margin:0; }
+.landing-v2-product img { width:100%; height:auto; display:block; border:1px solid var(--acadova-soft-blue); border-radius:16px; box-shadow:0 22px 60px #2454b51c; }
+.landing-v2-product figcaption { margin-top:12px; font-size:12px; color:var(--ink-600); line-height:1.6; }
+.landing-v2 .landing-section { padding:56px 0; scroll-margin-top:88px; }
+.landing-v2-three { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:20px; }
+.landing-v2 .landing-feature-card { position:relative; padding:24px; background:var(--bg-surface); }
+.landing-v2 .landing-feature-card h3 { font-size:20px; margin:16px 0 10px; }
+.landing-v2 .landing-feature-card p { color:var(--ink-600); line-height:1.7; }
+.landing-v2-step { position:absolute; right:22px; top:20px; font-size:28px; color:#d6e4fc; font-weight:800; }
+.landing-v2-soft { background:#f3f7ff; }
+.landing-v2-note { margin:24px auto 0; text-align:center; color:var(--ink-600); max-width:840px; line-height:1.7; }
+.landing-v2-trust { display:grid; grid-template-columns:minmax(0,.8fr) minmax(0,1.2fr); gap:48px; }
+.landing-v2-trust h2 { font-size:clamp(1.8rem,2.5vw,2.5rem); letter-spacing:-.03em; }
+.landing-v2-trust-list { display:grid; gap:18px; }
+.landing-v2-trust-list p { display:flex; align-items:start; gap:14px; margin:0; line-height:1.7; }
+.landing-v2-trust-list svg { color:var(--acadova-action); flex-shrink:0; margin-top:4px; }
+.landing-v2-faq { max-width:940px; }.landing-v2-faq details { padding:16px 20px; border:1px solid var(--border-subtle); background:var(--bg-surface); border-radius:12px; margin:10px 0; scroll-margin-top:90px; }
+.landing-v2-faq summary { min-height:44px; padding-block:8px; cursor:pointer; font-weight:600; }.landing-v2-faq details p { line-height:1.75; margin:12px 0 0; color:var(--ink-600); }
+.landing-v2 .landing-final-cta { padding:32px 0; }.landing-v2 .landing-cta-box { padding:36px 24px; }
+@media(max-width:1100px) { .landing-v2-hero-grid { gap:24px; }.landing-v2 .btn-lg { padding-inline:18px; } }
+@media(max-width:850px) { .landing-v2-hero-grid,.landing-v2-trust { grid-template-columns:1fr; gap:28px; }.landing-v2 .landing-hero { padding:32px 0; }.landing-v2-product { max-width:680px; }.landing-v2-three { gap:12px; }.landing-v2 .landing-feature-card { padding:18px; } }
+@media(max-width:600px) { .landing-v2-three { grid-template-columns:1fr; }.landing-v2 h1 { font-size:2.25rem; }.landing-v2-intro { font-size:16px; }.landing-v2 .landing-section { padding:36px 0; }.landing-v2 .landing-action-row .btn { width:100%; }.landing-v2-trust { gap:20px; } }
+
+/* Retain the established CTA feedback on the learning-first landing page. */
+@media (hover: hover) and (pointer: fine) and (prefers-reduced-motion: no-preference) {
+  .landing-v2 .landing-action-row .btn-primary > svg { transition: transform var(--interaction-duration) ease; }
+  .landing-v2 .landing-action-row .btn-primary:hover > svg { transform: translateX(3px); }
+}

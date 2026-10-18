@@ -5,6 +5,7 @@
 
 import { authRecoveryReason } from '../utils/authRecovery';
 import { apiUrl } from '../utils/apiUrl';
+import { uploadResponse } from './uploadTransport';
 const API_BASE = import.meta.env.VITE_API_URL || '';
 
 let onUnauthorizedCallback = null;
@@ -19,6 +20,8 @@ export async function request(endpoint, options = {}) {
     'Content-Type': 'application/json',
     ...(options.headers || {}),
   };
+  // Let the browser set the multipart boundary for authenticated document uploads.
+  if (options.body instanceof FormData) delete headers['Content-Type'];
 
   if (token) {
     headers['Authorization'] = `Bearer ${token}`;
@@ -36,7 +39,9 @@ export async function request(endpoint, options = {}) {
   const url = apiUrl(API_BASE, endpoint);
 
   try {
-    const response = await fetch(url, config);
+    const response = config.body instanceof FormData && typeof options.onUploadProgress === 'function'
+      ? await uploadResponse(url, config, options.onUploadProgress)
+      : await fetch(url, config);
     const data = await response.json().catch(() => null);
 
     if (!response.ok) {

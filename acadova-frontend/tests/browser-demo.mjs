@@ -1,7 +1,7 @@
 // Uses installed Chrome/Edge and Vite; no extra dependencies or live API/DB.
 // Run: node tests/browser-demo.mjs [browser-executable] [browser-demo.jsx|browser-p71.jsx|browser-correction.jsx] [width] [screenshot.png] [height] [capture-route]
 import { spawn } from 'node:child_process';
-import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { mkdtemp, readFile, rm, writeFile, access } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { createServer } from 'vite';
@@ -9,8 +9,8 @@ import react from '@vitejs/plugin-react';
 
 const browser = process.argv[2] || 'C:/Program Files/Google/Chrome/Application/chrome.exe';
 const fixture = process.argv[3] || 'browser-demo.jsx';
-if (!/^browser-(demo|p71|p71b|correction|hardening|quality|rollback|learning|landing|qa|register|integrity|completion|enhancements|milestone|phaseb|phaseb1|phaseb3|staff-live|ui-corrections|release-c1|release-c2|release-c2-live)\.jsx$/.test(fixture)) throw new Error('Unknown browser fixture');
-const live = ['browser-staff-live.jsx', 'browser-release-c2-live.jsx'].includes(fixture) ? JSON.parse(process.env.ACADOVA_LOCAL_BROWSER_CONFIG || '{}') : null;
+if (!/^browser-(demo|p71|p71b|correction|hardening|quality|rollback|learning|landing|qa|register|integrity|completion|enhancements|milestone|phaseb|phaseb1|phaseb3|staff-live|ui-corrections|release-c1|release-c2|release-c2-live|moderator-defense-live|learning-progress-live|ai-study|ai-ux|bundle-a|bundle-b|bundle-c|ui-redesign|chat|master)\.jsx$/.test(fixture)) throw new Error('Unknown browser fixture');
+const live = ['browser-staff-live.jsx', 'browser-release-c2-live.jsx', 'browser-moderator-defense-live.jsx', 'browser-learning-progress-live.jsx'].includes(fixture) ? JSON.parse(process.env.ACADOVA_LOCAL_BROWSER_CONFIG || '{}') : null;
 if (live) {
   const endpoint = new URL(live.url);
   if (endpoint.protocol !== 'http:' || endpoint.hostname !== '127.0.0.1' || !endpoint.port || endpoint.pathname !== '/' || endpoint.search || endpoint.username || endpoint.password || endpoint.hash) throw new Error('Live fixture requires an isolated loopback API');
@@ -57,7 +57,12 @@ server = await createServer({
   cacheDir: path.join(profile, 'vite-cache'),
   optimizeDeps: { noDiscovery: true, include: ['react', 'react/jsx-runtime', 'react/jsx-dev-runtime', 'react-dom/client', 'react-router-dom', 'lucide-react'] },
   server: { host: '127.0.0.1', port: 0, strictPort: false },
-  plugins: [...(visualBaseline ? [react()] : []), { name: 'demo-test-page', configureServer(vite) {
+  plugins: [...(visualBaseline ? [react()] : []), ...(process.env.ACADOVA_AI_UX_BEFORE === '1' ? [{ name:'ai-ux-saved-source', enforce:'pre', async load(id) {
+    const filename = path.resolve(id.split('?')[0]);
+    if (fixture !== 'browser-ai-ux.jsx' || !filename.startsWith(path.resolve('src') + path.sep)) return null;
+    const saved = path.resolve('../docs/real-gemini-evidence/source-before/acadova-frontend', path.relative(process.cwd(),filename));
+    try { await access(saved); return await readFile(saved,'utf8'); } catch { return null; }
+  } }] : []), { name: 'demo-test-page', configureServer(vite) {
     vite.middlewares.use(async (req, res, next) => {
       // Keep mocked fixtures loaded if Vite reloads a URL changed by BrowserRouter.
       if (!req.url?.startsWith('/__demo-test') && !(req.method === 'GET' && req.headers.accept?.includes('text/html'))) return next();
@@ -137,6 +142,8 @@ server = await createServer({
     if (capture && process.env.ACADOVA_SCREENSHOT_DIR && /^[a-z0-9-]+$/.test(capture)) {
       const screenshot = await command('Page.captureScreenshot', { format: 'png', captureBeyondViewport: false });
       await writeFile(path.join(process.env.ACADOVA_SCREENSHOT_DIR, `${capture}-${width}.png`), Buffer.from(screenshot.result.data, 'base64'));
+      const details = (await evaluate('window.__acadovaCaptureDetails')).result?.result?.value;
+      if (details?.name === capture) await writeFile(path.join(process.env.ACADOVA_SCREENSHOT_DIR, `${capture}-${width}.json`), JSON.stringify(details, null, 2));
       await evaluate('window.__acadovaCapture = null');
     }
     const key = (await evaluate('window.__acadovaKey')).result?.result?.value;

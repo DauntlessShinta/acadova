@@ -1,4 +1,4 @@
-import React, { useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { ArrowRight, Check, Eye, EyeOff } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
@@ -7,6 +7,7 @@ import { focusInvalidField } from '../utils/focusInvalidField';
 import { passwordRequirements, pendingRegistrationNavigation, registrationErrorMessage, validateRegistration } from '../utils/authForm';
 import GoogleSignInButton from '../components/auth/GoogleSignInButton';
 import PolicyReviewDialog from '../components/auth/PolicyReviewDialog';
+import api from '../services/api';
 import './RegisterPage.css';
 
 export const RegisterPage = () => {
@@ -22,6 +23,11 @@ export const RegisterPage = () => {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const toast = useToast();
   const [fields, setFields] = useState({});
+  const [domains,setDomains]=useState(null); const [policyError,setPolicyError]=useState(''); const [policyRetry,setPolicyRetry]=useState(0);
+  useEffect(()=>{let active=true;api.get('/api/auth/registration-policy').then(response=>{
+    if(!Array.isArray(response.data?.domains)||!response.data.domains.length)throw new Error('Registration policy unavailable.');
+    if(active){setDomains(response.data.domains);setPolicyError('');}
+  }).catch(()=>{if(active)setPolicyError('Institutional registration requirements are unavailable. Retry before creating an account.');});return()=>{active=false;};},[policyRetry]);
   const [submitting, setSubmitting] = useState(false);
   const submittingRef = useRef(false);
   const requirements = passwordRequirements(password);
@@ -30,7 +36,8 @@ export const RegisterPage = () => {
   const handleSubmit = async (event) => {
     event.preventDefault();
     if (submittingRef.current) return;
-    const { fields: next, account } = validateRegistration({ name, email, password, confirmPassword, policyAccepted });
+    if(!domains)return;
+    const { fields: next, account } = validateRegistration({ name, email, password, confirmPassword, policyAccepted, allowedDomains:domains });
     setFields(next);
 
     if (Object.keys(next).length) { focusInvalidField(next, { name: 'register-name', email: 'register-email', password: 'register-password', confirmPassword: 'register-confirm-password', policyAccepted: 'register-policy-review' }); return; }
@@ -38,7 +45,7 @@ export const RegisterPage = () => {
       submittingRef.current = true;
       setSubmitting(true);
       await register(account);
-      toast('success', 'Account created. Check your email to verify.');
+      toast('success', 'Check your email to verify, or sign in if you already registered.');
       sessionStorage.setItem('acadova_pending_email', account.email);
       navigate('/verify-email/pending', { replace: true, state: { email: account.email, justRegistered: true } });
     } catch (err) {
@@ -54,6 +61,7 @@ export const RegisterPage = () => {
         return;
       }
       if (err.status === 409) setFields({ email: 'An account with this email already exists.' });
+      if (err.data?.code === 'INSTITUTIONAL_EMAIL_REQUIRED') setFields({ email: err.data.message });
       toast('error', registrationErrorMessage(err));
     } finally {
       submittingRef.current = false;
@@ -62,9 +70,10 @@ export const RegisterPage = () => {
   };
 
   return <>
-    <span className="auth-form-eyebrow">Join the exchange</span>
+    <span className="auth-form-eyebrow">Your learning starts here</span>
     <h1 className="register-title">Create your Acadova account</h1>
-    <p className="auth-form-intro">Learn with peers. Add your skills later from your Profile.</p>
+    <p className="auth-form-intro">Organize your subjects, practise, and study with peers.</p>
+    {policyError && <p role="alert">{policyError} <button className="btn btn-secondary" onClick={()=>setPolicyRetry(value=>value+1)}>Retry registration requirements</button></p>}
     <form className="register-form" onSubmit={handleSubmit} noValidate>
       <div className="register-fields">
       <div className="form-group">
@@ -75,7 +84,8 @@ export const RegisterPage = () => {
       </div>
       <div className="form-group">
         <label className="form-label" htmlFor="register-email">Email address</label>
-        <input id="register-email" type="email" placeholder="student@example.com" className="form-input" autoComplete="email" inputMode="email" value={email} onChange={(event) => setEmail(event.target.value)} aria-invalid={Boolean(fields.email)} aria-describedby={fields.email ? 'register-email-error' : undefined} required />
+        <input id="register-email" type="email" placeholder={`name@${domains?.[0] || 'phinmaed.com'}`} className="form-input" autoComplete="email" inputMode="email" value={email} onChange={(event) => setEmail(event.target.value)} aria-invalid={Boolean(fields.email)} aria-describedby={fields.email ? 'register-email-hint register-email-error' : 'register-email-hint'} required />
+        <span className="form-hint" id="register-email-hint">{!domains || domains.length===1&&domains[0]==='phinmaed.com' ? 'Use your PHINMAED institutional email address (@phinmaed.com).' : `Use your approved PHINMAED institutional email address (${domains.map(domain=>'@'+domain).join(', ')}).`}</span>
         {fields.email && <span className="form-error" id="register-email-error">{fields.email}</span>}
       </div>
       <div className="form-group">
@@ -100,7 +110,7 @@ export const RegisterPage = () => {
         <ul className="auth-password-requirements" id="register-password-requirements" aria-label="Password requirements">{requirements.map(([label, met], index) => <li key={label} className={met ? 'is-met' : ''}><span aria-hidden="true">{met ? <Check size={14} /> : '○'}</span><span className="sr-only">{met ? 'Met: ' : 'Required: '}</span>{requirementLabels[index]}</li>)}</ul>
       </div>
       <div className="form-group policy-acknowledgment">
-        <p>I agree to the <Link to="/terms" target="_blank" rel="noopener noreferrer">Terms of Use</Link> and acknowledge the <Link to="/privacy" target="_blank" rel="noopener noreferrer">Privacy Policy</Link>.</p>
+        <p>Account policies: <Link to="/terms" target="_blank" rel="noopener noreferrer">Terms of Use</Link>, <Link to="/privacy" target="_blank" rel="noopener noreferrer">Privacy Policy</Link> and <Link to="/community-guidelines" target="_blank" rel="noopener noreferrer">Community Guidelines</Link>.</p>
         <div className="register-consent-review">
         <button id="register-policy-review" type="button" className="btn btn-secondary btn-sm" onClick={() => setReviewOpen(true)}
           aria-describedby={fields.policyAccepted ? 'register-policy-error' : undefined}>
@@ -111,9 +121,8 @@ export const RegisterPage = () => {
         </p>
         </div>
         {fields.policyAccepted && <span className="form-error" id="register-policy-error">{fields.policyAccepted}</span>}
-        <p>See also our <Link to="/community-guidelines" target="_blank" rel="noopener noreferrer">Community Guidelines</Link>.</p>
       </div>
-      <button type="submit" className="btn btn-primary auth-submit" disabled={submitting}>{submitting ? 'Creating account...' : <>Create Account <ArrowRight size={17} /></>}</button>
+      <button type="submit" className="btn btn-primary auth-submit" disabled={submitting||!domains}>{submitting ? 'Creating account...' : !domains&&!policyError ? 'Loading registration requirements...' : <>Create Account <ArrowRight size={17} /></>}</button>
     </form>
     {reviewOpen && <PolicyReviewDialog className="register-policy-backdrop" accepted={policyAccepted} onClose={() => setReviewOpen(false)}
       onAgree={() => { setPolicyAccepted(true); setFields((current) => Object.fromEntries(

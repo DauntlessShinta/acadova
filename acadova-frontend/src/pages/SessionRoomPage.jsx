@@ -271,13 +271,20 @@ const SessionRoom = ({ id }) => {
       window.scrollTo({ top: window.scrollY + panel.getBoundingClientRect().top - offset, behavior: 'instant' });
     };
     fitChat();
-    const frame = requestAnimationFrame(fitChat);
-    window.addEventListener('resize', fitChat);
-    window.visualViewport?.addEventListener('resize', fitChat);
+    let frame = requestAnimationFrame(fitChat);
+    const refit = () => { cancelAnimationFrame(frame); frame = requestAnimationFrame(fitChat); };
+    // Header wrapping, fonts and navigation changes do not necessarily resize
+    // the window. Refit after those layout changes rather than retaining a
+    // stale viewport budget. Observe surrounding chrome, not the fitted panel.
+    const observer = new ResizeObserver(refit);
+    document.querySelectorAll('.student-utility-bar, .student-mobile-header, .student-mobile-bottom, .session-room-header, .session-next-step, .session-room-page .workflow-tabs, .ac-collaboration-nav').forEach(node => observer.observe(node));
+    window.addEventListener('resize', refit);
+    window.visualViewport?.addEventListener('resize', refit);
     return () => {
       cancelAnimationFrame(frame);
-      window.removeEventListener('resize', fitChat);
-      window.visualViewport?.removeEventListener('resize', fitChat);
+      observer.disconnect();
+      window.removeEventListener('resize', refit);
+      window.visualViewport?.removeEventListener('resize', refit);
     };
   }, [chatExpanded, activeSection]);
   const resizeChat = (expanded) => {

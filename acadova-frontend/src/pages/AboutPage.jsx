@@ -61,10 +61,11 @@ export const AboutPage = () => {
             <h3 style={{ color: '#ffffff', margin: 0 }}>United Nations SDG 4 Alignment</h3>
           </div>
           <p style={{ color: 'rgba(255,255,255,0.85)', fontSize: '0.95rem' }}>
-            Acadova explicitly supports <strong>Sustainable Development Goal 4: Quality Education</strong> by removing economic barriers to academic support and providing collaborative teaching opportunities that deepen student subject mastery.
+            Acadova explicitly supports <strong>Sustainable Development Goal 4: Quality Education</strong> through subject organization, learning practice and collaborative teaching opportunities. Legacy credit workflows remain operational until the verified EXP transition.
           </p>
         </div>
 
+        <section className="card" id="contact" style={{scrollMarginTop:90}}><h2>Contact &amp; support</h2><p>For account access or technical help, contact your Acadova project administrator through your existing school support channel.</p><p>Signed-in participants can report an issue from the relevant Study Circle, session or learning item. Please keep private files, passwords and verification tokens out of reports.</p><Link to="/community-guidelines">Read reporting and community guidance</Link></section>
         <div style={{ textAlign: 'center', marginTop: '40px' }}>
           <Link to="/register" className="btn btn-primary btn-lg">
             Join Acadova

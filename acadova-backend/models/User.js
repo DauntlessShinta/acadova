@@ -3,6 +3,10 @@ const { YEAR_LEVELS, LANGUAGES } = require('../utils/profileDetails');
 
 const UserSchema = new mongoose.Schema({
   name: { type: String, required: true, trim: true },
+  currentTermId: { type: mongoose.Schema.Types.ObjectId, ref: 'AcademicTerm', default: null },
+  academicGuard: { type: Number, default: 0, select: false },
+  studyNudgesEnabled: { type: Boolean, default: true },
+  studyNudgeDismissals: { type: [String], default: [], select: false, validate: value => value.length <= 100 },
   email: { type: String, required: true, unique: true, lowercase: true, trim: true },
   password: { type: String, required: true, minlength: 6 },
   // Absent on legacy accounts. Rotate atomically with recovery/identity changes.

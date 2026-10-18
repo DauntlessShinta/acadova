@@ -1,0 +1,28 @@
+const test = require('node:test');
+const assert = require('node:assert/strict');
+const express = require('express');
+const jwt = require('jsonwebtoken');
+const User = require('../models/User');
+const Quota = require('../models/AiStudyQuota');
+const { createAiStudyRouter } = require('../routes/aiStudyRoutes');
+const owner='000000000000000000000001', other='000000000000000000000002';
+test('generation status is authenticated, owner-scoped, bounded and reveals no source, key fingerprint or preview content',async t=>{
+ const originals={findUser:User.findById,findQuota:Quota.findById,secret:process.env.JWT_SECRET};
+ t.after(()=>{User.findById=originals.findUser;Quota.findById=originals.findQuota;if(originals.secret===undefined)delete process.env.JWT_SECRET;else process.env.JWT_SECRET=originals.secret;});
+ process.env.JWT_SECRET='synthetic-local-test-secret-never-for-production';
+ let role='student',verified=true,providerCalls=0,reads=0;
+ User.findById=id=>({select(){return this;},lean:async()=>({_id:id,name:'Test user',role,emailVerified:verified,credits:0})});
+ Quota.findById=id=>({lean:async()=>{reads++;return {requests:id===owner?[{key:'synthetic-progress-key-123',state:'pending',stage:'generating',fingerprint:'private-fingerprint',previewId:'private-preview'}]:[]};}});
+ const app=express();app.use('/api/ai-study',createAiStudyRouter({provider:{generate(){providerCalls++;throw new Error('Status must never generate');}}}));
+ const server=await new Promise(resolve=>{const value=app.listen(0,'127.0.0.1',()=>resolve(value));});t.after(()=>new Promise(resolve=>server.close(resolve)));
+ const url=`http://127.0.0.1:${server.address().port}/api/ai-study/requests/synthetic-progress-key-123`;
+ const get=(id=owner,suffix='')=>fetch(url+suffix,{headers:{Authorization:'Bearer '+jwt.sign({id,role:'admin'},process.env.JWT_SECRET)}});
+ assert.equal((await fetch(url)).status,401);
+ const own=await get();assert.equal(own.status,200);assert.equal(own.headers.get('cache-control'),'private, no-store');
+ assert.deepEqual((await own.json()).data,{state:'pending',stage:'generating'});
+ assert.equal((await get(other)).status,404);
+ assert.equal((await get(owner,'?owner='+other)).status,400);
+ role='moderator';assert.equal((await get()).status,403);
+ role='student';verified=false;assert.equal((await get()).status,403);
+ assert.equal(providerCalls,0);assert.equal(reads,2);
+});

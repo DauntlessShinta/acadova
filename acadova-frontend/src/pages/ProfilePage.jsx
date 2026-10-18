@@ -1,7 +1,8 @@
+import { useLocation } from 'react-router-dom';
 import { useToast } from '../context/toastAccess';
 import { normalizeName, nameValidationMessage } from '../utils/nameValidation';
 import { useUnsavedChanges } from '../utils/useUnsavedChanges';
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import userService from '../services/userService';
 import TagInput from '../components/common/TagInput';
@@ -19,6 +20,8 @@ export const ProfilePage = () => {
 
 const ProfileEditor = () => {
   const toast = useToast();
+  const { hash }=useLocation();
+  useEffect(()=>{if(hash!=='#profile-skills-teach')return;const frame=requestAnimationFrame(()=>{const input=document.getElementById('profile-skills-teach');input?.scrollIntoView({block:'center',behavior:'instant'});input?.focus({preventScroll:true});});return()=>cancelAnimationFrame(frame);},[hash]);
   const { user, credits, refreshUser } = useAuth();
 
   const [name, setName] = useState(() => user?.name || '');

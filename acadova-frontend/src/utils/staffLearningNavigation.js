@@ -7,3 +7,8 @@ export function staffLearningSection(hash) {
   const section = hash.replace(/^#manage-(?:panel-)?/, '');
   return sections.has(section) ? section : 'topics';
 }
+
+export function staffTopicSection(hash) {
+  const section = hash.replace(/^#manage-(?:panel-)?/, '');
+  return ['modules', 'resources', 'assessments', 'settings'].includes(section) ? section : 'modules';
+}

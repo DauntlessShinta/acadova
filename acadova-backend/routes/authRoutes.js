@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const { register, login, verifyEmail, resendVerification, forgotPassword, resetPassword, googleLogin } = require('../controllers/authController');
+const { registrationPolicy } = require('../controllers/authController');
 const { createRateLimiter } = require('../middleware/rateLimiter');
 const { validateBody, validateQuery, schemas } = require('../middleware/validation');
 
@@ -13,6 +14,9 @@ const authLimiter = createRateLimiter({
 });
 
 router.use(validateQuery());
+const policyReadLimiter = createRateLimiter({ windowMs: 60000, max: 60,
+  message: 'Registration requirements are temporarily limited. Try again shortly.' });
+router.get('/registration-policy', policyReadLimiter, registrationPolicy);
 router.post('/register', authLimiter, validateBody(schemas.register), register);
 router.post('/login', authLimiter, validateBody(schemas.login), login);
 router.post('/verify-email', authLimiter, validateBody(schemas.verifyEmail), verifyEmail);

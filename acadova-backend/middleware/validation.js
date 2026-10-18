@@ -391,6 +391,7 @@ const schemas = {
     questions: assessmentQuestions,
   },
   assessmentSubmit: { answers: assessmentAnswers },
+  learningCompletion: { id: objectId('module id'), resourceId: objectId('resource id') },
   learningId: { id: objectId('learning content id') },
   learningTopic: { name: requiredText('Topic name', 80, 2),
     description: requiredText('Topic description', 500, 3) },

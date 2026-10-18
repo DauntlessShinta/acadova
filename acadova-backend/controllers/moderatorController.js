@@ -9,6 +9,7 @@ const { logSecurityEvent } = require('../utils/securityLogger');
 const { ACTIONS, recordAudit } = require('../services/auditService');
 const notifications = require('../services/notificationService');
 const SessionMessage = require('../models/SessionMessage');
+const AuditLog = require('../models/AuditLog');
 const completion = require('../services/completionLifecycle');
 const { presentSession } = require('../services/rescheduleLifecycle');
 const { hasCanonicalEvidence } = require('../utils/completionPresentation');
@@ -214,12 +215,17 @@ exports.getSessionReviewEvidence = async (req, res) => {
     if (!completion.isOpenReview(row) && !(row.status === 'resolved' || row.reviewReferral?.closedAt)) {
       return res.status(403).json({ success: false, message: 'This session is not a staff review case.' });
     }
-    const [messages, payments] = await Promise.all([
+    const [messages, payments, auditEntries] = await Promise.all([
       SessionMessage.find({ session: row._id }).select('sender body createdAt').populate('sender', 'name').sort({ createdAt: -1, _id: -1 }).limit(100).lean(),
       CreditTransaction.find({ session: row._id }).select('type amount fromUser toUser createdAt').lean(),
+      // Case-scoped read access, not access to the global Admin audit directory.
+      AuditLog.find({ targetType: 'Session', targetId: String(row._id),
+        action: { $in: [ACTIONS.dispute, ACTIONS.completionReview, ACTIONS.clarification] } })
+        .select('actor actorRole action targetType targetId summary createdAt metadata.resolution metadata.reason')
+        .populate('actor', 'name').sort({ createdAt: -1, _id: -1 }).limit(20).lean(),
     ]);
     return res.json({ success: true, data: { session: presentSession(row), messages: messages.reverse(), payments,
-      messagesLimit: 100 } });
+      messagesLimit: 100, auditEntries, auditLimit: 20 } });
   } catch { return res.status(503).json({ success: false, message: 'Review evidence unavailable.' }); }
 };
 

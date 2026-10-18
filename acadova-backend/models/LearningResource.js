@@ -8,7 +8,9 @@ const LearningResourceSchema = new mongoose.Schema({
   textContent: { type: String, maxlength: 10000 },
   externalUrl: { type: String, maxlength: 1000 },
   submittedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
-  reviewStatus: { type: String, enum: ['submitted', 'published', 'rejected', 'archived'], default: 'submitted' },
+  reviewStatus: { type: String, enum: ['draft', 'submitted', 'published', 'rejected', 'archived'], default: 'submitted' },
+  creationOrigin: { type: String, enum: ['staff', 'student'], immutable: true },
+  authorRole: { type: String, enum: ['student', 'moderator', 'admin'], immutable: true },
   reviewedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
   reviewNote: { type: String, maxlength: 300 },
   publishedAt: Date,
@@ -17,6 +19,7 @@ const LearningResourceSchema = new mongoose.Schema({
 }, { timestamps: true, autoIndex: process.env.NODE_ENV !== 'production' });
 
 LearningResourceSchema.pre('validate', function validateContent() {
+  if (this.reviewStatus === 'draft' && !this.textContent && !this.externalUrl) return;
   if (this.resourceType === 'text' && (!this.textContent?.trim() || this.externalUrl)) {
     this.invalidate('textContent', 'Text resources require text only');
   }

@@ -15,9 +15,12 @@ const hasRewardIndex = (index) => index.name === 'uniq_assessment_reward_recipie
   && index.partialFilterExpression?.toUser?.$exists === true
   && index.partialFilterExpression?.assessment?.$exists === true;
 
+const publicTopicIdentity = (assessment) => assessment.learningTopic !== undefined
+  ? { learningTopic: assessment.learningTopic ? String(assessment.learningTopic) : null } : {};
+
 const publicAssessment = (assessment) => ({
   id: String(assessment._id), title: assessment.title, topic: assessment.topic,
-  questionCount: assessment.questions.length,
+  ...publicTopicIdentity(assessment), questionCount: assessment.questions.length,
   questions: assessment.questions.map((question) => ({ prompt: question.prompt, options: question.options })),
 });
 async function rewardEligibility(student, assessment) {
@@ -36,9 +39,9 @@ const resultView = (attempt) => ({
 exports.listPublishedAssessments = async (req, res) => {
   try {
     const rows = await Assessment.find({ status: 'published' })
-      .select('_id title topic questions').sort({ publishedAt: -1 }).limit(100).lean();
+      .select('_id title topic learningTopic questions').sort({ publishedAt: -1 }).limit(100).lean();
     res.json({ success: true, data: rows.map((row) => ({
-      id: String(row._id), title: row.title, topic: row.topic, questionCount: row.questions.length,
+      id: String(row._id), title: row.title, topic: row.topic, ...publicTopicIdentity(row), questionCount: row.questions.length,
     })) });
   } catch { res.status(500).json({ success: false, message: 'Assessments could not be loaded.' }); }
 };
@@ -122,6 +125,7 @@ exports.listStaffAssessments = async (req, res) => {
     const rows = await Assessment.find().sort({ createdAt: -1 }).limit(100).lean();
     return res.json({ success: true, data: rows.map((row) => ({
       id: String(row._id), title: row.title, topic: row.topic, status: row.status,
+      ...(row.learningTopic !== undefined ? { learningTopic: row.learningTopic ? String(row.learningTopic) : null } : {}),
       questionCount: row.questions.length, createdAt: row.createdAt,
     })) });
   } catch { return res.status(500).json({ success: false, message: 'Assessments could not be loaded.' }); }

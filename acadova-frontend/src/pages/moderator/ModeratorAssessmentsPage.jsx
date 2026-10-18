@@ -1,11 +1,13 @@
 import { useConfirm } from '../../context/confirmAccess';
 import WorkflowTabs from '../../components/common/WorkflowTabs';
-import { useLocation } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import assessmentService from '../../services/assessmentService';
 import learningService from '../../services/learningService';
 import Alert from '../../components/common/Alert';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
+import { staffLearningHash } from '../../utils/staffLearningNavigation';
+import '../../components/learning/learningWorkspace.css';
 import { useToast } from '../../context/toastAccess';
 
 const emptyQuestion = () => ({ prompt: '', options: ['', '', ''], correctIndex: 0 });
@@ -13,11 +15,16 @@ const initialDraft = () => ({ title: '', topic: '', passingScore: 60,
   questions: [emptyQuestion(), emptyQuestion(), emptyQuestion()] });
 
 export const ModeratorAssessmentsPage = () => {
-  const { pathname } = useLocation();
+  const { pathname, search } = useLocation();
+  const params = new URLSearchParams(search);
+  const topicId = params.get('topic');
+  const openId = params.get('open');
+  const createRequested = params.has('create');
   const staffLabel = pathname.startsWith('/admin') ? 'Administration' : 'Moderator';
+  const staffBase = pathname.startsWith('/admin') ? '/admin' : '/moderator';
   const confirm = useConfirm();
   const toast = useToast();
-  const [section, setSection] = useState('drafts');
+  const [section, setSection] = useState(createRequested ? 'builder' : openId ? 'review' : 'drafts');
   const [draft, setDraft] = useState(initialDraft);
   const [assessments, setAssessments] = useState([]);
   const [learningTopics, setLearningTopics] = useState([]);
@@ -66,6 +73,18 @@ export const ModeratorAssessmentsPage = () => {
       .catch(() => {});
   }, []);
 
+  useEffect(() => {
+    let active = true; Promise.resolve().then(() => { if (!active) return; setReview(null); setEditingId(null);
+    setSection(createRequested ? 'builder' : openId ? 'review' : 'drafts');
+    if (openId) assessmentService.staffGet(openId).then((response) => { if (active) setReview(response.data); })
+      .catch((err) => { if (active) setError(err.message); });
+    if (createRequested && topicId) learningService.staffTopic(topicId).then((response) => {
+      if (active) setDraft((current) => ({ ...current, learningTopic: response.data.id, topic: response.data.name }));
+    }).catch((err) => { if (active) setError(err.message); });
+    });
+    return () => { active = false; };
+  }, [topicId, openId, createRequested]);
+
   const updateQuestion = (index, changes) => setDraft((current) => ({
     ...current, questions: current.questions.map((question, i) => i === index ? { ...question, ...changes } : question),
   }));
@@ -79,7 +98,7 @@ export const ModeratorAssessmentsPage = () => {
       replaceDraft(initialDraft()); setEditingId(null);
       toast('success', editingId ? 'Draft updated. Review it before publishing.'
         : 'Draft created. Review it before publishing.'); await load();
-    } catch { toast('error', 'Check each question, option, correct answer, and topic, then try again.'); }
+    } catch (err) { const message = err.message || 'Check each question, option, correct answer, and topic, then try again.'; setError(message); toast('error', message); }
     finally { mutationPending.current = false; setWorking(false); }
   };
   const publish = async (id) => {
@@ -100,14 +119,15 @@ export const ModeratorAssessmentsPage = () => {
     finally { setWorking(false); }
   };
 
-  return <div className="staff-page">
+  return <div className="staff-page learning-management-page learning-assessment-management">
     <header className="staff-page-header"><div><span className="staff-eyebrow">{staffLabel} / Learning</span>
-      <h1>Assessments</h1><p>Create a short multiple-choice assessment, then publish it for Students.</p></div></header>
+      <h1>Assessments</h1><p>Create a short multiple-choice assessment, then publish it for Students.</p>
+      <Link className="btn btn-secondary" to={`${staffBase}/learning${topicId ? `?topic=${encodeURIComponent(topicId)}#manage-panel-assessments` : staffLearningHash('modules')}`}>{topicId ? 'Back to Topic Assessments' : 'Return to learning modules'}</Link></div></header>
     <Alert type="danger" message={error} />
     <WorkflowTabs id="assessment-management" tabs={[['drafts', 'All assessments'], ['builder', 'Create / edit'], ['review', 'Review']]} active={section} onChange={setSection} />
     <div role="tabpanel" id="assessment-management-panel-drafts" aria-labelledby="assessment-management-tab-drafts" hidden={section !== 'drafts'} className="card"><h2>Assessment library</h2>
       {loading ? <LoadingSpinner text="Loading assessments..." /> : assessments.length === 0
-        ? error ? <p>Assessment drafts are unavailable. <button type="button" className="btn btn-secondary btn-sm" onClick={load}>Retry</button></p> : <p>No assessments yet.</p> : assessments.map((item) => <div key={item.id}
+        ? error ? <p>Assessment drafts are unavailable. <button type="button" className="btn btn-secondary btn-sm" onClick={load}>Retry</button></p> : <p>No assessments yet.</p> : assessments.filter((item) => !topicId || (Object.hasOwn(item, 'learningTopic') ? item.learningTopic === topicId : item.topic === learningTopics.find((topic) => topic.id === topicId)?.name)).map((item) => <div key={item.id}
           style={{ display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: 16, padding: '12px 0' }}>
           <div><strong>{item.title}</strong><p>{item.topic} · {item.questionCount} questions · {item.status}</p></div>
           <button type="button" className="btn btn-secondary btn-sm" disabled={working}
@@ -165,6 +185,7 @@ export const ModeratorAssessmentsPage = () => {
         <option value="">Legacy topic text only</option>
         {learningTopics.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
       </select>
+      <p className="form-hint">Select the module's published learning topic to attach this assessment to its curriculum after publication.</p>
       </div><div className="assessment-field">
       <label className="form-label" htmlFor="assessment-passing">Passing score (%)</label>
       <input id="assessment-passing" className="form-input" type="number" min="1" max="100" value={draft.passingScore}

@@ -95,6 +95,10 @@ test('API protection and role boundaries work without a database connection', as
   app.use('/api/moderator', require('../routes/moderatorRoutes'));
   app.use('/api/admin', require('../routes/adminRoutes'));
   app.use('/api/analytics', require('../routes/analyticsRoutes'));
+  app.use('/api/ai-study', require('../routes/aiStudyRoutes').createAiStudyRouter({
+    provider: { generate: async () => assert.fail('CORS/auth tests must never call Gemini') },
+    configFor: () => ({ enabled: false, apiKey: '' }),
+  }));
   app.get('/api/test-error', () => { throw new Error('mongodb://private-host/secret'); });
   app.use('/api', apiNotFound);
   app.use(validationErrorHandler);
@@ -267,7 +271,7 @@ test('API protection and role boundaries work without a database connection', as
         assert.equal(response.headers.get('access-control-allow-origin'), productionOrigin);
         assert.deepEqual(response.headers.get('access-control-allow-methods').split(','), methods);
         assert.deepEqual(response.headers.get('access-control-allow-headers').toLowerCase().split(','),
-          ['content-type', 'authorization']);
+          ['content-type', 'authorization', 'idempotency-key']);
         assert.equal(response.headers.get('access-control-allow-credentials'), null);
         assert.match(response.headers.get('vary'), /\bOrigin\b/i);
         assert.equal(response.headers.get('x-content-type-options'), 'nosniff');
@@ -278,6 +282,35 @@ test('API protection and role boundaries work without a database connection', as
       const result = await call('/sessions', { headers: { origin: productionOrigin } });
       assert.equal(result.response.status, 401);
       assert.equal(result.response.headers.get('access-control-allow-origin'), productionOrigin);
+    });
+    await t.test('AI generation preflight allows the explicit request headers without JWT lookup', async () => {
+      const before = accountLookups;
+      const response = await fetch(`${base}/ai-study/generate`, { method: 'OPTIONS', headers: {
+        origin: 'http://localhost:5173', 'access-control-request-method': 'POST',
+        'access-control-request-headers': 'authorization,content-type,idempotency-key',
+      } });
+      assert.equal(response.status, 204);
+      assert.equal(response.headers.get('access-control-allow-origin'), 'http://localhost:5173');
+      assert.ok(response.headers.get('access-control-allow-methods').split(',').includes('POST'));
+      const headers = response.headers.get('access-control-allow-headers').toLowerCase().split(',');
+      assert.deepEqual(headers, ['content-type', 'authorization', 'idempotency-key']);
+      assert.ok(!headers.includes('*')); assert.ok(!headers.includes('x-unapproved-header'));
+      assert.equal(response.headers.get('access-control-allow-credentials'), null);
+      assert.equal(accountLookups, before, 'OPTIONS must finish before JWT authentication');
+    });
+    await t.test('AI preflight rejects unapproved origins and actual POST still requires Student authorization', async () => {
+      for (const origin of ['https://unapproved.example.test', 'http://localhost:5173.evil.example', 'null']) {
+        const result = await call('/ai-study/generate', { method: 'OPTIONS', headers: { origin,
+          'access-control-request-method': 'POST', 'access-control-request-headers': 'authorization,content-type,idempotency-key' } });
+        assert.equal(result.response.status, 403); assert.equal(result.response.headers.get('access-control-allow-origin'), null);
+      }
+      const headers = { origin: 'http://localhost:5173', 'idempotency-key': 'synthetic-cors-request-001' };
+      assert.equal((await call('/ai-study/generate', { method: 'POST', headers })).response.status, 401);
+      assert.equal((await call('/ai-study/generate', { method: 'POST', headers, token: 'invalid.jwt' })).response.status, 401);
+      assert.equal((await call('/ai-study/generate', { method: 'POST', headers, token: tokenFor(moderatorId) })).response.status, 403);
+      const student = await call('/ai-study/generate', { method: 'POST', headers, token: tokenFor(learnerId) });
+      assert.equal(student.response.status, 503); assert.equal(student.data.code, 'AI_STUDY_DISABLED');
+      assert.equal(student.response.headers.get('access-control-allow-origin'), 'http://localhost:5173');
     });
     await t.test('preflight rejects unauthorized and lookalike frontend origins', async () => {
       for (const origin of ['https://not-acadova.example', `${productionOrigin}.evil.example`, 'null']) {

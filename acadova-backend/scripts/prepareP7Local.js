@@ -125,7 +125,7 @@ async function prepareDemo({ actors: [learner, tutor, moderator], invoke, schema
         actor, { topic: String(topic._id), title, description: 'Synthetic P7 teaching material.', ...body }, schemas.learningResource);
       row = await Resource.findById(created.id);
     }
-    if (publish && row.reviewStatus === 'submitted') await invoke(learning.publishResource, moderator,
+    if (publish && ['draft', 'submitted'].includes(row.reviewStatus)) await invoke(learning.publishResource, moderator,
       { creditCost: cost }, schemas.learningReview, row._id);
     return row;
   };
@@ -157,11 +157,16 @@ async function prepareDemo({ actors: [learner, tutor, moderator], invoke, schema
     if (row.status === 'draft') await invoke(learning.publishModule, moderator, { creditCost: cost }, schemas.learningModulePublish, row._id);
   }
   for (const [subject, dispute] of [['P7 JavaScript defense tutoring', false], ['P7 JavaScript moderation case', true]]) {
-    let row = await Session.findOne({ learner: learner._id, tutor: tutor._id, subject });
+    // Historical named fixtures remain reusable; new requests use a real teaching subject.
+    const teachingSubject = tutor.skillsToTeach?.[0];
+    const requestMessage = `Synthetic local P7 demo: ${subject}. Help me understand functions.`;
+    let row = await Session.findOne({ learner: learner._id, tutor: tutor._id,
+      $or: [{ subject }, { subject: teachingSubject, requestMessage }] });
     if (!row) {
-      const created = await invoke(sessions.createSession, learner, { tutorId: String(tutor._id), subject,
+      if (!teachingSubject) throw new Error('The local Tutor must list a teaching subject before creating demo sessions');
+      const created = await invoke(sessions.createSession, learner, { tutorId: String(tutor._id), subject: teachingSubject,
         scheduledAt: new Date(Date.now() + 5 * 60_000).toISOString(), meetingMethod: 'online',
-        requestMessage: 'Synthetic local P7 demo. Help me understand functions.' }, schemas.session);
+        requestMessage }, schemas.session);
       row = await Session.findById(created._id);
       if (dispute) {
         await invoke(sessions.updateSessionStatus, tutor, { status: 'scheduled' }, schemas.sessionStatus, row._id);
@@ -179,4 +184,4 @@ async function prepareDemo({ actors: [learner, tutor, moderator], invoke, schema
 if (require.main === module) main().catch(() => {
   console.error('P7 local preparation failed; no credentials or connection details disclosed.'); process.exitCode = 1;
 });
-module.exports = { checkInvocation, main };
+module.exports = { checkInvocation, main, prepareDemo };

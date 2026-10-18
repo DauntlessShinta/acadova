@@ -8,6 +8,9 @@ import AuthContext from '../src/context/AuthContext';
 import SessionRoomPage from '../src/pages/SessionRoomPage';
 import ProfilePage from '../src/pages/ProfilePage';
 
+// Fixed test clock keeps the existing 15-minute/4-hour check-in window deterministic.
+const NativeDate = window.Date; const fixtureNow = NativeDate.parse('2026-09-25T06:30:00.000Z');
+window.Date = class extends NativeDate { constructor(...args) { super(...(args.length ? args : [fixtureNow])); } static now() { return fixtureNow; } };
 const checks = [];
 const assert = (condition, message) => { if (!condition) throw new Error(message); };
 const pause = () => new Promise((resolve) => setTimeout(resolve, 25));
@@ -41,7 +44,7 @@ const tick = () => { for (const timer of intervals.values()) timer.callback(); }
 const learner = { _id: 'learner', name: 'User A', role: 'student', credits: 2, skillsToTeach: ['Java'], skillsToLearn: ['React'] };
 const tutor = { _id: 'tutor', name: 'User B', role: 'student', credits: 2, skillsToTeach: ['React'], skillsToLearn: ['Java'] };
 let actor = learner;
-let session = { _id: 'demo', learner, tutor, subject: 'Demo React', status: 'pending', scheduledAt: '2026-09-25T06:30:00.000Z', meetingMethod: 'online', requestMessage: 'Help with state', creditAmount: 1 };
+let session = { _id: 'demo', learner, tutor, subject: 'Demo React', lifecycleVersion: 1, status: 'pending', scheduledAt: '2026-09-25T06:30:00.000Z', meetingMethod: 'online', requestMessage: 'Help with state', creditAmount: 1 };
 const reviews = new Set();
 const messages = [];
 let reads = 0;
@@ -68,8 +71,17 @@ window.fetch = async (url, options = {}) => {
     Object.assign(session, payload); data = clone(session);
   } else if (url === '/api/sessions/demo/status') {
     session.status = payload.status; data = clone(session);
+  } else if (url === '/api/sessions/demo/check-in') {
+    assert(payload.expectedScheduledAt === session.scheduledAt, 'Check-in pins the agreed schedule');
+    session[actor._id === tutor._id ? 'tutorCheckedInAt' : 'learnerCheckedInAt'] = new Date().toISOString();
+    if (session.learnerCheckedInAt && session.tutorCheckedInAt) { session.status = 'in_progress'; session.startedAt = new Date().toISOString(); } data = clone(session);
+  } else if (url === '/api/sessions/demo/finish') {
+    assert(actor._id === tutor._id && session.status === 'in_progress' && session.startedAt, 'Only checked-in tutor finishes');
+    session.status = 'awaiting_validation'; session.awaitingValidationAt = new Date().toISOString(); data = clone(session);
   } else if (url === '/api/sessions/demo/confirm') {
-    session.confirmedAt = session.creditsSettledAt = new Date().toISOString(); data = clone(session);
+    assert(session.status === 'awaiting_validation' && !session.creditsSettledAt, 'Separate confirmations precede settlement');
+    session[actor._id === tutor._id ? 'tutorConfirmedAt' : 'learnerConfirmedAt'] = new Date().toISOString();
+    if (session.learnerConfirmedAt && session.tutorConfirmedAt) { session.status = 'completed'; session.confirmedAt = session.creditsSettledAt = new Date().toISOString(); } data = clone(session);
   } else if (url === '/api/ratings') {
     reviews.add(actor._id); data = { _id: 'review' };
   } else if (url === '/api/users/me') {
@@ -96,7 +108,7 @@ const idle = async () => {
 try {
   render(); await idle();
   assert([...intervals.values()].some((timer) => timer.delay === 5000), 'Polling must run every 5000 ms');
-  session.status = 'accepted';
+  session.status = 'scheduled';
   tick(); await until(() => document.querySelector('#session-message'), 'Polling did not reveal acceptance'); await idle();
   checks.push('5-second whole-room polling reveals acceptance');
 
@@ -123,24 +135,31 @@ try {
   assert(session.meetingLink === 'https://example.com/unsaved', 'Meeting details did not save');
   checks.push('unsaved meeting draft survives polling/focus and saves');
 
-  button('Messages').click(); await pause();
+  button('Chat').click(); await pause();
   fill('#session-message', 'Message from B'); await pause(); submit('.message-composer'); await idle();
-  actor = learner; render(); await idle(); assert(text().includes('Message from B'), 'A cannot see B message');
-  button('Messages').click(); await pause();
+  actor = learner; render(); await idle(); button('Chat').click(); await until(() => text().includes('Message from B'), 'A cannot see B message');
   fill('#session-message', 'Message from A'); await pause(); submit('.message-composer'); await idle();
-  actor = tutor; render(); await idle(); assert(text().includes('Message from A'), 'B cannot see A message');
+  actor = tutor; render(); await idle(); button('Chat').click(); await until(() => text().includes('Message from A'), 'B cannot see A message');
   checks.push('both participants send and receive messages');
 
+  actor = learner; render(); await idle(); button('Check in').click(); await until(() => session.learnerCheckedInAt, 'Learner check-in'); await idle();
+  assert(session.status === 'scheduled' && !session.creditsSettledAt, 'One check-in cannot start or settle');
+  actor = tutor; render(); await idle(); button('Check in').click(); await until(() => session.status === 'in_progress', 'Both check-ins start'); await idle();
+  assert(!session.creditsSettledAt && !document.querySelector('#review-heading'), 'Attendance is not settlement/review eligibility');
+  checks.push('deterministic valid schedule, two independent check-ins, no premature credits or reviews');
   holdRead = true; tick(); await until(() => releaseRead, 'Slow response was not captured');
-  button('Complete session').click(); await until(() => session.status === 'completed', 'Tutor completion failed'); await idle();
+  button('Finish live session').click(); await until(() => session.status === 'awaiting_validation', 'Tutor finish failed'); await idle();
   releaseRead(); await pause();
-  assert(!button('Complete session'), 'Stale read restored accepted status');
-  assert(text().includes('Awaiting confirmation'), 'Completion state disappeared');
+  assert(!button('Finish live session'), 'Stale read restored in-progress status');
+  assert(text().includes('Session validation'), 'Validation state disappeared');
   assert(!document.querySelector('#review-heading'), 'Review appeared before settlement evidence');
   checks.push('slow pre-mutation response cannot restore old status');
 
   actor = learner; render(); await idle();
-  button('Confirm completion and transfer 1 credit').click(); await idle();
+  button('Confirm session').click(); await until(() => session.learnerConfirmedAt, 'Learner confirmation'); await idle();
+  assert(!session.creditsSettledAt && !document.querySelector('#review-heading'), 'First confirmation cannot settle or unlock reviews');
+  actor = tutor; render(); await idle(); button('Confirm session').click(); await until(() => session.creditsSettledAt, 'Second confirmation settles'); await idle();
+  actor = learner; render(); await idle();
   assert(session.creditsSettledAt && walletRefreshes > 0, 'Confirmation not reflected');
   fill('#rating-comment', 'Clear explanation'); await pause(); submit('#review-heading + form'); await idle();
   assert(!document.querySelector('#review-heading'), 'Review form returned after post-submit refresh');
@@ -171,8 +190,9 @@ try {
   actor = clone(tutor); render('profile', false); await pause();
   assert(document.querySelector('#name').value === tutor.name, 'Switching account retained prior draft');
   checks.push('profile name/skill drafts survive account refresh, save, and reset for another account');
-  root.unmount(); assert(intervals.size === 0, 'Polling listeners survived unmount');
+  root.unmount(); window.Date = NativeDate; assert(intervals.size === 0, 'Polling listeners survived unmount');
   document.getElementById('result').textContent = `PASS: ${checks.length} browser checks\n${checks.join('\n')}`;
 } catch (error) {
+  window.Date = NativeDate;
   document.getElementById('result').textContent = `FAIL: ${error.message}\nPassed: ${checks.join('; ')}\nUI: ${text().slice(0, 1000)}`;
 }

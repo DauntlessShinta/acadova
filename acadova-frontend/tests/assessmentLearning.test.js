@@ -23,12 +23,12 @@ test('topic text is only an unambiguous candidate, never proof of an assessment 
 });
 
 test('a verified module pointer can restore its resource position without treating views as completion', () => {
-  const topic = { id: 't', assessments: [] };
+  const topic = { id: 't', assessments: [{ id: 'a' }] };
   const module = { id: 'm', topic: 't', assessment: 'a', resources: [{ id: 'r1' }, { id: 'r2' }] };
   assert.deepEqual(verifiedAssessmentReview('a', topic, module, 1), { topicId: 't', moduleId: 'm', lessonIndex: 1 });
   assert.equal(verifiedAssessmentReview('wrong', topic, module), null);
-  assert.equal(verifiedAssessmentReview('a', topic, { ...module, topic: 'other' }), null);
-  assert.equal(verifiedAssessmentReview('a', topic, { id: 'm', topic: 't', locked: true }), null);
+  assert.deepEqual(verifiedAssessmentReview('a', topic, { ...module, topic: 'other' }), { topicId: 't' });
+  assert.deepEqual(verifiedAssessmentReview('a', topic, { id: 'm', topic: 't', locked: true }), { topicId: 't' });
   assert.equal(verifiedAssessmentReview('a', topic, module, 999).lessonIndex, 1);
   assert.equal(verifiedAssessmentReview('a', topic, module, -4).lessonIndex, 0);
   assert.equal('completed' in verifiedAssessmentReview('a', topic, module), false);

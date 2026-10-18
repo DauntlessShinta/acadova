@@ -7,6 +7,7 @@ import { AuthProvider } from '../src/context/AuthContext';
 import { ToastProvider } from '../src/context/ToastContext';
 import { ConfirmProvider } from '../src/context/ConfirmContext';
 import '../src/index.css';
+import { legacyTrustUrl } from '../src/utils/trustActivity';
 
 const student = { _id: 'me', name: 'Alex Santos', email: 'alex@example.test', role: 'student', credits: 100,
   emailVerified: true, rating: null, ratingCount: 0, onboardingFinishedAt: '2026-10-01', skillsToLearn: ['Java'], skillsToTeach: ['Math'] };
@@ -34,11 +35,18 @@ window.fetch = async (url, options = {}) => {
   let data = [];
   if (route === '/api/sessions' || route === '/api/admin/sessions') data = [roomSession];
   if (route === '/api/users/me') data = current;
+  if (route === '/api/auth/registration-policy') data = {domains:['phinmaed.com'],aliasesAllowed:false};
+  if (route === '/api/growth') data = {active:false,totalExp:null,events:[]};
+  if (route === '/api/academic/state') data = { terms: [{ id: '507f1f77bcf86cd799439061', displayName: 'SY 2026?2027 ? First Semester', startYear: 2026, endYear: 2027, semester: 'First Semester' }], currentTermId: '507f1f77bcf86cd799439061', subjects: [{ id: '507f1f77bcf86cd799439062', name: 'Synthetic academic subject', courseCode: 'QA 101', moduleCount: 2, completedCount: 1 }], incompleteCount: 1, needsReview: [], continueModule: null };
+  if (route === '/api/academic/plans') data = { items: [], subjects: [{ id: '507f1f77bcf86cd799439062', name: 'Synthetic academic subject' }], nudgesEnabled: true, nudges: [] };
   if (route === '/api/users/tutors') data = [peer, { ...peer, _id: 'peer2', name: 'Mary-Jane O\u2019Connor', rating: 4.7, ratingCount: 3, skillsToTeach: ['Database Systems', 'Web Development'] }, { ...peer, _id: 'peer3', name: 'Nguy\u1ec5n Th\u1ecb \u00c1nh', skillsToTeach: ['Java', 'Algorithms'] }];
   if (route === '/api/users/peer') data = peer;
   if (route === '/api/learning/topics') data = [topic];
   if (route === '/api/learning/topics/topic') data = { ...topic, resources: [resource], modules: [module], assessments: [assessment] };
   if (route === '/api/learning/modules/module') data = module;
+  const moduleProgress = { module: 'module', percent: 0, completedRequirements: 0, totalRequirements: 1, lessons: [{ resource: 'r', completed: false, completedAt: null }], assessment: null, complete: false };
+  if (route === '/api/learning/topics/topic/progress') data = { percent: 0, completedRequirements: 0, totalRequirements: 1, completedModules: 0, publishedModules: 1, passedAssessments: 0, assessmentRequirements: 0, modules: [moduleProgress] };
+  if (route === '/api/learning/modules/module/progress') data = moduleProgress;
   if (route === '/api/learning/resources/r') data = resource;
   if (route === '/api/assessments' || route === '/api/moderator/assessments') data = [assessment];
   if (route === '/api/assessments/a') data = assessment;
@@ -75,11 +83,14 @@ async function render(path, user = student) {
   else { localStorage.removeItem('acadova_token'); localStorage.removeItem('acadova_user'); }
   window.history.replaceState({}, '', path);
   root.render(<BrowserRouter key={renderKey}><AuthProvider><ToastProvider><ConfirmProvider><App /><Probe /></ConfirmProvider></ToastProvider></AuthProvider></BrowserRouter>);
-  await until(() => document.getElementById('probe') !== previous && (document.getElementById('probe')?.dataset.url === path || (path === '/learning?continue=1' && document.getElementById('probe')?.dataset.url.startsWith('/learning?topic='))), 'Router commit: ' + path);
+  const expected = ['/admin/audit-logs','/admin/security'].includes(path) ? legacyTrustUrl(path, '') : path;
+  await until(() => document.getElementById('probe') !== previous && (document.getElementById('probe')?.dataset.url === expected || (path === '/learning?continue=1' && document.getElementById('probe')?.dataset.url.startsWith('/learning?topic='))), 'Router commit: ' + path);
   await until(() => document.querySelector('#root h1, .auth-form-panel h1, .auth-form h1, #login-email'), 'Loaded route: ' + path);
   await pause(100);
   for (const control of visible('button, a[href], input:not([type="hidden"]), select, summary')) {
-    const box = control.getBoundingClientRect();
+    // Native checkboxes use their existing enclosing clickable 44px label.
+    const hitTarget = control.matches('input[type=checkbox], input[type=radio]') ? control.closest('label') || control : control;
+    const box = hitTarget.getBoundingClientRect();
     assert(box.width >= 23.9 && box.height >= 23.9, `Target below 24px on ${path}: ${control.id || control.className || control.textContent?.slice(0, 45)} (${box.width}x${box.height})`);
   }
   for (const control of visible('.btn, .workflow-tabs button, .account-trigger, .notification-trigger')) {
@@ -128,7 +139,7 @@ try {
     ['about', '/about', null], ['features', '/features', null], ['terms', '/terms', null], ['privacy', '/privacy', null], ['guidelines', '/community-guidelines', null],
     ['pending', '/verify-email/pending', null], ['forgot', '/forgot-password', null], ['reset', '/reset-password', null],
     ['verification', '/verify-email', null],
-    ['home', '/dashboard', student], ['tutors', '/tutors', student], ['learning', '/learning', student],
+    ['home', '/dashboard', student], ['peer-home', '/dashboard/peer', student], ['tutors', '/tutors', student], ['learning', '/learning', student],
     ['tutor-profile', '/tutors/peer', student], ['assessments', '/assessments', student],
     ['onboarding', '/onboarding', { ...student, onboardingFinishedAt: null, skillsToLearn: [], skillsToTeach: [] }],
     ['sessions', '/sessions', student], ['credits', '/credits', student], ['profile', '/profile', student],
@@ -144,18 +155,16 @@ try {
     ['admin-users', '/admin/users', { ...student, role: 'admin' }],
     ['admin-audit', '/admin/audit-logs', { ...student, role: 'admin' }], ['admin-security', '/admin/security', { ...student, role: 'admin' }],
   ];
-  for (const [name, path, account] of screens) {
+  for (const [name, path, account] of (window.__acadovaQualityChatOnly ? [] : screens)) {
     await render(path, account); await pause(150);
     if (name === 'landing') {
-      await until(() => document.querySelector('.landing-network'), 'Restored hero illustration');
-      assert(document.querySelector('#sdg-title').textContent.includes('accessible learning'), 'SDG preserved');
-      assert(document.querySelector('#how-it-works') && document.querySelector('#credit-system') && document.querySelector('#skill-network') && document.querySelector('#dashboard-preview'), 'Original Landing sections');
-      assert(document.querySelector('.landing-peer-photo img')?.naturalWidth === 1200, 'Local peer-learning photograph decoded');
-      assert(!document.querySelector('.landing-peer-visual .landing-skill-node, .landing-motion-toggle'), 'Clutter removed from hero DOM');
-      assert(document.querySelectorAll('.public-brand-logo image[href="/images/acadova-logo-new.png"]').length === 2, 'Supplied public logo in Navbar and Footer');
-      const heroStyle = getComputedStyle(document.querySelector('.landing-badge-row'));
-      assert(heroStyle.animationIterationCount === '1' && heroStyle.animationDelay === '0s', 'Hero enters once without delayed actions');
-      assert(heroStyle.animationName === (matchMedia('(prefers-reduced-motion: reduce)').matches ? 'none' : 'landing-hero-arrival'), 'Hero honors reduced motion');
+      await until(() => document.querySelector('.landing-v2-product img')?.naturalWidth === 1536, 'Real empty product screenshot decoded');
+      assert(document.querySelector('h1').textContent === 'Turn your class materials into practice.', 'Learning-first headline');
+      for (const id of ['how-it-works','features','faq','community','dashboard-preview']) assert(document.getElementById(id), 'Public learning section '+id);
+      assert(document.body.textContent.includes('Requires a verified PHINMAED email.') && document.body.textContent.includes('Legacy tutoring sessions'), 'Truthful eligibility and active credit disclosure');
+      assert(document.querySelectorAll('.public-brand-logo image[href="/images/acadova-logo-new.png"]').length === 2, 'Supplied logo in public Navbar and Footer');
+      assert(!document.querySelector('.landing-dashboard-cards, .landing-peer-photo'), 'No fabricated student dashboard cards or peer statistics');
+      if(matchMedia('(prefers-reduced-motion: reduce)').matches) assert(getComputedStyle(document.querySelector('.landing-v2-product')).animationName === 'none', 'Product preview honors reduced motion');
       await hover(document.querySelector('.landing-feature-card'));
       assert(getComputedStyle(document.querySelector('.landing-feature-card')).transform === 'none', 'Passive feature cards stay still');
       await hover(document.querySelector('.landing-action-row .btn-primary'));
@@ -176,15 +185,16 @@ try {
       assert(document.querySelector('.auth-form-inner').getBoundingClientRect().width <= (name === 'register' ? 560.1 : 465.1), 'Readable auth width');
     }
     if (name === 'register') {
-      fill('#register-name', 'Sukarno'); fill('#register-email', 'valid@example.test'); await pause();
+      fill('#register-name', 'Sukarno'); fill('#register-email', 'valid@phinmaed.com'); await pause();
       document.querySelector('.auth-submit').click(); await until(() => document.querySelector('#register-password-error'), 'Inline registration validation');
-      assert(document.querySelector('#register-name').value === 'Sukarno' && document.querySelector('#register-email').value === 'valid@example.test', 'Valid values preserved');
+      assert(document.querySelector('#register-name').value === 'Sukarno' && document.querySelector('#register-email').value === 'valid@phinmaed.com', 'Valid values preserved');
       assert(document.activeElement.id === 'register-password', 'First invalid field focused');
       await keyPress('Tab'); assert(document.activeElement.getAttribute('aria-label') === 'Show password', 'Logical auth tab order');
       await keyPress('Enter'); assert(document.querySelector('#register-password').type === 'text', 'Keyboard password toggle');
       await keyPress('Shift+Tab'); assert(document.activeElement.id === 'register-password', 'Reverse tab order');
     }
-    if (['home','tutors'].includes(name)) {
+    if (name === 'home') { await until(() => document.querySelector('#current-term') && document.body.textContent.includes('Synthetic academic subject'), 'Owner academic homepage'); assert(document.querySelector('#current-term').value === '507f1f77bcf86cd799439061', 'Independent selected term'); assert(!document.querySelector('.peer-card'), 'Peer discovery remains on its dedicated route'); }
+    if (['peer-home','tutors'].includes(name)) {
       await until(() => document.querySelectorAll('.peer-card').length === 3, 'Realistic peer grid');
       for (const card of document.querySelectorAll('.peer-card')) {
         assert(!card.querySelector('a button'), 'Peer action independence');
@@ -210,7 +220,7 @@ try {
       assert(region?.tabIndex === 0 && region.getAttribute('aria-label'), 'Named keyboard-scroll table region');
     }
     layout(path); await capture(name);
-    if (['home','tutors'].includes(name) && window.__acadovaCaptureEnabled) { document.querySelector('.peer-card').scrollIntoView({ block: 'center', behavior: 'instant' }); await pause(120); window.__acadovaCapture = name + '-peer-actions'; await until(() => !window.__acadovaCapture, 'Peer action capture'); }
+    if (['peer-home','tutors'].includes(name) && window.__acadovaCaptureEnabled) { document.querySelector('.peer-card').scrollIntoView({ block: 'center', behavior: 'instant' }); await pause(120); window.__acadovaCapture = name + '-peer-actions'; await until(() => !window.__acadovaCapture, 'Peer action capture'); }
     checks.push(name);
   }
   await render('/sessions/s#session-messages', student);
@@ -226,6 +236,12 @@ try {
   await until(() => composer.getBoundingClientRect().bottom <= innerHeight - (innerWidth <= 1024 ? 60 : 8), 'Expanded composer settles inside viewport');
   assert((innerHeight < 700 || log.clientHeight >= normalHeight * 1.25) && expand.getAttribute('aria-expanded') === 'true', 'Substantial expanded history where viewport allows');
   assert(field.value.startsWith('Keep this draft') && log.scrollTop < 2, 'Expanded draft/scroll preserved');
+  const utility=visible('.student-utility-bar, .student-mobile-header')[0];
+  const originalMinimum=utility.style.minHeight;
+  utility.style.minHeight=(utility.getBoundingClientRect().height+40)+'px';
+  await pause(150);
+  await until(() => composer.getBoundingClientRect().bottom <= innerHeight - (innerWidth <= 1024 ? 60 : 8) && document.querySelector('#room-panel-messages').getBoundingClientRect().top >= utility.getBoundingClientRect().bottom + 10, 'Expanded composer and heading refit after header content reflow');
+  utility.style.minHeight=originalMinimum; await pause(150);
   layout('chat-expanded');
   const footer = composer.getBoundingClientRect();
   assert(footer.bottom <= innerHeight - (innerWidth <= 1024 ? 60 : 8), `Expanded composer obscured or below viewport: bottom=${footer.bottom}, viewport=${innerHeight}, panel=${document.querySelector('#room-panel-messages').getBoundingClientRect().top}, height=${document.querySelector('#room-panel-messages').clientHeight}`);
@@ -233,6 +249,15 @@ try {
   field.focus(); await keyPress('Escape'); await pause(100);
   assert(document.activeElement === expand && expand.getAttribute('aria-expanded') === 'false' && field.value.startsWith('Keep this draft'), 'Minimize and focus restoration');
   assert(document.querySelectorAll('.message-composer').length === 1, 'One conversation state');
+  // Re-expand after native focus scroll and document movement, where the old fit raced scroll anchoring.
+  for (let cycle=0; cycle<4; cycle++) {
+    window.scrollTo({top:document.documentElement.scrollHeight,behavior:'instant'});
+    expand.focus(); await keyPress('Enter'); await pause(180);
+    await until(() => composer.getBoundingClientRect().bottom <= innerHeight - (innerWidth <= 1024 ? 60 : 8), 'Repeated expanded composer stays inside viewport, cycle '+cycle);
+    assert(field.value.startsWith('Keep this draft'), 'Repeated expansion retains draft');
+    await keyPress('Enter'); await pause(100);
+  }
+
   checks.push('normal/expanded Chat, long URL, draft/scroll/focus preservation and real keyboard input');
   await render('/learning', student); await until(() => document.querySelector('.learning-card-action'), 'Keyboard Topic target');
   document.querySelector('.learning-card-action').focus(); await keyPress('Enter');
@@ -264,8 +289,12 @@ try {
   assert(account.getAttribute('aria-expanded') === 'true', 'Account state is announced');
   if (matchMedia('(prefers-reduced-motion: reduce)').matches) assert(getComputedStyle(account.lastElementChild).transform === 'none' && getComputedStyle(document.querySelector('.account-actions')).animationName === 'none', 'Reduced motion removes account movement');
   await keyPress('Escape'); assert(document.activeElement === account && !document.querySelector('.account-actions'), 'Account Escape restores focus immediately');
-  checks.push('Fine-pointer-only CTA hover, static multi-action/passive cards, one-time hero, real delayed loading with stable track, reduced motion and immediate keyboard account controls');
+  checks.push('Fine-pointer-only CTA hover, static multi-action/passive cards and product preview, real delayed loading with stable track, reduced motion and immediate keyboard account controls');
   assert(errors.length === 0, 'Browser errors: ' + errors.join('; '));
   document.getElementById('result').textContent = `PASS: ${innerWidth}x${innerHeight} quality\n${checks.join(' | ')}`;
   document.getElementById('result').hidden = true;
-} catch (error) { document.getElementById('result').textContent = 'FAIL: ' + error.message + '\n' + checks.join(' | '); }
+} catch (error) {
+ const panel=document.querySelector('.session-messages-panel.is-expanded');
+ const geometry=panel ? JSON.stringify({panel:panel.getBoundingClientRect().toJSON(),composer:document.querySelector('.message-composer')?.getBoundingClientRect().toJSON(),scrollY,viewport:innerHeight,documentHeight:document.documentElement.scrollHeight,available:panel.style.getPropertyValue('--chat-expanded-height'),header:document.querySelector('.student-utility-bar')?.getBoundingClientRect().toJSON()}) : '';
+ document.getElementById('result').textContent = 'FAIL: ' + error.message + '\n' + geometry + '\n' + checks.join(' | ');
+}

@@ -21,6 +21,22 @@ const assessmentId = '507f1f77bcf86cd799439015';
 const res = () => ({ statusCode: 200, status(code) { this.statusCode = code; return this; },
   json(body) { this.body = body; return this; } });
 
+test('staff assessment list exposes governed topic identity without releasing answer keys', async (t) => {
+  const original = Assessment.find;
+  t.after(() => { Assessment.find = original; });
+  Assessment.find = () => ({ sort() { return this; }, limit() { return this; }, lean: async () => [
+    { _id: assessmentId, title: 'Python quiz', topic: 'Previous topic name', learningTopic: new mongoose.Types.ObjectId(topicId),
+      status: 'published', questions: [{ prompt: 'Private key', options: ['A', 'B'], correctIndex: 1 }] },
+    { _id: 'legacy', title: 'Legacy', topic: 'Python Basics', status: 'published', questions: [] },
+  ] });
+  const result = res();
+  await assessment.listStaffAssessments({}, result);
+  assert.equal(result.body.data[0].learningTopic, topicId);
+  assert.equal(Object.hasOwn(result.body.data[1], 'learningTopic'), false);
+  assert.equal(Object.hasOwn(result.body.data[0], 'questions'), false);
+  assert.equal(JSON.stringify(result.body).includes('correctIndex'), false);
+});
+
 test('staff may create and edit only unpublished learning drafts with audit evidence', async (t) => {
   const originals = { start: mongoose.startSession, audit: AuditLog.create,
     topicUpdate: LearningTopic.findOneAndUpdate, topicExists: LearningTopic.exists,
@@ -61,7 +77,7 @@ test('staff may create and edit only unpublished learning drafts with audit evid
   const created = res();
   await learning.createStaffResource({ user: actor, body: resourceBody }, created);
   assert.equal(created.statusCode, 201);
-  assert.equal(created.body.data.reviewStatus, 'submitted');
+  assert.equal(created.body.data.reviewStatus, 'draft');
   assert.equal(created.body.data.creditCost, 0);
   assert.equal(audits.at(-1).action, 'learning.resource_created');
   let resourceFilter;
@@ -74,7 +90,7 @@ test('staff may create and edit only unpublished learning drafts with audit evid
   await learning.updateStaffResource({ user: actor, params: { id: resourceId },
     body: { ...resourceBody, title: 'Introduction updated' } }, edited);
   assert.equal(edited.statusCode, 200);
-  assert.equal(resourceFilter.reviewStatus, 'submitted');
+  assert.deepEqual(resourceFilter.reviewStatus, { $in: ['draft', 'submitted'] });
   assert.equal(audits.at(-1).action, 'learning.resource_updated');
 
   LearningTopic.findOne = () => ({ lean: async () => ({ _id: topicId, name: 'Python Basics' }) });

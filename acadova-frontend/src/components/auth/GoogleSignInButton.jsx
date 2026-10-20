@@ -36,6 +36,7 @@ export default function GoogleSignInButton() {
           setWorking(true);
           try {
             const response = await googleLogin(credential);
+            if (response?.data?.mfaRequired) { navigate('/staff-verify', { replace: true }); return; }
             const role = response?.data?.user?.role;
             navigate((role === 'student' && sessionReturnFromSearch(search)) || getRoleHomeRoute(role), { replace: true });
           } catch (failure) {
@@ -79,6 +80,7 @@ export default function GoogleSignInButton() {
     setWorking(true); setError('');
     try {
       const response = await googleLogin(pendingCredential, true);
+      if (response?.data?.mfaRequired) { setPendingCredential(null); navigate('/staff-verify', { replace: true }); return; }
       setPendingCredential(null);
       const role = response?.data?.user?.role;
       navigate((role === 'student' && sessionReturnFromSearch(search)) || getRoleHomeRoute(role), { replace: true });

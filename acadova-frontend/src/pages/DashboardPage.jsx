@@ -16,7 +16,7 @@ import { useToast } from '../context/toastAccess';
 
 export const DashboardPage = () => {
   const confirm = useConfirm();
-  const { user, credits, refreshUser } = useAuth();
+  const { user, credits, refreshUser, freeLearning } = useAuth();
   const toast = useToast();
   const resume = readLearningResume(user?._id || user?.id);
   const [currentTime, setCurrentTime] = useState(() => Date.now());
@@ -107,7 +107,7 @@ export const DashboardPage = () => {
       <header className="student-home-hero home-welcome">
         <div className="home-greeting"><div><span className="student-eyebrow">Learn together. Grow together.</span>
         <h1>{sessions.length ? 'Welcome back' : 'Welcome to Acadova'}, {user?.name?.split(' ')[0] || 'Student'}</h1>
-        <p>What would you like to do today?</p></div><Link to="/credits" className="home-credit-summary home-mobile-credits"><Coins size={18} aria-hidden="true" /><strong>{credits} Credits</strong></Link></div>
+        <p>What would you like to do today?</p></div>{!freeLearning&&<Link to="/credits" className="home-credit-summary home-mobile-credits"><Coins size={18} aria-hidden="true" /><strong>{credits} Credits</strong></Link>}</div>
         <div className="home-paths">
           <Link to="/tutors" className="home-path"><Search aria-hidden="true" size={24} /><strong>Find someone to teach me</strong><span>Get help from a peer with a subject or skill.</span><ArrowRight className="home-path-arrow" size={18} aria-hidden="true" /></Link>
           <Link to="/learning" className="home-path"><BookOpen aria-hidden="true" size={24} /><strong>Explore learning</strong><span>Study approved resources at your own pace.</span><ArrowRight className="home-path-arrow" size={18} aria-hidden="true" /></Link>

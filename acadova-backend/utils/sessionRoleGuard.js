@@ -17,13 +17,11 @@ async function hasInFlightSessions(userId, dbSession) {
   if (await Session.exists(inFlightParticipantFilter(userId)).session(dbSession)) return true;
   const legacy = await Session.find({ $and: [participantFilter(userId),
     { status: 'completed', confirmedAt: null }] })
-    .select('_id learner tutor status creditAmount confirmedAt creditsSettledAt')
+    .select('_id learner tutor status creditAmount confirmedAt creditsSettledAt economyVersion lifecycleVersion validationSettledAt completedAt startedAt awaitingValidationAt learnerCheckedInAt tutorCheckedInAt learnerConfirmedAt tutorConfirmedAt legacyObligationResolvedAt legacyObligationReview')
     .session(dbSession).lean();
   if (!legacy.length) return false;
   const payments = await CreditTransaction.find({ session: { $in: legacy.map((row) => row._id) } })
     .select('session fromUser toUser amount type').session(dbSession).lean();
-  return legacy.some((row) => classifyLegacySession(row,
-    payments.filter((payment) => String(payment.session) === String(row._id)))
-    .settlementState !== 'settled');
+  return legacy.some((row) => {const state=classifyLegacySession(row,payments.filter(payment=>String(payment.session)===String(row._id)));return state.requiresReconciliation || !['settled','resolved_no_transfer','not_applicable'].includes(state.settlementState);});
 }
 module.exports = { inFlightParticipantFilter, hasInFlightSessions };

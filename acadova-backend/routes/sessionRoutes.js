@@ -43,6 +43,7 @@ router.post('/:id/check-in', sessionActionLimiter, validateParams(schemas.sessio
 router.post('/:id/finish', sessionActionLimiter, validateParams(schemas.sessionId), validateBody({}), finishSession);
 router.post('/:id/no-show', sessionActionLimiter, validateParams(schemas.sessionId), validateBody({}), reportNoShow);
 router.post('/:id/dispute', sessionActionLimiter, validateParams(schemas.sessionId), validateBody(schemas.dispute), disputeSession);
+router.post('/:id/exp-report',sessionActionLimiter,validateParams(schemas.sessionId),validateBody(schemas.dispute),require('../controllers/growthReviewController').report);
 router.post('/:id/confirm', sessionActionLimiter, validateParams(schemas.sessionId), validateBody({}), confirmSession);
 router.get('/:id/evidence', validateParams(schemas.sessionId), completion.getEvidence);
 router.post('/:id/evidence', sessionActionLimiter, validateParams(schemas.sessionId), validateBody(schemas.completionEvidence), completion.submitEvidence);

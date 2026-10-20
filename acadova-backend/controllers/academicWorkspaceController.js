@@ -60,7 +60,7 @@ exports.subject = handle(async (req, res) => {
   const query = { owner, subjectId: subject._id };
   const [periods, modules, resources, studySets] = await Promise.all([
     ExaminationPeriod.find(query).sort({ order: 1, createdAt: 1 }), PersonalModule.find(query).sort({ order: 1, createdAt: 1 }),
-    AcademicResource.find(query).sort({ createdAt: 1 }), StudySet.find({ ...query, deletedAt: null }).select('_id title origin moduleId sourceResourceIds state').sort({ updatedAt: -1 }),
+    AcademicResource.find(query).sort({ createdAt: 1 }), StudySet.find({ ...query, deletedAt: null }).select('_id title origin moduleId sourceResourceIds state archivedAt').sort({ updatedAt: -1 }),
   ]);
   res.json({ success: true, data: { subject: view(subject), periods: periods.map(view), modules: modules.map(view), resources: resources.map(view), studySets: studySets.map(view) } });
 });

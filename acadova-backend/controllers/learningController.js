@@ -14,12 +14,12 @@ const topicView = (row) => ({ id: id(row._id), name: row.name, slug: row.slug,
 const resourceView = (row, staff = false, entitled = false) => ({
   id: id(row._id), topic: id(row.topic), title: row.title, description: row.description,
   createdAt: row.createdAt,
-  resourceType: row.resourceType, creditCost: row.creditCost, locked: row.creditCost > 0 && !entitled,
+  resourceType: row.resourceType, creditCost: !staff && require('../config/studentExperience').active()?0:row.creditCost, locked: !require('../config/studentExperience').active() && row.creditCost > 0 && !entitled,
   ...(entitled ? { unlocked: true } : {}),
   ...(staff ? { reviewStatus: row.reviewStatus, submittedBy: id(row.submittedBy),
     creationOrigin: row.creationOrigin || null, authorRole: row.authorRole || null,
     reviewedBy: row.reviewedBy ? id(row.reviewedBy) : null, reviewNote: row.reviewNote || null } : {}),
-  ...(staff || row.creditCost === 0 || entitled ? {
+  ...(staff || require('../config/studentExperience').active() || row.creditCost === 0 || entitled ? {
     ...(row.resourceType === 'text' ? { textContent: row.textContent } : { externalUrl: row.externalUrl }),
   } : {}),
 });
@@ -39,11 +39,11 @@ const staffResourceViews = async (rows) => {
 const moduleView = (row, staff = false, entitled = false) => ({
   id: id(row._id), topic: id(row.topic), title: row.title, description: row.description,
   createdAt: row.createdAt,
-  creditCost: row.creditCost, locked: row.creditCost > 0 && !entitled,
+  creditCost: !staff && require('../config/studentExperience').active()?0:row.creditCost, locked: !require('../config/studentExperience').active() && row.creditCost > 0 && !entitled,
   ...(entitled ? { unlocked: true } : {}),
   ...(staff ? { status: row.status, resources: row.resources.map(id),
     assessment: row.assessment ? id(row.assessment) : null }
-    : row.creditCost === 0 || entitled ? { resources: row.resources.map(id),
+    : require('../config/studentExperience').active() || row.creditCost === 0 || entitled ? { resources: row.resources.map(id),
       assessment: row.assessment ? id(row.assessment) : null } : {}),
 });
 const unavailable = (res) => res.status(404).json({ success: false, message: 'Learning content not available.' });
@@ -99,7 +99,7 @@ exports.getModule = async (req, res) => {
     // Keep an existing module entitlement effective even if staff later lowers its price to zero.
     const owned = await LearningUnlock.exists({ student: req.user.id, module: module._id });
     // An unlocked paid module grants in-module viewing, not standalone Resource entitlements.
-    const resources = module.creditCost === 0 || owned
+    const resources = require('../config/studentExperience').active() || module.creditCost === 0 || owned
       ? await LearningResource.find({ _id: { $in: module.resources }, topic: module.topic,
         reviewStatus: 'published' }).lean() : [];
     const standalone = await LearningUnlock.find({ student: req.user.id,
@@ -107,7 +107,7 @@ exports.getModule = async (req, res) => {
     const ownedResources = new Set(standalone.map((row) => id(row.resource)));
     const byId = new Map(resources.map((row) => [id(row._id), row]));
     return res.json({ success: true, data: { ...moduleView(module, false, Boolean(owned)),
-      ...(module.creditCost === 0 || owned ? { unavailableResourceCount: module.resources.filter((resourceId) => !byId.has(id(resourceId))).length,
+      ...(require('../config/studentExperience').active() || module.creditCost === 0 || owned ? { unavailableResourceCount: module.resources.filter((resourceId) => !byId.has(id(resourceId))).length,
         resources: module.resources.map((resourceId) => byId.get(id(resourceId)))
         .filter(Boolean).map((row) => resourceView(row, false, Boolean(owned) || ownedResources.has(id(row._id)))) } : {}) } });
   } catch { return failure(res); }

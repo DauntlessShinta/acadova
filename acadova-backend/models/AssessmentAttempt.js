@@ -1,8 +1,11 @@
 const mongoose = require('mongoose');
 
 const AssessmentAttemptSchema = new mongoose.Schema({
+  expProcessedAt: Date,
+  expOutcome: {type:String,enum:['recorded','ineligible']},
   student: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
   assessment: { type: mongoose.Schema.Types.ObjectId, ref: 'Assessment', required: true },
+  progressionVersion: { type:String, enum:['student-free-exp-1'], immutable:true },
   mode: { type: String, enum: ['official', 'practice'], default: undefined },
   answers: { type: [Number], required: true },
   score: { type: Number, required: true, min: 0, max: 100 },

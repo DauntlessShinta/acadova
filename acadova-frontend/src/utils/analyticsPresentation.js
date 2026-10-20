@@ -21,3 +21,14 @@ export function dailyActivity(requests, payments, range) {
   }
   return rows;
 }
+
+export function fillDays(range, rows, keys) {
+  if (rangeError(range)) return [];
+  const byDay = new Map(rows.map(row => [row.date, row]));
+  const data = [];
+  for (let date = new Date(range.from + 'T00:00:00Z'); date <= new Date(range.to + 'T00:00:00Z'); date.setUTCDate(date.getUTCDate() + 1)) {
+    const day = date.toISOString().slice(0, 10), row = byDay.get(day) || {};
+    data.push({ date: day, ...Object.fromEntries(keys.map(key => [key, row[key] || 0])) });
+  }
+  return data;
+}

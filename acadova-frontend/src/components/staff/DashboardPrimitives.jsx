@@ -12,7 +12,7 @@ export function DashboardHeader({ title, description, updatedAt, busy, onRefresh
 export function DashboardKpis({ items, loading = false }) {
   return <div className="dashboard-kpis stat-grid">{items.map(({ label, value, detail, icon: Icon, tone = 'blue' }) => <article className="card dashboard-kpi" key={label}>
     <span className={'dashboard-icon tone-' + tone}>{Icon && <Icon size={28} aria-hidden="true" />}</span>
-    <div><h2>{label}</h2><strong className="dashboard-kpi-value tabular">{loading ? 'Loading…' : value == null ? 'Unavailable' : typeof value === 'number' ? value.toLocaleString() : value}</strong><p>{detail}</p></div>
+    <div><h2>{label}</h2><strong className={`dashboard-kpi-value tabular${typeof value === 'string' && !/^[\d.,]+%?$/.test(value) ? ' is-text-value' : ''}`}>{loading ? 'Loading…' : value == null ? 'Unavailable' : typeof value === 'number' ? value.toLocaleString() : value}</strong><p>{detail}</p></div>
   </article>)}</div>;
 }
 

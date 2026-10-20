@@ -1,3 +1,4 @@
+import { GrowthSummary } from './GrowthPage';
 import { useLocation } from 'react-router-dom';
 import { useToast } from '../context/toastAccess';
 import { normalizeName, nameValidationMessage } from '../utils/nameValidation';
@@ -22,7 +23,7 @@ const ProfileEditor = () => {
   const toast = useToast();
   const { hash }=useLocation();
   useEffect(()=>{if(hash!=='#profile-skills-teach')return;const frame=requestAnimationFrame(()=>{const input=document.getElementById('profile-skills-teach');input?.scrollIntoView({block:'center',behavior:'instant'});input?.focus({preventScroll:true});});return()=>cancelAnimationFrame(frame);},[hash]);
-  const { user, credits, refreshUser } = useAuth();
+  const { user, credits, refreshUser, freeLearning } = useAuth();
 
   const [name, setName] = useState(() => user?.name || '');
   const [skillsToTeach, setSkillsToTeach] = useState(() => user?.skillsToTeach || []);
@@ -113,9 +114,9 @@ const ProfileEditor = () => {
             </div>
 
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.9rem' }}>
-              <span style={{ color: 'var(--ink-600)' }}>Wallet Balance:</span>
+              <span style={{ color: 'var(--ink-600)' }}>{freeLearning?'Learning recognition':'Wallet Balance:'}</span>
               <span className="tabular" style={{ fontWeight: 700, color: 'var(--brass-700)' }}>
-                {credits} Credits
+                {freeLearning?<GrowthSummary/>:`${credits} Credits`}
               </span>
             </div>
 

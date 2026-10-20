@@ -20,6 +20,7 @@ const authenticatedNavigation = {
   ],
   moderator: [
     { to: '/moderator', label: 'Overview' },
+    { to: '/moderator/analytics', label: 'Analytics' },
     { to: '/moderator/reviews', label: 'Reviews' },
     { to: '/moderator/disputes', label: 'Session disputes' },
     { to: '/moderator/assessments', label: 'Assessments' },
@@ -62,11 +63,14 @@ export const getStaffWorkspaceGroups = area => area === 'moderator' ? [
   { label: 'Learning Content', to: '/moderator/learning', items: [
     ['/moderator/learning','Topics, modules & resources'], ['/moderator/assessments','Assessments'],
   ] },
+  { label: 'Analytics', to: '/moderator/analytics', items: [['/moderator/analytics', 'Review operations']] },
 ] : [
-  { label: 'Overview', to: '/admin', items: [['/admin','Platform overview'],['/admin/analytics','Analytics']] },
+  { label: 'Overview', to: '/admin', items: [['/admin','Platform overview']] },
   { label: 'Users & Roles', to: '/admin/users', items: [['/admin/users','Users & roles']] },
   { label: 'Catalog', to: '/admin/learning', items: [['/admin/learning','Topics, modules & resources'],['/admin/assessments','Assessments']] },
+  { label: 'Sessions', to: '/admin/sessions', items: [['/admin/sessions', 'Session oversight']] },
   { label: 'Escalations', to: '/admin/moderation', items: [['/admin/moderation','Review queue'],['/admin/disputes','Session issues'],['/admin/sessions','Session oversight'],['/admin/study-circles','Circle reports'],['/admin/study-sets','Study-set decisions']] },
+  { label: 'Analytics', to: '/admin/analytics', items: [['/admin/analytics', 'Platform analytics']] },
   { label: 'Policies & Settings', to: '/admin/settings', items: [['/admin/settings','Settings'],['/admin/credits','Credit policies & history'],['/admin/trust-activity?tab=security','Security events'],['/admin/trust-activity?tab=protection','Login protection']] },
   { label: 'Audit Log', to: '/admin/trust-activity?tab=activity', items: [['/admin/trust-activity?tab=activity','Audit activity']] },
 ];

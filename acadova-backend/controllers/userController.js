@@ -17,7 +17,7 @@ exports.getMe = async (req, res) => {
     }
     const profile = user.toObject ? user.toObject() : user;
     const reputation = user.role === 'student' ? await publicReputation(user._id) : {};
-    res.json({ success: true, message: 'Profile retrieved', data: { ...profile, ...reputation } });
+    res.json({ success: true, message: 'Profile retrieved', data: { ...profile, ...reputation, experience:require('../config/studentExperience').capabilities() } });
   } catch (error) {
     res.status(500).json({ success: false, message: 'Server error while retrieving profile' });
   }
@@ -106,11 +106,12 @@ exports.getUserById = async (req, res) => {
     const profile = user.toObject ? user.toObject() : user;
     // Explicit public DTO: even an unexpectedly populated document cannot leak
     // email, credentials, security/verification metadata or private preferences.
-    res.json({ success: true, message: 'User profile retrieved', data: {
+    res.set('Cache-Control','private, no-store').json({ success: true, message: 'User profile retrieved', data: {
       _id: profile._id, name: profile.name, role: profile.role,
       skillsToTeach: profile.skillsToTeach || [], skillsToLearn: profile.skillsToLearn || [],
       weeklyAvailability: profile.weeklyAvailability ?? null,
       ...require('../utils/profileDetails').publicProfileDetails(profile), ...await publicReputation(id),
+      growth: await require('../services/growthPresentation').publicGrowth(id),
     } });
   } catch (error) {
     res.status(500).json({ success: false, message: 'Server error while retrieving user profile' });

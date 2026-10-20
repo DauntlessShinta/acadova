@@ -23,6 +23,7 @@ export const PeerCard = ({ peer, onRequest, compact = false }) => (
       </div>
     </div>
 
+    <p className="form-hint">Teaching subjects are self-declared.</p>
     <div className="peer-card-actions">
       <Link to={`/tutors/${peer._id}`} className="btn btn-secondary btn-sm">
         <UserRound size={14} /> View Profile

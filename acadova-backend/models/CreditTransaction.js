@@ -79,4 +79,6 @@ CreditTransactionSchema.index({ adjustmentReference: 1 }, {
 
 // The application exposes no transaction edit/delete routes. Future credit
 // routes exist. Rewards are written only by the graded Assessment workflow.
+CreditTransactionSchema.pre('save',function(){require('../config/studentExperience').rejectCreditWrite();});
+for(const op of ['insertMany','bulkWrite','updateOne','updateMany','findOneAndUpdate','replaceOne','findOneAndReplace','deleteOne','deleteMany','findOneAndDelete']) CreditTransactionSchema.pre(op,function(){require('../config/studentExperience').rejectCreditWrite();});
 module.exports = mongoose.model('CreditTransaction', CreditTransactionSchema);

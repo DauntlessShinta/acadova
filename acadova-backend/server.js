@@ -52,6 +52,7 @@ app.use('/api/ratings', require('./routes/ratingRoutes'));
 app.use('/api/analytics', require('./routes/analyticsRoutes'));
 app.use('/api/users', require('./routes/userRoutes'));
 app.use('/api/credits', require('./routes/creditRoutes'));
+app.use('/api/acadi', require('./routes/acadiRoutes'));
 app.use('/api/growth', require('./routes/growthRoutes'));
 app.use('/api/assessments', require('./routes/assessmentRoutes'));
 app.use('/api/study-sets', require('./routes/studyRoutes'));
@@ -83,6 +84,9 @@ app.use(notFound);
 app.use(validationErrorHandler);
 app.use(unexpectedError);
 
+// Inactive unless the separately reviewed economy cutover is enabled.
+const growthTimer=setInterval(()=>{void require('./services/growthReplay').replayBatch().catch(()=>{});},60000);
+growthTimer.unref();
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
   console.log(`Acadova Server running on: http://localhost:${PORT}`);

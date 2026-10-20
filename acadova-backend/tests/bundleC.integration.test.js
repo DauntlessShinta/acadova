@@ -10,13 +10,16 @@ test('Bundle C disposable API integration: free circles, safe sharing, moderatio
   await Promise.all([User, Circle, Volunteer, StudySet, Report, Audit, Ledger, Session, ...Object.values(models)].map(m => m.init()));
   t.after(async () => { assert.equal(mongoose.connection.name, database); await mongoose.connection.dropDatabase(); await mongoose.disconnect(); if (oldSecret === undefined) delete process.env.JWT_SECRET; else process.env.JWT_SECRET = oldSecret; });
   const [a, b, c, d, moderator] = await User.create(['Alice', 'Bob', 'Carol', 'Dan', 'Moderator'].map(name => ({ name, email: `${name}@example.test`, password: 'synthetic', emailVerified: true, role: name === 'Moderator' ? 'moderator' : 'student', credits: 100 })));
+  const [scheduleHost,invalidHost,providerHost,uploadHost]=await User.create(['ScheduleHost','InvalidHost','ProviderHost','UploadHost'].map(name=>({name,email:name+'@example.test',password:'synthetic',emailVerified:true,role:'student',credits:100})));
   const historical = await Session.create({ learner: a._id, tutor: b._id, subject: 'Historical paid session', creditAmount: 50, status: 'completed', creditsSettledAt: new Date() });
   await Ledger.create({ type: 'session_payment', fromUser: a._id, toUser: b._id, session: historical._id, amount: 50 });
   const walletSnapshot = JSON.stringify(await User.find().select('_id credits').sort({ _id: 1 }).lean()); const ledgerSnapshot = JSON.stringify(await Ledger.find().lean()); const sessionSnapshot = JSON.stringify(await Session.find().lean());
   const term = await models.AcademicTerm.create({ owner: a._id, startYear: 2026, endYear: 2027, semester: 'Private term' });
   const subject = await models.PersonalSubject.create({ owner: a._id, termId: term._id, name: 'Secret subject', instructor: 'Private instructor' });
   const resource = await models.AcademicResource.create({ owner: a._id, subjectId: subject._id, title: 'Private source PDF', kind: 'pdf', fileName: 'private.pdf', bytes: 15, content: Buffer.from('synthetic-file') });
-  const app = express(); app.use(express.json()); app.use('/api/study-circles', require('../routes/studyCircleRoutes')); app.use('/api/study-sharing', require('../routes/studySharingRoutes')); app.use('/api/study-sets', require('../routes/studyRoutes')); app.use('/api/moderator/study-sets', require('../routes/studyModerationRoutes')); app.use('/api/academic', require('../routes/academicWorkspaceRoutes')); app.use(require('../middleware/validation').validationErrorHandler);
+  let uploadExtractCalls=0,uploadProviderCalls=0;
+  const uploadConfig=require('../config/aiStudy').aiStudyConfig({NODE_ENV:'test',AI_STUDY_ENABLED:'true',AI_STUDY_LOCAL_QA:'true',GEMINI_API_KEY:'synthetic-offline-only'});
+  const app = express(); app.use(express.json());app.use('/api/ai-study',require('../routes/aiStudyRoutes').createAiStudyRouter({configFor:()=>uploadConfig,extract:async()=>{uploadExtractCalls++;throw Error('Unexpected extraction');},provider:{generate:async()=>{uploadProviderCalls++;throw Error('Unexpected provider');}}})); app.use('/api/study-circles', require('../routes/studyCircleRoutes')); app.use('/api/study-sharing', require('../routes/studySharingRoutes')); app.use('/api/study-sets', require('../routes/studyRoutes')); app.use('/api/moderator/study-sets', require('../routes/studyModerationRoutes')); app.use('/api/academic', require('../routes/academicWorkspaceRoutes')); app.use(require('../middleware/validation').validationErrorHandler);
   const server = app.listen(0, '127.0.0.1'); await new Promise(r => server.once('listening', r)); t.after(() => new Promise(r => server.close(r)));
   const root = `http://127.0.0.1:${server.address().port}`;
   const call = async (path, method = 'GET', body, actor = a) => { const r = await fetch(root + '/api/' + path, { method, headers: { 'content-type': 'application/json', ...(actor ? { authorization: `Bearer ${jwt.sign({ id: String(actor._id) }, process.env.JWT_SECRET)}` } : {}) }, ...(body !== undefined ? { body: JSON.stringify(body) } : {}) }); return { status: r.status, data: await r.json(), cache: r.headers.get('cache-control') }; };
@@ -48,6 +51,50 @@ test('Bundle C disposable API integration: free circles, safe sharing, moderatio
     const canceled = await call(`study-circles/${circle.id}/cancel`, 'POST', { version: circle.version }); assert.equal(canceled.status, 200); assert.equal(canceled.data.data.meetingUrl, undefined);
     assert.equal((await call(`study-circles/${circle.id}/join`, 'POST', {}, d)).status, 409);
     assert.equal((await call('study-circles')).data.data.length, 0);
+  });
+  await t.test('new schedule policy rejects forged bounds and stores exact supported UTC schedules', async () => {
+    const body={...draft(),subjectId:null}, start=Date.parse(body.startsAt);
+    for(const minutes of [30,60,90,120,180]){
+      const input={...body,endsAt:new Date(start+minutes*60000).toISOString()};const result=await call('study-circles','POST',input,scheduleHost);assert.equal(result.status,201,JSON.stringify(result));
+      assert.equal(result.data.data.startsAt,input.startsAt);assert.equal(result.data.data.endsAt,input.endsAt);
+      const stored=await Circle.findById(result.data.data.id);assert.equal(stored.startsAt.toISOString(),input.startsAt);assert.equal(stored.endsAt.toISOString(),input.endsAt);assert.equal(stored.timezone,'Asia/Manila');
+      await call(`study-circles/${stored.id}/cancel`,'POST',{version:result.data.data.version},scheduleHost);
+    }
+    for(const [patch,message] of [
+      [{startsAt:new Date(Date.now()-60000).toISOString()},/already passed/],
+      [{startsAt:new Date(Date.now()+181*86400000).toISOString()},/180 days/],
+      [{endsAt:body.startsAt},/after the start/],
+      [{endsAt:new Date(start+29*60000).toISOString()},/between 30/],
+      [{endsAt:new Date(start+181*60000).toISOString()},/between 30/],
+    ]){const r=await call('study-circles','POST',{...body,...patch},invalidHost);assert.equal(r.status,400);assert.match(r.data.message,message);}
+    assert.equal((await call('study-circles','POST',{...body,legacy:true},invalidHost)).status,400);
+  });
+  await t.test('historical longer circles remain readable and metadata edits preserve their exact schedule',async()=>{
+    const body=draft(),start=Date.parse(body.startsAt),legacy={...body,endsAt:new Date(start+300*60000).toISOString()};
+    const row=await Circle.create({...legacy,host:a._id});const read=await call(`study-circles/${row.id}`);assert.equal(read.status,200);assert.equal(read.data.data.endsAt,legacy.endsAt);
+    const edited=await call(`study-circles/${row.id}/edit`,'POST',{...legacy,title:'Legacy metadata updated',version:1});assert.equal(edited.status,200,JSON.stringify(edited));assert.equal(edited.data.data.startsAt,legacy.startsAt);assert.equal(edited.data.data.endsAt,legacy.endsAt);
+    assert.equal((await call(`study-circles/${row.id}/edit`,'POST',{...legacy,version:2},b)).status,403);
+    assert.equal((await call(`study-circles/${row.id}/edit`,'POST',{...legacy,startsAt:new Date(start+60000).toISOString(),version:2})).status,400);
+    const unchanged=await Circle.findById(row.id);assert.equal(unchanged.version,2);assert.equal(unchanged.startsAt.toISOString(),legacy.startsAt);assert.equal(unchanged.endsAt.toISOString(),legacy.endsAt);
+    const revised={...legacy,startsAt:new Date(start+60000).toISOString(),endsAt:new Date(start+91*60000).toISOString(),version:2};const changed=await call(`study-circles/${row.id}/edit`,'POST',revised);assert.equal(changed.status,200);assert.equal(changed.data.data.endsAt,revised.endsAt);
+    await call(`study-circles/${row.id}/cancel`,'POST',{version:changed.data.data.version});
+  });
+  await t.test('provider invitation links remain host/member-only and malicious links never save',async()=>{
+    for(const link of ['https://meet.google.com/abc-defg-hij','https://us02web.zoom.us/j/123456?pwd=synthetic','https://teams.microsoft.com/meet/123?p=synthetic']){
+      const created=await call('study-circles','POST',{...draft(),subjectId:null,meetingUrl:link},providerHost);assert.equal(created.status,201);const row=created.data.data;
+      assert.equal((await call(`study-circles/${row.id}`,'GET',undefined,b)).data.data.meetingUrl,undefined);
+      assert.equal((await call(`study-circles/${row.id}/join`,'POST',{},b)).data.data.meetingUrl,link);
+      await call(`study-circles/${row.id}/leave`,'POST',{},b);assert.equal((await call(`study-circles/${row.id}`,'GET',undefined,b)).data.data.meetingUrl,undefined);
+      const host=(await call(`study-circles/${row.id}`,'GET',undefined,providerHost)).data.data;await call(`study-circles/${row.id}/cancel`,'POST',{version:host.version},providerHost);
+    }
+    for(const link of ['javascript:alert(1)','https://meet.google.com.evil.test/abc-defg-hij','https://zoom.us/j/123?next=https://evil.test','https://teams.microsoft.com@evil.test/meet/123'])assert.equal((await call('study-circles','POST',{...draft(),subjectId:null,meetingUrl:link},providerHost)).status,400);
+  });
+  await t.test('configured synthetic multipart rejects >5 MiB, 8 MiB and 10 MiB before parsing, quota or provider',async()=>{
+    for(const size of [5242881,8*1048576,10*1048576]){
+      const bytes=Buffer.alloc(size);bytes.write('%PDF-1.7');const form=new FormData();form.append('document',new Blob([bytes],{type:'application/pdf'}),'synthetic.pdf');form.append('type','both');form.append('mode','strict_source');form.append('syntheticConsent','true');
+      const token=jwt.sign({id:String(uploadHost._id)},process.env.JWT_SECRET);const response=await fetch(root+'/api/ai-study/generate',{method:'POST',headers:{authorization:'Bearer '+token},body:form});assert.equal(response.status,413);assert.match((await response.json()).message,/maximum 5 MiB/);
+    }
+    assert.equal(uploadExtractCalls,0);assert.equal(uploadProviderCalls,0);assert.equal(await require('../models/AiStudyQuota').countDocuments(),0);
   });
   await t.test('all circle transitions leave wallets, historical credit ledgers and Session records byte-equivalent', async () => {
     assert.equal(JSON.stringify(await User.find().select('_id credits').sort({ _id: 1 }).lean()), walletSnapshot);

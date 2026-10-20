@@ -146,7 +146,7 @@ exports.updateUserRole = async (req, res) => {
         && await hasInFlightSessions(id, dbSession)) {
         throw Object.assign(new Error('Active Sessions must be completed, cancelled, or resolved before promoting this Student to Moderator.'), { status: 409 });
       }
-      updatedUser = await User.findOneAndUpdate({ _id: id, role: target.role }, { $set: { role } },
+      updatedUser = await User.findOneAndUpdate({ _id: id, role: target.role }, { $set: { role, authVersion: require('node:crypto').randomBytes(32).toString('hex') } },
         { new: true, runValidators: true, session: dbSession })
         .select('name email role credits rating skillsToTeach skillsToLearn emailVerified suspendedAt suspensionReason createdAt +failedLoginAttempts +loginCooldownUntil');
       if (!updatedUser) throw Object.assign(new Error('Role changed. Reload and try again.'), { status: 409 });
@@ -185,6 +185,7 @@ exports.updateUserStatus = async (req, res) => {
       const changes = suspend
         ? { suspendedAt: new Date(), suspendedBy: req.user.id, suspensionReason: req.body.reason }
         : { suspendedAt: null, suspendedBy: null, suspensionReason: null };
+      changes.authVersion = require('node:crypto').randomBytes(32).toString('hex');
       updatedUser = await User.findOneAndUpdate(filter, { $set: changes },
         { new: true, runValidators: true, session: dbSession })
         .select('name email role credits rating skillsToTeach skillsToLearn emailVerified suspendedAt suspensionReason createdAt +failedLoginAttempts +loginCooldownUntil');

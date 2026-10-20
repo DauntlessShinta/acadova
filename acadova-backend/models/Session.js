@@ -3,6 +3,8 @@ const mongoose = require('mongoose');
 const SessionSchema = new mongoose.Schema({
   // Explicitly set by request creation, never defaulted onto historical records.
   lifecycleVersion: { type: Number, enum: [1], immutable: true },
+  expProcessedAt: Date,
+  expOutcome: {type:String,enum:['recorded','ineligible']},
   learner: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
   tutor: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
   subject: { type: String, required: true, trim: true },
@@ -69,7 +71,12 @@ const SessionSchema = new mongoose.Schema({
     enum: ['pending', 'accepted', 'scheduled', 'in_progress', 'awaiting_validation', 'rejected', 'declined', 'completed', 'cancelled', 'no_show', 'disputed', 'resolved'],
     default: 'pending',
   },
-  creditAmount: { type: Number, required: true, min: [1, 'Credit amount must be positive'] },
+  economyVersion: { type:String, enum:['free-v1'], immutable:true },
+  creditAmount: { type:Number, required:true, validate:{ validator(value) { return Number.isSafeInteger(value) && (this.economyVersion==='free-v1'?value===0:value>=1); }, message:'Invalid session economy evidence.' } },
+  validationSettledAt: Date,
+  legacyObligationResolvedAt: Date,
+  legacyObligationReview: {type:mongoose.Schema.Types.ObjectId,ref:'LegacyCreditReview'},
+  expReport: { type:new mongoose.Schema({ reporter:{type:mongoose.Schema.Types.ObjectId,ref:'User'}, reason:{type:String,maxlength:500}, reportedAt:Date, status:{type:String,enum:['open','dismissed','upheld']}, resolvedBy:{type:mongoose.Schema.Types.ObjectId,ref:'User'}, resolvedAt:Date, resolutionReason:{type:String,maxlength:500} },{_id:false}), select:false },
   completedAt: { type: Date },
   confirmedAt: { type: Date },
   creditsSettledAt: { type: Date },

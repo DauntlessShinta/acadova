@@ -1,9 +1,11 @@
+import { minimumLocalDateTime } from '../utils/scheduling';
 import { useToast } from '../context/toastAccess';
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import userService from '../services/userService';
 import sessionService from '../services/sessionService';
+import FreeSessionRequest from '../components/student/FreeSessionRequest';
 import creditService from '../services/creditService';
 import PeerReputation from '../components/common/PeerReputation';
 import { AvailabilityGuidance } from '../components/student/WeeklyAvailability';
@@ -19,7 +21,7 @@ export const TutorProfilePage = () => {
   const toast = useToast();
   const { id } = useParams();
   const location = useLocation();
-  const { user, credits, refreshUser } = useAuth();
+  const { user, credits, refreshUser, freeLearning } = useAuth();
   const navigate = useNavigate();
   const [params, setParams] = useSearchParams();
   const section = ['about', 'subjects', 'reviews', 'availability'].includes(params.get('section')) ? params.get('section') : 'about';
@@ -37,6 +39,7 @@ export const TutorProfilePage = () => {
   const [error, setError] = useState('');
 
   // Request form state
+  const [freeRequestOpen,setFreeRequestOpen]=useState(false);
   const [sessionSubject, setSessionSubject] = useState('');
   const [scheduledAt, setScheduledAt] = useState('');
   const [requestMessage, setRequestMessage] = useState('');
@@ -55,7 +58,7 @@ export const TutorProfilePage = () => {
       if (!active) return;
       setLoading(true); setTutor(null); setError(''); setReviews([]); setReviewsLoading(true);
       setRequestedSession(null); setRequestError(''); setReviewError(''); setFieldErrors({}); setSessionCost(null);
-      setScheduledAt(''); setRequestMessage(''); setMessageBusy(false);
+      setScheduledAt(''); setRequestMessage(''); setMessageBusy(false); setFreeRequestOpen(false);
     });
     userService.getUserById(id).then(res => {
       if (!active) return;
@@ -66,13 +69,14 @@ export const TutorProfilePage = () => {
         .finally(() => { if (active) setReviewsLoading(false); });
     }).catch(err => { if (active) setError(err.message || 'Failed to load peer profile.'); })
       .finally(() => { if (active) setLoading(false); });
-    creditService.getCurrentRules().then(response => { if (active) setSessionCost(response.data.tutoringSessionCost); })
+    if(!freeLearning) creditService.getCurrentRules().then(response => { if (active) setSessionCost(response.data.tutoringSessionCost); })
       .catch(() => { if (active) setSessionCost(null); });
     return () => { active = false; generation.ticket++; };
-  }, [id]);
+  }, [id, freeLearning]);
 
   const openRequest = (message = false) => {
     if (!canRequest) return;
+    if(freeLearning){setFreeRequestOpen(true);return;}
     const next = new URLSearchParams(params); next.delete('section');
     navigate({ search: next.toString(), hash: '#request-session' });
     requestAnimationFrame(() => {
@@ -101,9 +105,10 @@ export const TutorProfilePage = () => {
 
   useEffect(() => {
     if (tutor && location.hash === '#request-session') {
+      if(freeLearning){Promise.resolve().then(()=>setFreeRequestOpen(true));return;}
       document.getElementById('request-session')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
-  }, [location.hash, tutor]);
+  }, [location.hash, tutor, freeLearning]);
 
   const handleRequestSession = async (e) => {
     e.preventDefault();
@@ -170,7 +175,7 @@ export const TutorProfilePage = () => {
       <div className="public-profile-cover" aria-hidden="true"><span /><span /></div>
       <div className="public-profile-header">
         <div className="public-profile-avatar" aria-hidden="true">{tutor.name?.charAt(0) || 'S'}</div>
-        <div className="public-profile-identity"><span className="student-eyebrow">Student · Peer learning</span><h1>{tutor.name}</h1><PeerReputation peer={tutor} size={18} />
+        <div className="public-profile-identity"><span className="student-eyebrow">Student · Peer learning</span><h1>{tutor.name}</h1><PeerReputation peer={tutor} size={18} />{tutor.growth&&<div className="ac-peer-growth" aria-label="Shared academic recognition">{tutor.growth.level!=null&&<span>Level {tutor.growth.level}</span>}{tutor.growth.rankTitle&&<span>{tutor.growth.rankTitle}</span>}{tutor.growth.badges?.map(badge=><span key={badge.id}>{badge.title}</span>)}</div>}
           <div className="public-profile-skills" aria-label="Self-listed teaching subjects">{(tutor.skillsToTeach || []).slice(0, 4).map(skill => <span className="badge badge-blue" key={skill}>{skill}</span>)}{tutor.skillsToTeach?.length > 4 && <button type="button" onClick={() => { const next = new URLSearchParams(params); next.set('section', 'subjects'); setParams(next); }}>View all {tutor.skillsToTeach.length} subjects</button>}</div>
         </div>
         <div className="public-profile-actions">{isSelf ? <Link className="btn btn-primary" to="/profile">Edit Profile</Link> : <>
@@ -197,7 +202,8 @@ export const TutorProfilePage = () => {
       <h2 id="peer-reviews-heading">Peer reviews</h2>{reviewsLoading ? <LoadingSpinner text="Loading reviews..." /> : reviewError ? <Alert type="danger" message={reviewError} /> : reviews.length === 0 ? <p>No visible reviews yet.</p> : reviews.map(review => <article key={review.id}><strong>{review.reviewerName}</strong><span> · {review.rating} out of 5</span>{review.comment && <p>{review.comment}</p>}</article>)}{reviews.length === 20 && <p className="form-hint">Showing the latest 20 visible reviews.</p>}
     </section>
     <section role="tabpanel" id="public-profile-panel-availability" aria-labelledby="public-profile-tab-availability" hidden={section !== 'availability'} className="card"><h2>Availability</h2><AvailabilityGuidance availability={tutor.weeklyAvailability} /><p>Propose a future online session. Usual availability is guidance, not a reservation; the tutor must accept your request.</p></section>
-    {canRequest && (
+    {freeLearning&&freeRequestOpen&&canRequest&&<FreeSessionRequest key={id} tutor={tutor} close={()=>setFreeRequestOpen(false)}/>}
+    {canRequest && !freeLearning && (
         <div className="card" id="request-session">
           <h3 style={{ fontSize: '1.25rem', color: 'var(--navy-900)', marginBottom: '14px' }}>
             Request a Study Session
@@ -232,6 +238,7 @@ export const TutorProfilePage = () => {
               <input
                 id="scheduledAt"
                 type="datetime-local"
+                min={minimumLocalDateTime()}
                 className="form-input"
               value={scheduledAt}
               onChange={(e) => setScheduledAt(e.target.value)}

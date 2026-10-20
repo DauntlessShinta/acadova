@@ -17,9 +17,11 @@ export default function LearningNavigation({ disabled = false, onNavigate }) {
     ['ai', 'AI Study Tools', '/learning/ai-study'],
     ['contribute', 'Share a resource', '/learning?' + contribute],
   ];
-  return <nav className="learning-section-nav" aria-label="Learning sections">{items.map(([key, label, to]) =>
+  const root = currentPath === '/learning' && !['topic','module','resource','view'].some(key=>params.has(key)) || currentPath === '/assessments' && !params.has('open');
+  const navigation = <nav className="learning-section-nav" aria-label="Learning sections">{items.map(([key, label, to]) =>
     <Link key={key} id={'learning-tab-' + key} to={to} aria-current={current === key ? 'page' : undefined}
       aria-disabled={disabled || undefined} onClick={(event) => {
         if (disabled) event.preventDefault(); else onNavigate?.(event, to);
       }}>{label}</Link>)}</nav>;
+  return root ? navigation : null;
 }

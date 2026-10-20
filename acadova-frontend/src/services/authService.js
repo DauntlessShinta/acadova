@@ -10,6 +10,8 @@ export const authService = {
   },
 
   verifyEmail: async (token) => api.post('/api/auth/verify-email', { token }),
+  verifyStaffMfa: async (challenge, code) => api.post('/api/auth/staff-mfa/verify', { challenge, code }),
+  resendStaffMfa: async (challenge) => api.post('/api/auth/staff-mfa/resend', { challenge }),
   resendVerification: async (email) => api.post('/api/auth/resend-verification', { email }),
   forgotPassword: async (email) => api.post('/api/auth/forgot-password', { email }),
   resetPassword: async (token, password) => api.post('/api/auth/reset-password', { token, password }),

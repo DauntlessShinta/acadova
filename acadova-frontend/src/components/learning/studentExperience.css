@@ -1,0 +1,198 @@
+/* Student-only extensions of the existing Acadova learning tokens. Staff is excluded. */
+.student-v2 { --ac-header-height:128px; --ac-page-gap:18px; }
+.student-v2 .app-main > .container > :is(.learning-page,.assessments-page,.ai-study-page,.tutor-discovery-page,.student-sessions-page,.profile-page,.ac-growth-page,.public-peer-profile,.session-room-page,.circle-page) { width:100%; max-width:none; margin-inline:0; min-width:0; }
+.student-v2 :is(.learning-page,.assessments-page,.tutor-discovery-page,.student-sessions-page,.ac-growth-page) { display:grid; gap:var(--ac-page-gap); }
+.student-v2 :is(.learning-page-header,.student-page-header) { min-height:var(--ac-header-height); display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:12px 24px; padding:18px 24px; margin:0; border:1px solid var(--ac-border); border-radius:16px; background:linear-gradient(110deg,#d2e8ff,#e5f1ff 60%,#d8e7ff); }
+.student-v2 :is(.learning-page-header,.student-page-header) > div { min-width:0; }
+.student-v2 :is(.learning-page-header,.student-page-header) h1 { font-size:28px; margin:5px 0 7px; line-height:1.25; }
+.student-v2 :is(.learning-page-header,.student-page-header) p { font-size:14px; line-height:1.6; margin:0; max-width:760px; color:#344f74; }
+.student-v2 .learning-page > .learning-page-header,.student-v2 .assessments-page > .learning-page-header { display:block; }
+.student-v2 .ac-hero-compact { min-height:var(--ac-header-height); padding:18px 24px; }
+.student-v2 .ac-hero-compact .ac-hero-art { display:none; }
+.student-v2 .ac-hero-compact h1 { font-size:28px; margin:4px 0 7px; }
+.student-v2 .ac-view-subjects > .ac-hero-compact { min-height:128px; padding:18px 24px; }
+.student-v2 .ac-view-subjects .ac-hero-copy { grid-template-columns:minmax(0,1fr) auto; gap:6px 20px; }
+.student-v2 .ac-view-subjects .ac-hero-eyebrow { grid-column:1; grid-row:1; }
+.student-v2 .ac-view-subjects .ac-hero h1 { grid-column:1; grid-row:2; }
+.student-v2 .ac-view-subjects .ac-hero p { grid-column:1; grid-row:3; }
+.student-v2 .ac-view-subjects .ac-hero .academic-actions { grid-column:2; grid-row:1 / span 3; margin:0; }
+.ac-subject-term-bar { display:flex; align-items:center; flex-wrap:wrap; padding:6px 12px; border:1px solid var(--ac-border); border-radius:12px; background:var(--ac-surface); }
+.student-v2 .ac-together > .ac-hero-compact { min-height:128px; padding:18px 24px; }
+.student-v2 .ac-together > .ac-hero-compact .ac-hero p { max-width:640px; }
+.student-v2 .circle-page > .learning-page-header { display:block; }
+.student-v2 .learning-breadcrumbs { margin:0 0 8px; }
+.student-v2 .learning-eyebrow,.student-v2 .student-eyebrow { font-size:12px; letter-spacing:.025em; }
+.ac-learning-destinations { justify-self:start; position:relative; max-width:100%; color:var(--ink-700); }
+.ac-learning-destinations > summary { cursor:pointer; display:list-item; min-height:44px; padding:11px 14px; font-size:13px; border:1px solid var(--border-subtle); border-radius:10px; background:var(--bg-surface); }
+.ac-learning-destinations > .learning-section-nav { margin:8px 0 0; }
+.ac-context-back { display:inline-flex; align-items:center; justify-self:start; min-height:44px; font-size:13px; font-weight:600; }
+.student-v2 :is(.learning-destination-card,.assessment-hub-card,.peer-card,.student-session-card) { border-color:var(--ac-border); box-shadow:var(--ac-shadow); border-radius:16px; }
+.student-v2 .learning-destination-card { min-height:0; padding:20px; gap:12px; }
+.student-v2 .learning-topic-results .learning-destination-card { display:grid; align-content:start; }
+.student-v2 .learning-topic-results .learning-destination-card :is(h2,p) { margin:0; }
+.student-v2 .learning-topic-results .learning-card-hint { margin-top:8px; }
+.student-v2 .ac-together .circle-grid > .academic-empty { grid-column:1 / -1; }
+.student-v2 .learning-section-nav { margin:0; background:var(--ac-surface); border-color:var(--ac-border); border-radius:12px; }
+.student-v2 :is(.learning-contribution,.assessment-workspace,.ac-growth-page,.profile-page) .card { padding:22px; }
+.student-v2 :is(.learning-contribution,.ac-study-sets,.profile-page) :is(.form-input,.form-textarea,.form-select), .circle-editor :is(input,textarea,select) { border-radius:10px; background:#fbfdff; border-color:#d4e1f4; min-height:44px; }
+.student-v2 .learning-contribution form { max-width:900px; margin:0; }
+.student-v2 .learning-contribution :is(input,textarea,select) { margin-bottom:14px; }
+.student-v2 .assessment-hub-note { margin:0; font-size:13px; }
+.student-v2 .assessment-hub-list,.student-v2 .student-session-list { gap:14px; }
+.student-v2 .assessment-workspace { margin:0; }
+.student-v2 .assessment-workspace .quiz-question { box-shadow:none; padding:16px; margin-bottom:12px; }
+.student-v2 :is(.assessment-option,.ai-answer) { min-height:48px; }
+.student-v2 .profile-page > .student-page-header { margin-bottom:18px; }
+.student-v2 .session-room-header { padding:20px 24px; background:linear-gradient(110deg,#d2e8ff,#e5f1ff 60%,#d8e7ff); border:1px solid var(--ac-border); border-radius:16px; }
+.student-v2 .session-room-header h1 { font-size:28px; }
+.student-v2 .public-profile-cover { min-height:80px; height:80px; background:linear-gradient(110deg,#d2e8ff,#c6ddff); }
+.student-v2 .public-profile-header { padding:18px 22px; }
+.student-v2 .public-profile-identity h1 { font-size:28px; }
+.student-v2 .ai-study-page:not(.ai-study-inline) > .learning-page-header { margin:0; }
+.student-v2 .ai-study-page:not(.ai-study-inline) { gap:16px; }
+.student-v2 .ai-study-page:not(.ai-study-inline) .ai-create-grid { gap:18px; }
+.student-v2 .ai-study-page:not(.ai-study-inline) .ai-upload-form,.student-v2 .ai-study-page:not(.ai-study-inline) .ai-help { padding:22px; }
+.student-v2 .study-page > form.card,.student-v2 .study-page > section.card { max-width:none; margin:0; padding:22px; }
+.ac-manual-editor > fieldset > legend { font-size:20px; padding:0; margin-bottom:12px; }
+.ac-editor-steps { display:flex; flex-wrap:wrap; gap:10px; list-style:none; margin:0 0 20px; padding:0; }
+.ac-editor-steps li { border:1px solid #d9e5f6; border-radius:10px; padding:10px 14px; background:#f5f9ff; font-size:13px; }
+.ac-manual-editor .form-group { max-width:820px; }
+.ac-manual-editor .study-question { padding:18px; border:1px solid #dbe7f8; border-radius:12px; background:#fbfdff; margin:16px 0; }
+.ac-manual-editor .study-question legend { font-size:15px; }
+.ac-manual-editor .study-actions { margin-top:14px; }
+.ac-manual-practice { display:grid; gap:16px; }
+.ac-manual-practice > .study-question { margin:0; padding:20px; }
+.ac-manual-practice > .study-question[hidden] { display:none; }
+.ac-practice-position { margin:0; color:var(--ac-muted); font-size:13px; }
+.ac-practice-info { margin-bottom:14px; }
+.ac-practice-info > summary { min-height:44px; padding-block:10px; cursor:pointer; font-size:13px; }
+.student-v2 .study-option-editor { display:flex; flex-wrap:wrap; align-items:center; gap:10px; padding:10px 0; }
+.student-v2 .study-option-editor > .form-input { flex:1 1 240px; }
+.student-v2 .study-option-editor label { display:inline-flex; align-items:center; gap:6px; min-height:44px; }
+.student-v2 .ac-study-sets .ai-flashcards { margin-top:16px; }
+.student-v2 .ac-study-sets .ai-practice-grid { grid-template-columns:minmax(0,1fr); max-width:900px; }
+.student-v2 .ac-growth-page { max-width:1000px!important; }
+@media(max-width:800px) {
+ .student-v2 .learning-module-layout { grid-template-columns:minmax(0,1fr); }
+ .student-v2 .profile-layout { grid-template-columns:minmax(0,1fr); }
+}
+@media(max-width:600px) {
+ .student-v2 { --ac-page-gap:14px; }
+ .student-v2 :is(.learning-page-header,.student-page-header,.ac-hero-compact,.session-room-header) { min-height:0; padding:18px; gap:12px; }
+ .student-v2 :is(.learning-page-header,.student-page-header,.ac-hero-compact,.session-room-header) h1 { font-size:25px; }
+ .student-v2 .ac-view-subjects > .ac-hero-compact { padding:18px; min-height:0; }
+ .student-v2 .ac-view-subjects .ac-hero-copy { grid-template-columns:minmax(0,1fr); }
+ .student-v2 .ac-view-subjects .ac-hero-eyebrow { grid-column:1; grid-row:auto; }
+ .student-v2 .ac-view-subjects .ac-hero .academic-actions { grid-column:1; grid-row:auto; }
+ .student-v2 :is(.learning-page-header,.student-page-header) p { font-size:13px; }
+ .student-v2 :is(.learning-page-header,.student-page-header) > .btn { width:100%; }
+ .student-v2 .study-page > form.card,.student-v2 .study-page > section.card,.student-v2 .learning-contribution .card { padding:16px; }
+ .ac-manual-editor .study-question { padding:12px; }
+ .student-v2 .public-profile-header { padding:16px; }
+ .student-v2 .public-profile-identity h1 { font-size:25px; }
+}
+
+/* Functional pages share one compact task header; Home keeps its welcome hero. */
+.student-v2 { --ac-task-radius:14px; --ac-task-padding:20px; --ac-page-gap:16px; }
+.student-v2 .ac-hero-compact.ac-learning-header,
+.student-v2 .ac-view-subjects > .ac-hero-compact,
+.student-v2 .ac-together > .ac-hero-compact,
+.student-v2 .ac-growth-page > .ac-hero-compact {
+ min-height:96px; padding:4px 0 12px; border:0; border-radius:0; box-shadow:none; background:transparent;
+}
+.student-v2 .ac-hero-compact.ac-learning-header::before,.student-v2 .ac-hero-compact.ac-learning-header::after { display:none; }
+.student-v2 .ac-learning-header .ac-hero-copy { display:grid; grid-template-columns:minmax(0,1fr) auto; gap:5px 20px; width:100%; }
+.student-v2 .ac-learning-header .ac-hero-eyebrow { grid-column:1; grid-row:1; margin:0; }
+.student-v2 .ac-learning-header h1 { grid-column:1; grid-row:2; font-size:28px; line-height:1.25; margin:0; }
+.student-v2 .ac-learning-header .ac-hero-copy > p { grid-column:1; grid-row:3; margin:0; font-size:14px; line-height:1.6; }
+.student-v2 .ac-learning-header .academic-actions { grid-column:2; grid-row:1 / span 3; align-self:center; margin:0; }
+.student-v2 .ac-learning-header .learning-breadcrumbs { font-size:12px; margin:0 0 4px; }
+.student-v2 .ac-learning-header .ac-hero-art { display:none; }
+.student-v2 :is(.learning-section-nav,.study-tabs,.ai-subnav) { padding:0; border:0; border-bottom:1px solid var(--ac-border); border-radius:0; background:transparent; gap:4px; margin:0; }
+.student-v2 :is(.learning-section-nav,.study-tabs,.ai-subnav) > a { display:inline-flex; align-items:center; min-height:44px; padding:10px 14px; border:0; border-bottom:2px solid transparent; border-radius:8px 8px 0 0; background:transparent; box-shadow:none; color:var(--ac-muted); }
+.student-v2 :is(.learning-section-nav,.study-tabs,.ai-subnav) > a[aria-current=page] { color:var(--ac-primary); background:#eaf1ff; border-bottom-color:var(--ac-blue); }
+.student-v2 .ac-study-library-main > .ac-section-title { margin-top:0; }
+.student-v2 .ai-study-page:not(.ai-study-inline) .ai-create-grid { grid-template-columns:minmax(0,1fr); gap:12px; max-width:1060px; }
+.student-v2 .ai-generation-fields { display:grid; grid-template-columns:minmax(0,1fr) minmax(240px,.8fr); gap:24px; align-items:start; }
+.student-v2 .ai-source-input:empty { display:none; }
+.student-v2 .ai-generation-options .form-hint { margin:7px 0 14px; }
+.student-v2 .ai-upload-form .ai-dropzone { min-height:200px; justify-content:center; }
+.student-v2 .ai-upload-form fieldset > .ai-consent { margin-block:16px; }
+.student-v2 .ai-create-grid > .ai-privacy { margin:0; padding:0 16px; border-radius:12px; box-shadow:none; }
+.student-v2 .ai-privacy > summary { min-height:44px; padding-block:12px; cursor:pointer; font-size:13px; font-weight:600; }
+.student-v2 .ai-privacy[open] { padding-bottom:14px; }
+.student-v2 .ai-study-inline .ai-generation-fields { display:block; }
+.student-v2 .ai-study-page .ai-subnav { display:flex; flex-wrap:wrap; }
+.student-v2 :is(.learning-contribution,.assessment-workspace,.ac-manual-editor) { border-radius:var(--ac-task-radius); }
+@media(max-width:700px) {
+ .student-v2 .ac-learning-header .ac-hero-copy { grid-template-columns:minmax(0,1fr); }
+ .student-v2 .ac-learning-header .academic-actions { grid-column:1; grid-row:4; justify-self:start; }
+ .student-v2 .ac-learning-header h1 { font-size:25px; }
+ .student-v2 .ac-learning-header .ac-hero-copy > p { font-size:13px; }
+ .student-v2 .ai-generation-fields { grid-template-columns:minmax(0,1fr); gap:14px; }
+ .student-v2 .ac-hero-compact.ac-learning-header { min-height:0; padding:0 0 10px; }
+ .student-v2 :is(.study-tabs,.ai-subnav) > a { padding-inline:10px; font-size:12px; }
+}
+
+/* Beat legacy per-page selectors through component scope, without global resets. */
+.student-v2 .learning-page-header.ac-learning-header { min-height:96px; padding:4px 0 12px; margin:0; }
+.student-v2 .learning-page-header.ac-learning-header h1 { font-size:28px; line-height:1.25; margin:0; }
+.student-v2 .learning-page-header.ac-learning-header .learning-breadcrumbs,
+.student-v2 .learning-page-header.ac-learning-header .learning-breadcrumbs ol { margin:0; padding:0; font-size:12px; line-height:1.5; }
+.student-v2 .learning-page-header.ac-learning-header .ac-hero-copy { align-items:center; gap:6px 20px; }
+.student-v2 .ac-study-sets .study-tabs > a.btn { border:0; border-bottom:2px solid transparent; background:transparent; box-shadow:none; border-radius:8px 8px 0 0; padding:10px 14px; color:var(--ac-muted); }
+.student-v2 .ac-study-sets .study-tabs > a.btn[aria-current=page] { color:#0757e7; background:#eaf1ff; border-bottom-color:#1764ef; box-shadow:none; }
+.student-v2 :is(.student-page-header,.session-room-header),.student-v2 .learning-page-header:not(.ac-learning-header) { min-height:96px; padding:4px 0 12px; border:0; border-radius:0; box-shadow:none; background:transparent; }
+@media(max-width:700px) {
+ .student-v2 .learning-page-header.ac-learning-header { min-height:0; padding:0 0 10px; }
+ .student-v2 .learning-page-header.ac-learning-header h1 { font-size:25px; }
+ .student-v2 .ac-study-sets .study-tabs > a.btn { padding-inline:10px; font-size:12px; }
+}
+
+.student-v2 .ai-generation-options .ai-count-control { display:flex; align-items:center; justify-content:space-between; gap:12px; }.student-v2 .ai-count-control input { width:84px; margin:0; }
+
+/* Nested module workspace rules must not shrink the shared page title. */
+.student-v2 .learning-page.learning-redesign .learning-page-header.ac-learning-header h1 { font-size:28px; line-height:1.25; margin:0; }
+@media(max-width:600px) { .student-v2 .learning-page.learning-redesign .learning-page-header.ac-learning-header h1 { font-size:25px; } }
+
+.student-v2 .app-main .ac-view-subjects .ac-metrics { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:16px; border:0; background:transparent; box-shadow:none; overflow:visible; }
+.student-v2 .app-main .ac-view-subjects .ac-metric { display:flex; align-items:flex-start; flex-direction:row; gap:12px; padding:16px; min-height:112px; border:1px solid var(--ac-border); border-radius:14px; background:var(--ac-surface); box-shadow:none; }
+.student-v2 .app-main .ac-view-subjects .ac-metric>div { display:block; min-width:0; }
+.student-v2 .app-main .ac-view-subjects .ac-metric h2 { margin:0 0 7px; }
+.student-v2 .app-main .ac-view-subjects .ac-metric strong { display:block; font-size:26px; }
+.student-v2 .app-main .ac-view-subjects .ac-metric p { display:block; margin-top:5px; }
+.free-session-step { padding:20px; display:grid; gap:16px; }
+.free-session-step h2 { font-size:20px; margin:0; }
+.free-session-step label { display:grid; gap:8px; font-size:14px; }
+.free-session-dialog .modal-body { padding:0; overflow:auto; }
+.free-session-review { display:grid; grid-template-columns:120px minmax(0,1fr); gap:14px; margin:0; }
+.free-session-review dt { color:var(--ink-600); }.free-session-review dd { margin:0; overflow-wrap:anywhere; }
+@media(max-width:1100px) { .student-v2 .app-main .ac-view-subjects .ac-metrics { grid-template-columns:repeat(2,minmax(0,1fr)); } }
+@media(max-width:480px) { .student-v2 .app-main .ac-view-subjects .ac-metric { padding:12px; gap:9px; }.free-session-review { grid-template-columns:1fr; gap:7px; }.free-session-review dd { margin-bottom:10px; } }
+
+.student-v2 .app-main .ac-view-subjects .ac-metrics { padding:0; border-radius:0; }
+.student-v2 .app-main .ac-view-subjects .ac-metric>.ac-icon-tile { display:grid; }
+.ac-rank-badge { width:110px; height:121px; flex-shrink:0; }.ac-rank-badge.is-small { width:45px; height:50px; }
+.ac-rank-card { display:flex; align-items:center; gap:24px; padding:24px; background:linear-gradient(120deg,#eaf4ff,white); }.ac-rank-card>div { flex:1; min-width:0; }.ac-rank-card h2 { font-size:22px; }.ac-rank-card strong { display:block; font-size:28px; color:var(--ac-primary); }.ac-rank-card progress { width:100%; height:12px; accent-color:var(--ac-primary); }
+.ac-growth-grid { display:grid; grid-template-columns:minmax(0,1.2fr) minmax(0,1fr); gap:18px; }.ac-growth-grid>.card { padding:22px; }.ac-growth-activity { list-style:none; padding:0; display:grid; gap:14px; }.ac-growth-activity li { display:flex; align-items:center; gap:12px; padding-bottom:14px; border-bottom:1px solid var(--ac-border); font-size:14px; }.ac-growth-activity li>div { flex:1; min-width:0; }.ac-growth-activity small { display:block; color:var(--ink-600); margin-top:4px; }.ac-growth-activity b { white-space:nowrap; color:var(--ac-primary); }.ac-growth-badges { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px; }.ac-growth-badges article { padding:16px; border:1px solid var(--ac-border); border-radius:12px; background:#f7f9fc; }.ac-growth-badges .is-earned { background:#eff6ff; border-color:#b9d4ff; }.ac-growth-badges h3 { font-size:14px; margin:10px 0 6px; }.ac-growth-badges p,.ac-growth-badges small { font-size:12px; line-height:1.6; }
+.student-v2 .tutor-discovery-page .peer-card { min-width:0; border-radius:16px; padding:20px; background:white; border:1px solid var(--ac-border); box-shadow:var(--ac-shadow); }.student-v2 .peer-card-actions { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px; margin-top:auto; }.student-v2 .peer-card-actions .btn { min-height:44px; }.student-v2 .peer-skills .badge { background:#eaf3ff; color:#214e8c; }
+@media(max-width:900px) { .ac-growth-grid { grid-template-columns:1fr; } }
+@media(max-width:480px) { .ac-rank-card { align-items:flex-start; gap:14px; padding:16px; }.ac-rank-badge { width:76px; height:84px; }.ac-rank-card h2 { font-size:18px; }.ac-growth-activity li { flex-wrap:wrap; }.ac-growth-activity li b { margin-left:auto; } }
+
+.student-v2 .tutor-discovery-page .student-peer-grid { grid-template-columns:repeat(auto-fill,minmax(min(100%,320px),1fr)); gap:18px; }
+.student-v2 .ac-rank-card progress { display:block; appearance:none; border:0; border-radius:99px; overflow:hidden; height:10px; background:#e3edfc; margin-block:12px; }
+.ac-rank-card progress::-webkit-progress-bar { background:#e3edfc; border-radius:99px; }.ac-rank-card progress::-webkit-progress-value { background:#246bfd; border-radius:99px; }.ac-rank-card progress::-moz-progress-bar { background:#246bfd; border-radius:99px; }
+.free-session-step h2:focus-visible { outline:2px solid #246bfd; outline-offset:4px; border-radius:3px; }
+.ac-home-growth { padding:12px 16px; }.ac-home-growth .ac-growth-summary { display:flex; gap:12px; align-items:center; flex-wrap:wrap; }
+
+/* This dialog is portaled outside the Student shell; constrain its own viewport. */
+.modal-dialog.free-session-dialog { min-width:0; width:min(620px,calc(100vw - 32px)); max-height:calc(100dvh - 32px); }
+.free-session-dialog .modal-header { min-width:0; }.free-session-dialog .modal-header h3 { min-width:0; overflow-wrap:anywhere; }
+.free-session-dialog form,.free-session-step,.free-session-step label { min-width:0; }
+.free-session-step :is(input,select,textarea) { min-width:0; width:100%; max-width:100%; box-sizing:border-box; }
+@media(max-width:480px) { .free-session-step { padding:16px; }.free-session-step h2 { font-size:18px; }.free-session-dialog .modal-header { padding:14px 16px; }.free-session-dialog .modal-header h3 { font-size:17px; } }
+
+.student-v2 .peer-card-actions .btn { width:100%; min-width:0; padding-inline:8px; font-size:12px; gap:6px; }
+
+.is-free-learning.ac-collaboration-context:has(.ac-peer-context-links) { display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap; }
+.is-free-learning .ac-peer-context-links { gap:8px; }.is-free-learning .ac-peer-context-links a { padding:8px 12px; border-radius:9px; text-decoration:none; background:#edf4ff; }

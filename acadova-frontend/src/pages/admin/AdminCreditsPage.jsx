@@ -1,3 +1,5 @@
+import GrowthReviewPanel from '../../components/staff/GrowthReviewPanel';
+import { useAuth } from '../../context/AuthContext';
 import { useConfirm } from '../../context/confirmAccess';
 import { useToast } from '../../context/toastAccess';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
@@ -12,6 +14,7 @@ const fields = [
 ];
 
 export const AdminCreditsPage = () => {
+  const {freeLearning}=useAuth();
   const toast = useToast();
   const confirm = useConfirm();
   const [rules, setRules] = useState(null);
@@ -127,6 +130,7 @@ export const AdminCreditsPage = () => {
     finally { mutationPending.current = false; setBusy(false); }
   };
 
+  if(freeLearning)return <div className="staff-page"><h1>Historical credit review</h1><GrowthReviewPanel/></div>;
   if (loading) return <LoadingSpinner text="Loading credit administration..." size={34} />;
   if (!rules && error) return <div className="staff-page"><h1>Credit administration</h1><Alert type="danger" message={error} /><p>Credit administration is unavailable.</p><button type="button" className="btn btn-secondary" onClick={load}>Retry</button></div>;
   return <div className="staff-page">

@@ -2,7 +2,7 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowRight, Calendar, Check, Coins, MapPin, UserRound, X } from 'lucide-react';
 import Badge from '../common/Badge';
-import { formatSessionDateTime, getSessionPerspective, getSessionStatus } from '../../utils/sessionPresentation';
+import { formatSessionDateTime, getSessionPerspective, getSessionStatus, getSessionEconomyLabel } from '../../utils/sessionPresentation';
 
 export const SessionCard = ({
   session,
@@ -35,8 +35,8 @@ export const SessionCard = ({
           </div>
         )}
         <div className="student-session-detail">
-          <Coins size={15} aria-hidden="true" />
-          <span>{session.creditAmount} credit{session.creditAmount === 1 ? '' : 's'}</span>
+          {session.economyVersion==='free-v1'?<Check size={15} aria-hidden="true" />:<Coins size={15} aria-hidden="true" />}
+          <span>{getSessionEconomyLabel(session, currentUser?.experience?.freeLearning)}</span>
         </div>
         {session.meetingMethod && (
           <div className="student-session-detail">

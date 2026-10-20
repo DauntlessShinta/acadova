@@ -105,8 +105,9 @@ exports.createSession = async (req, res) => {
     }
 
     // Legacy clients may still submit creditAmount, but it never sets the price.
-    const { tutoringSessionCost } = await getEffectiveCreditRules();
-    if (Number.isFinite(req.user.credits) && req.user.credits < tutoringSessionCost) {
+    const free = require('../config/studentExperience').active();
+    const { tutoringSessionCost } = free ? {tutoringSessionCost:0} : await getEffectiveCreditRules();
+    if (!free && Number.isFinite(req.user.credits) && req.user.credits < tutoringSessionCost) {
       return res.status(400).json({ success: false, message: `You need ${tutoringSessionCost} credits to request a tutoring session.` });
     }
     if (scheduledDate.getTime() <= Date.now()) {
@@ -138,6 +139,7 @@ exports.createSession = async (req, res) => {
       await rejectDuplicateRequest(req.user.id, tutorId, canonicalSubject, scheduledDate, dbSession);
       [session] = await Session.create([{
         lifecycleVersion: 1,
+        ...(free ? {economyVersion:'free-v1'} : {}),
         learner: req.user.id,
         tutor: tutorId,
         subject: canonicalSubject,
@@ -579,7 +581,7 @@ exports.finishSession = async (req, res) => {
     });
     if (!updatedSession) return res.status(409).json({ success: false, message: changedSessionMessage });
     await updatedSession.populate(SESSION_POPULATE);
-    return res.json({ success: true, message: 'Session finished. Both participants must confirm before credits transfer.', data: presentSession(updatedSession) });
+    return res.json({ success: true, message: session.economyVersion==='free-v1' ? 'Session finished. Both participants must confirm completion.' : 'Session finished. Both participants must confirm before credits transfer.', data: presentSession(updatedSession) });
   } catch (error) {
     return res.status(500).json({ success: false, message: 'Session could not be finished.' });
   }
@@ -637,7 +639,7 @@ exports.reportNoShow = async (req, res) => {
     await updatedSession.populate(SESSION_POPULATE);
     await notifications.notifySession('session.no_show', updatedSession,
       [otherParticipant(updatedSession, req.user.id)]);
-    return res.json({ success: true, message: 'No-show recorded. No credits were transferred.', data: updatedSession });
+    return res.json({ success: true, message: updatedSession.economyVersion==='free-v1'?'No-show recorded. No EXP is awarded.':'No-show recorded. No credits were transferred.', data: updatedSession });
   } catch (error) {
     return res.status(error.status || 500).json({ success: false, message: error.status ? error.message : 'No-show could not be recorded.' });
   }
@@ -683,7 +685,7 @@ exports.disputeSession = async (req, res) => {
     await updatedSession.populate(SESSION_POPULATE);
     await notifications.notifySession('session.disputed', updatedSession,
       [otherParticipant(updatedSession, req.user.id)]);
-    return res.json({ success: true, message: 'Dispute submitted for Moderator review. No credits were transferred.', data: updatedSession });
+    return res.json({ success: true, message: updatedSession.economyVersion==='free-v1'?'Dispute submitted for Moderator review. No EXP is awarded by a dispute.':'Dispute submitted for Moderator review. No credits were transferred.', data: updatedSession });
   } catch (error) {
     return res.status(500).json({ success: false, message: 'Dispute could not be submitted.' });
   }
@@ -771,7 +773,7 @@ exports.confirmSession = async (req, res) => {
             status: 'completed',
             completedAt: now,
             confirmedAt: isLearner ? now : session.learnerConfirmedAt,
-            creditsSettledAt: now,
+            ...(session.economyVersion==='free-v1' ? {validationSettledAt:now} : {creditsSettledAt:now}),
           });
         }
         if (finalConfirmation && session.reviewReferral && !session.reviewReferral.closedAt) {
@@ -852,8 +854,9 @@ exports.confirmSession = async (req, res) => {
     await settledSession.populate(SESSION_POPULATE);
     if (!awaitingPeerConfirmation) await notifications.notifySession('session.completed', settledSession,
       [settledSession.learner, settledSession.tutor]);
+    if (settledSession.economyVersion==='free-v1' && !awaitingPeerConfirmation) await require('../services/growthReplay').replayOwner(String(settledSession.tutor?._id || settledSession.tutor));
     const tutorName = settledSession.tutor?.name || 'the Tutor';
-    const message = awaitingPeerConfirmation
+    const message = settledSession.economyVersion==='free-v1' ? (awaitingPeerConfirmation?'Confirmation saved. Waiting for your peer.':'Free session completed. Eligible EXP remains pending during the reporting window.') : awaitingPeerConfirmation
       ? 'Confirmation saved. Waiting for your peer before credits transfer.'
       : alreadySettled
       ? 'Session confirmed. Its existing credit transaction was not repeated.'

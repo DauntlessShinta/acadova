@@ -6,6 +6,9 @@ const UserSchema = new mongoose.Schema({
   currentTermId: { type: mongoose.Schema.Types.ObjectId, ref: 'AcademicTerm', default: null },
   academicGuard: { type: Number, default: 0, select: false },
   studyNudgesEnabled: { type: Boolean, default: true },
+  // Absent historical preferences are private. Never include in public User DTOs.
+  growthVisibility: { type: new mongoose.Schema({ showLevel: Boolean, showRank: Boolean,
+    badgeIds: { type: [String], validate: value => value.length <= 5 } }, { _id: false }), select: false },
   studyNudgeDismissals: { type: [String], default: [], select: false, validate: value => value.length <= 100 },
   email: { type: String, required: true, unique: true, lowercase: true, trim: true },
   password: { type: String, required: true, minlength: 6 },
@@ -38,6 +41,7 @@ const UserSchema = new mongoose.Schema({
   suspendedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
   suspensionReason: { type: String, maxlength: 500 },
   // Explicitly set only by new registrations; historical accounts are never backfilled.
+  openingGrantFrozenAt: {type:Date,select:false},
   openingGrantEligible: { type: Boolean, default: false, select: false },
   // Registration-time snapshot; older eligible registrations without it retain the original 100.
   openingGrantAmount: { type: Number, select: false, min: 1, max: 1000 },
@@ -58,4 +62,9 @@ UserSchema.index({ skillsToTeach: 1, rating: -1 });
 UserSchema.index({ emailVerificationTokenHash: 1 }, { unique: true, sparse: true });
 UserSchema.index({ googleSub: 1 }, { name: 'uniq_user_google_sub', unique: true, sparse: true });
 
+UserSchema.pre('save',function(){if(require('../config/studentExperience').active() && this.isModified('credits') && (!this.isNew || this.credits!==0)) require('../config/studentExperience').rejectCreditWrite();});
+for(const op of ['updateOne','updateMany','findOneAndUpdate','replaceOne','findOneAndReplace']) UserSchema.pre(op,function(){if(!require('../config/studentExperience').active())return;const update=this.getUpdate();if(Array.isArray(update) || Object.entries(update?.$rename||{}).some(([from,to])=>[from,to].some(path=>path==='credits'||path.startsWith('credits.'))) || Object.entries(update || {}).some(([key,value])=>key==='credits'||key.startsWith('credits.')||key.startsWith('$')&&Object.keys(value || {}).some(path=>path==='credits'||path.startsWith('credits.')))) require('../config/studentExperience').rejectCreditWrite();});
+UserSchema.pre('insertMany',function(docs){if(require('../config/studentExperience').active() && docs.some(d=>d.credits!=null&&d.credits!==0)) require('../config/studentExperience').rejectCreditWrite();});
+for(const op of ['replaceOne','findOneAndReplace']) UserSchema.pre(op,function(){require('../config/studentExperience').rejectCreditWrite();});
+UserSchema.pre('bulkWrite',function(){require('../config/studentExperience').rejectCreditWrite();});
 module.exports = mongoose.model('User', UserSchema);

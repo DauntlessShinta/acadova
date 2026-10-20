@@ -20,8 +20,15 @@ const fields = { title: text(120), description: optional(text(600, true)), tags:
   startsAt: schemas.session.scheduledAt, endsAt: schemas.session.scheduledAt, timezone,
   capacity: optional(v => { if (!Number.isSafeInteger(v) || v < 1 || v > 50) throw new InvalidInput('Capacity must be 1 to 50 attendees, excluding the host.'); return v; }),
   subjectId: optional(v => v === null ? null : objectId(v)), meetingUrl };
-function circleInput(body) { const clean = parse(body, fields); const start = new Date(clean.startsAt), end = new Date(clean.endsAt), now = Date.now();
-  if (start <= now || start > now + 180 * 86400000 || end <= start || end - start > 8 * 3600000) throw new InvalidInput('Start within the next 180 days and finish within eight hours after starting.'); return clean;
+function circleInput(body, existing) { const clean = parse(body, fields); const start = new Date(clean.startsAt), end = new Date(clean.endsAt), now = Date.now();
+  if (start <= now) throw new InvalidInput('The start time has already passed. Select a new time.');
+  if (start > now + 180 * 86400000) throw new InvalidInput('Choose a start date within the next 180 days.');
+  if (end <= start) throw new InvalidInput('The end time must be after the start time.');
+  // The exception is derived only from an authorized, server-read record. No
+  // client legacy flag can waive the policy for new or rescheduled circles.
+  const unchanged = existing && +start === +new Date(existing.startsAt) && +end === +new Date(existing.endsAt) && clean.timezone === existing.timezone;
+  if (!unchanged && (end-start < 30 * 60000 || end-start > 180 * 60000)) throw new InvalidInput('Study circles must last between 30 minutes and 3 hours.');
+  return clean;
 }
 const volunteer = { enabled: v => { if (typeof v !== 'boolean') throw new InvalidInput('Use true or false.'); return v; }, expertise: text(300, true), interests: text(300, true) };
 module.exports = { circleInput, meetingUrl, timezone, version, volunteer, text, optional };

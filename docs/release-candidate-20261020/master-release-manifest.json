@@ -1,0 +1,4307 @@
+{
+  "createdUtc": "2026-10-20T09:27:59.193496+00:00",
+  "base": {
+    "head": "c159026d6e7751190a85b93e21f29817ddeb927f",
+    "branch": "p7-ux-hardening",
+    "logicalIndexSha256": "6034703ff2eb2c31197347c94cbb00161105d9d10a0269ea258977fc230018ea",
+    "rawIndexSha256": "373b361f431a3e8d547a09880694942c9740116e1f84bf0b55a6aa1a6e463bd8",
+    "staged": []
+  },
+  "status": "CURATED_OFFLINE_CANDIDATE_FOR_REVIEW_NOT_STAGED_OR_DEPLOYED",
+  "candidateSourceTreeSha256": "7535a7cccce86ec85aba66d73af840b83b2be670d7222512a896b520b4be78d9",
+  "counts": {
+    "complete": {
+      "runtime": 416,
+      "operator_guide": 12,
+      "test_support": 192
+    },
+    "incremental": {
+      "runtime": 153,
+      "test_support": 38
+    }
+  },
+  "incrementalPaths": [
+    "acadova-backend/.env.example",
+    "acadova-backend/config/acadi.js",
+    "acadova-backend/config/growthProgression.js",
+    "acadova-backend/config/staffMfa.js",
+    "acadova-backend/config/studentExperience.js",
+    "acadova-backend/controllers/academicWorkspaceController.js",
+    "acadova-backend/controllers/adminController.js",
+    "acadova-backend/controllers/adminGrowthController.js",
+    "acadova-backend/controllers/aiStudyController.js",
+    "acadova-backend/controllers/assessmentController.js",
+    "acadova-backend/controllers/authController.js",
+    "acadova-backend/controllers/growthReviewController.js",
+    "acadova-backend/controllers/growthVisibilityController.js",
+    "acadova-backend/controllers/learningController.js",
+    "acadova-backend/controllers/learningUnlockController.js",
+    "acadova-backend/controllers/moderatorController.js",
+    "acadova-backend/controllers/sessionController.js",
+    "acadova-backend/controllers/staffAnalyticsController.js",
+    "acadova-backend/controllers/staffDashboardController.js",
+    "acadova-backend/controllers/studyCircleController.js",
+    "acadova-backend/controllers/studyController.js",
+    "acadova-backend/controllers/userController.js",
+    "acadova-backend/middleware/authMiddleware.js",
+    "acadova-backend/middleware/validation.js",
+    "acadova-backend/models/AcadiConsent.js",
+    "acadova-backend/models/AcadiQuota.js",
+    "acadova-backend/models/AiStudyQuota.js",
+    "acadova-backend/models/AssessmentAttempt.js",
+    "acadova-backend/models/CreditTransaction.js",
+    "acadova-backend/models/LegacyCreditReview.js",
+    "acadova-backend/models/Session.js",
+    "acadova-backend/models/StaffMfaChallenge.js",
+    "acadova-backend/models/StudySet.js",
+    "acadova-backend/models/User.js",
+    "acadova-backend/routes/acadiRoutes.js",
+    "acadova-backend/routes/adminRoutes.js",
+    "acadova-backend/routes/aiStudyRoutes.js",
+    "acadova-backend/routes/authRoutes.js",
+    "acadova-backend/routes/creditRoutes.js",
+    "acadova-backend/routes/growthRoutes.js",
+    "acadova-backend/routes/moderatorRoutes.js",
+    "acadova-backend/routes/sessionRoutes.js",
+    "acadova-backend/scripts/growthHeaderQa.cjs",
+    "acadova-backend/scripts/localMfaMailbox.cjs",
+    "acadova-backend/scripts/staffMfaQa.cjs",
+    "acadova-backend/server.js",
+    "acadova-backend/services/acadiContext.js",
+    "acadova-backend/services/acadiConversation.js",
+    "acadova-backend/services/aiDocumentService.js",
+    "acadova-backend/services/auditService.js",
+    "acadova-backend/services/emailService.js",
+    "acadova-backend/services/expAwardService.js",
+    "acadova-backend/services/freeAssessmentService.js",
+    "acadova-backend/services/geminiAcadiService.js",
+    "acadova-backend/services/growthFoundation.js",
+    "acadova-backend/services/growthPresentation.js",
+    "acadova-backend/services/growthReplay.js",
+    "acadova-backend/services/legacyCreditReviewGuard.js",
+    "acadova-backend/services/sessionSettlement.js",
+    "acadova-backend/services/staffMfaService.js",
+    "acadova-backend/tests/aiStudyUploadLimit.test.js",
+    "acadova-backend/tests/bundleC.integration.test.js",
+    "acadova-backend/tests/legacyCreditReviewGuard.test.js",
+    "acadova-backend/tests/premiumAiStudy.integration.test.js",
+    "acadova-backend/tests/premiumAiStudy.test.js",
+    "acadova-backend/tests/staffAnalytics.integration.test.js",
+    "acadova-backend/tests/staffMfa.integration.test.js",
+    "acadova-backend/tests/staffMfaEmail.test.js",
+    "acadova-backend/tests/studentExperience.integration.test.js",
+    "acadova-backend/tests/studentExperience.test.js",
+    "acadova-backend/tests/studyCircle.test.js",
+    "acadova-backend/utils/sessionLifecycleCompatibility.js",
+    "acadova-backend/utils/sessionRoleGuard.js",
+    "acadova-backend/utils/staffDashboardDefinitions.js",
+    "acadova-backend/utils/studyCircleValidation.js",
+    "acadova-frontend/public/images/acadova-brand-identity.png",
+    "acadova-frontend/src/App.jsx",
+    "acadova-frontend/src/assets/meeting/SOURCES.md",
+    "acadova-frontend/src/assets/meeting/google-meet.svg",
+    "acadova-frontend/src/assets/meeting/teams.ico",
+    "acadova-frontend/src/assets/meeting/zoom.png",
+    "acadova-frontend/src/components/auth/GoogleSignInButton.jsx",
+    "acadova-frontend/src/components/common/AccountMenu.jsx",
+    "acadova-frontend/src/components/common/PublicBrandLogo.css",
+    "acadova-frontend/src/components/common/PublicBrandLogo.jsx",
+    "acadova-frontend/src/components/common/StudentNavigation.css",
+    "acadova-frontend/src/components/common/StudentNavigation.jsx",
+    "acadova-frontend/src/components/learning/AcademicUi.jsx",
+    "acadova-frontend/src/components/learning/AcadiChatPanel.jsx",
+    "acadova-frontend/src/components/learning/AcadiHelp.jsx",
+    "acadova-frontend/src/components/learning/AcadiLocalGuide.jsx",
+    "acadova-frontend/src/components/learning/AiStudyPractice.jsx",
+    "acadova-frontend/src/components/learning/LearningHeader.jsx",
+    "acadova-frontend/src/components/learning/LearningNavigation.jsx",
+    "acadova-frontend/src/components/learning/StudySetsLibrary.jsx",
+    "acadova-frontend/src/components/learning/acadiHelp.css",
+    "acadova-frontend/src/components/learning/studentExperience.css",
+    "acadova-frontend/src/components/learning/studentV2.css",
+    "acadova-frontend/src/components/staff/AdminGrowthAnalytics.jsx",
+    "acadova-frontend/src/components/staff/DashboardPrimitives.jsx",
+    "acadova-frontend/src/components/staff/GrowthReviewPanel.jsx",
+    "acadova-frontend/src/components/staff/StaffDashboardUi.jsx",
+    "acadova-frontend/src/components/staff/staffDashboard.css",
+    "acadova-frontend/src/components/student/CircleEditor.jsx",
+    "acadova-frontend/src/components/student/EconomySessionReview.jsx",
+    "acadova-frontend/src/components/student/FreeSessionRequest.jsx",
+    "acadova-frontend/src/components/student/GrowthAchievement.jsx",
+    "acadova-frontend/src/components/student/GrowthVisibility.jsx",
+    "acadova-frontend/src/components/student/HeaderGrowth.jsx",
+    "acadova-frontend/src/components/student/MeetingProviders.jsx",
+    "acadova-frontend/src/components/student/PeerCard.jsx",
+    "acadova-frontend/src/components/student/RankBadge.jsx",
+    "acadova-frontend/src/components/student/SessionCard.jsx",
+    "acadova-frontend/src/components/student/SessionCompletionPanel.jsx",
+    "acadova-frontend/src/components/student/StudyTogetherNavigation.jsx",
+    "acadova-frontend/src/components/student/growthExperience.css",
+    "acadova-frontend/src/config/roleNavigation.js",
+    "acadova-frontend/src/context/AiGenerationContext.jsx",
+    "acadova-frontend/src/context/AuthContext.jsx",
+    "acadova-frontend/src/index.css",
+    "acadova-frontend/src/layouts/AppLayout.jsx",
+    "acadova-frontend/src/layouts/AuthLayout.jsx",
+    "acadova-frontend/src/layouts/StaffLayout.jsx",
+    "acadova-frontend/src/pages/AcademicWorkspace.jsx",
+    "acadova-frontend/src/pages/AiStudyPage.jsx",
+    "acadova-frontend/src/pages/AssessmentsPage.jsx",
+    "acadova-frontend/src/pages/CreditsPage.jsx",
+    "acadova-frontend/src/pages/DashboardPage.jsx",
+    "acadova-frontend/src/pages/FindTutorsPage.jsx",
+    "acadova-frontend/src/pages/GrowthPage.jsx",
+    "acadova-frontend/src/pages/LearningPage.jsx",
+    "acadova-frontend/src/pages/LoginPage.jsx",
+    "acadova-frontend/src/pages/ProfilePage.jsx",
+    "acadova-frontend/src/pages/SessionRoomPage.jsx",
+    "acadova-frontend/src/pages/SharedStudySetPage.jsx",
+    "acadova-frontend/src/pages/StaffMfaPage.css",
+    "acadova-frontend/src/pages/StaffMfaPage.jsx",
+    "acadova-frontend/src/pages/StudySetsPage.jsx",
+    "acadova-frontend/src/pages/StudyTogetherPage.jsx",
+    "acadova-frontend/src/pages/TutorProfilePage.jsx",
+    "acadova-frontend/src/pages/admin/AdminAnalyticsPage.jsx",
+    "acadova-frontend/src/pages/admin/AdminCreditsPage.jsx",
+    "acadova-frontend/src/pages/admin/AdminOverviewPage.jsx",
+    "acadova-frontend/src/pages/aiStudy.css",
+    "acadova-frontend/src/pages/moderator/ModeratorAnalyticsPage.jsx",
+    "acadova-frontend/src/pages/moderator/ModeratorDisputesPage.jsx",
+    "acadova-frontend/src/pages/moderator/ModeratorOverviewPage.jsx",
+    "acadova-frontend/src/pages/moderator/ModeratorStudySetsPage.jsx",
+    "acadova-frontend/src/pages/studySets.css",
+    "acadova-frontend/src/pages/studyTogether.css",
+    "acadova-frontend/src/services/aiStudyService.js",
+    "acadova-frontend/src/services/analyticsService.js",
+    "acadova-frontend/src/services/assessmentService.js",
+    "acadova-frontend/src/services/authService.js",
+    "acadova-frontend/src/services/sessionService.js",
+    "acadova-frontend/src/utils/acadiLocal.js",
+    "acadova-frontend/src/utils/aiStudyPractice.js",
+    "acadova-frontend/src/utils/analyticsPresentation.js",
+    "acadova-frontend/src/utils/circlePresentation.js",
+    "acadova-frontend/src/utils/meetingProviders.js",
+    "acadova-frontend/src/utils/scheduling.js",
+    "acadova-frontend/src/utils/sessionPresentation.js",
+    "acadova-frontend/src/utils/sessionRequestTime.js",
+    "acadova-frontend/src/utils/staffMfa.js",
+    "acadova-frontend/src/utils/studentExperience.js",
+    "acadova-frontend/src/utils/useGrowth.js",
+    "acadova-frontend/src/utils/useStaffPeriod.js",
+    "acadova-frontend/tests/acadiLocal.test.js",
+    "acadova-frontend/tests/aiStudyPractice.test.js",
+    "acadova-frontend/tests/assessmentGrowthRefresh.test.js",
+    "acadova-frontend/tests/browser-ai-ux.jsx",
+    "acadova-frontend/tests/browser-bundle-c.jsx",
+    "acadova-frontend/tests/browser-demo.mjs",
+    "acadova-frontend/tests/browser-module-ai.jsx",
+    "acadova-frontend/tests/browser-phaseb3.jsx",
+    "acadova-frontend/tests/browser-sidebar.jsx",
+    "acadova-frontend/tests/browser-staff-alignment.jsx",
+    "acadova-frontend/tests/browser-staff-mfa.jsx",
+    "acadova-frontend/tests/browser-student-exp.jsx",
+    "acadova-frontend/tests/browser-study-consistency.jsx",
+    "acadova-frontend/tests/browser-unified-student.jsx",
+    "acadova-frontend/tests/headerGrowth.test.js",
+    "acadova-frontend/tests/localFreeDevelopment.test.js",
+    "acadova-frontend/tests/meetingProviders.test.js",
+    "acadova-frontend/tests/phaseBAnalytics.test.js",
+    "acadova-frontend/tests/scheduling.test.js",
+    "acadova-frontend/tests/studentEconomyPresentation.test.js",
+    "acadova-frontend/tests/studentExperience.test.js",
+    "acadova-frontend/tests/workspaceNavigation.test.js",
+    "acadova-frontend/vite.bundle-c-qa.config.js",
+    "acadova-frontend/vite.local-free.config.js"
+  ],
+  "files": [
+    {
+      "path": ".gitignore",
+      "sha256": "4f7e8469f7c6caf0dcde7ffa9174e6d382362fdd28aae2f070d039ff9ee22bcf",
+      "category": "runtime",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-backend/.env.example",
+      "sha256": "f4850a4b5cf557bc4991498527e77c91c40b007ae198b01e104262f15d9587ce",
+      "category": "runtime",
+      "state": "modified"
+    },
+    {
+      "path": "acadova-backend/.gitignore",
+      "sha256": "a284bbc60798e42e8b77368fe4850f4b858befd254e73683df2a497c79317a8e",
+      "category": "runtime",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-backend/config/acadi.js",
+      "sha256": "589d50fd830e64764fab672ac306b63584a7bee6a98d8b35db99cdb27037e469",
+      "category": "runtime",
+      "state": "untracked"
+    },
+    {
+      "path": "acadova-backend/config/aiStudy.js",
+      "sha256": "ef9ab101418a141919d265fdcbf1df2a6d1b75100807d0597c7aaf07c63248bd",
+      "category": "runtime",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-backend/config/apiIdentity.js",
+      "sha256": "ffd0244d038e8b788a23ee35af3964b00d6af1708b68a98ada4f07d201be3871",
+      "category": "runtime",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-backend/config/completionSettings.js",
+      "sha256": "a674241006d79bb4d4deeca5c6015fd145f2ac9c815befb6e307fd1eb6f0a35c",
+      "category": "runtime",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-backend/config/creditRules.js",
+      "sha256": "63899582032595ed239d44f93ce62c8019fca7d88d808d53b04ee0b283384bf8",
+      "category": "runtime",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-backend/config/growthPolicy.js",
+      "sha256": "3c932695d00f9490b0fcb9a219ab8f66e3bce1ed40b738542a9ffb52b854cf58",
+      "category": "runtime",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-backend/config/growthProgression.js",
+      "sha256": "5e3fb7f161f28ee7585877d4b247a52773bf92c9521dcc4347e150c0888b236b",
+      "category": "runtime",
+      "state": "untracked"
+    },
+    {
+      "path": "acadova-backend/config/institutionalRegistration.js",
+      "sha256": "d50c1f67f293ff44fd72c40fcd7fcf8efeab60b5eba2c60aca42016b9ca656f2",
+      "category": "runtime",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-backend/config/loginSecurity.js",
+      "sha256": "b1b088278cf08baa58c15ece3d7c00a601d2aea43c2adbe42edf9b372474694d",
+      "category": "runtime",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-backend/config/notificationSettings.js",
+      "sha256": "e79264759ccf0b87fa5118763d422cf56f29e8170e710e1fb863f5d5e9aa3951",
+      "category": "runtime",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-backend/config/policy.js",
+      "sha256": "5d900cacec2bf537f092bcf4b7beb861ea76a205c3881892307d23e13f09bf2b",
+      "category": "runtime",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-backend/config/staffMfa.js",
+      "sha256": "0135e43c7b7ec7ac2bdb5f086ad1c8f6a626afe188abf0ceb60901a36045b01b",
+      "category": "runtime",
+      "state": "untracked"
+    },
+    {
+      "path": "acadova-backend/config/studentExperience.js",
+      "sha256": "169bf3aec9b0a29a193f3db7ab25dd3ecb690af11f943cac9b5990bfa7a0864e",
+      "category": "runtime",
+      "state": "untracked"
+    },
+    {
+      "path": "acadova-backend/controllers/academicWorkspaceController.js",
+      "sha256": "eeda32937a7829658c6efef87c6c4264b637fe6d295c5d41daac1f946670c10d",
+      "category": "runtime",
+      "state": "modified"
+    },
+    {
+      "path": "acadova-backend/controllers/adminAuditController.js",
+      "sha256": "4ca97260f0ef384ea95d71dae7e235cdea9172fd548819b9ff8aa7568deef13b",
+      "category": "runtime",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-backend/controllers/adminController.js",
+      "sha256": "6e998cd6dd066beedeca92d9c26005af75c7c718b6ff80050af993b6785e75a5",
+      "category": "runtime",
+      "state": "modified"
+    },
+    {
+      "path": "acadova-backend/controllers/adminCreditController.js",
+      "sha256": "76acc812aa0498d06ae4f4bf6b732dfe74cee8ce88abb173eeb2272b0b67f0a6",
+      "category": "runtime",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-backend/controllers/adminGrowthController.js",
+      "sha256": "4934438d7b6654066086d0e10c09fc8e904f84c51f44315d08fed3be8661ab2a",
+      "category": "runtime",
+      "state": "untracked"
+    },
+    {
+      "path": "acadova-backend/controllers/adminSecurityController.js",
+      "sha256": "69b4b84894488bc92dd94f550290054b911503cc2d9b9ea9323f07b027ce72b2",
+      "category": "runtime",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-backend/controllers/aiStudyController.js",
+      "sha256": "70c2f4ce127e75c21c18169a39c8c17b8bc0f6a92094914a097488e406fa6cff",
+      "category": "runtime",
+      "state": "modified"
+    },
+    {
+      "path": "acadova-backend/controllers/analyticsController.js",
+      "sha256": "36b5e770eea585ede9e01974922ffa5f16d974ba5cb3c51923bf62360f89e412",
+      "category": "runtime",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-backend/controllers/assessmentController.js",
+      "sha256": "6c2e49c999106a0fd7ad8f135c664d6e6671991a73bf4f755e396223825c1436",
+      "category": "runtime",
+      "state": "modified"
+    },
+    {
+      "path": "acadova-backend/controllers/authController.js",
+      "sha256": "b85086494331d891b422a9e2389409f4eebed3df5f28fd4f6d0354f546b55738",
+      "category": "runtime",
+      "state": "modified"
+    },
+    {
+      "path": "acadova-backend/controllers/completionController.js",
+      "sha256": "1cd0bb645c9ca4f7e060308f989c9083fe13035c67fab465956ff058459e9ad0",
+      "category": "runtime",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-backend/controllers/creditController.js",
+      "sha256": "ae1b330a6ef3d2761176caf1bdd90ab2075663e73964f78cc22204f3f1b09197",
+      "category": "runtime",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-backend/controllers/growthReviewController.js",
+      "sha256": "94ea29fcad23fe92029d2ee1bfc68721c46c7ab0329bce7f148f7d2e73344cf5",
+      "category": "runtime",
+      "state": "untracked"
+    },
+    {
+      "path": "acadova-backend/controllers/growthVisibilityController.js",
+      "sha256": "2affbc9a091a472aba7f3b04166c14d77f4e1ef8a939c9b5b3196d2603df1d68",
+      "category": "runtime",
+      "state": "untracked"
+    },
+    {
+      "path": "acadova-backend/controllers/learningController.js",
+      "sha256": "874d4c41e43f7e8e3a7c1845dae6d0a0f76e79ba81c82c12d7f0cf55e8a489cf",
+      "category": "runtime",
+      "state": "modified"
+    },
+    {
+      "path": "acadova-backend/controllers/learningProgressController.js",
+      "sha256": "c1d4c77b199e4cc1bb859b85f33a3847fdd10b29400fcb1f6be875ddb6eb95f1",
+      "category": "runtime",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-backend/controllers/learningUnlockController.js",
+      "sha256": "1a6db26bbae632ff8ab24a23cc79434614d3cc10c239ee7c8fc1215273baf620",
+      "category": "runtime",
+      "state": "modified"
+    },
+    {
+      "path": "acadova-backend/controllers/moderatorController.js",
+      "sha256": "3f960a7f91fcf0729f74c7f72ed2b2f8f136aa711ee4486d5a4444937ab410e1",
+      "category": "runtime",
+      "state": "modified"
+    },
+    {
+      "path": "acadova-backend/controllers/notificationController.js",
+      "sha256": "05940e84760d563632f76733b5f70f7b49cda38e7d3f7e048b8c329fce5ff800",
+      "category": "runtime",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-backend/controllers/ratingController.js",
+      "sha256": "84cc186f29f7ac565be7926eafb87a4fcee808281e854f357b2d6cdb6a5a8258",
+      "category": "runtime",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-backend/controllers/sessionController.js",
+      "sha256": "b605802a8eae164c43516c23580075cfee261ce3bf56d8a95057cb8596db7dbd",
+      "category": "runtime",
+      "state": "modified"
+    },
+    {
+      "path": "acadova-backend/controllers/staffAnalyticsController.js",
+      "sha256": "018f705759474a2f13ff02decfc62f2ed0805ca7e67510b4aa926bf806de701c",
+      "category": "runtime",
+      "state": "untracked"
+    },
+    {
+      "path": "acadova-backend/controllers/staffDashboardController.js",
+      "sha256": "910b267664f1b32e97158a4047d794550cad83ef64c0909b4e44afa893ec9ed9",
+      "category": "runtime",
+      "state": "modified"
+    },
+    {
+      "path": "acadova-backend/controllers/studyCircleController.js",
+      "sha256": "ba798d0ed12fb6a56f7ef6aee4dcfb7914499be7c6952ca66fd73dc0f6d42e2f",
+      "category": "runtime",
+      "state": "modified"
+    },
+    {
+      "path": "acadova-backend/controllers/studyController.js",
+      "sha256": "b71dc989acd6153e5b4ffce0b2ab885734e1b861926485ac8c2fa3d268ef2f8d",
+      "category": "runtime",
+      "state": "modified"
+    },
+    {
+      "path": "acadova-backend/controllers/studyModerationController.js",
+      "sha256": "b4afaaf2e94ef1437890ea17f29b8d57fc13e2b40eedd23b56dd2b1d6f78a1ee",
+      "category": "runtime",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-backend/controllers/studyPlanController.js",
+      "sha256": "6c26074ffab2bd76e958c9264b0e79e8d5ec240d39ed90d74e73e41700409c60",
+      "category": "runtime",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-backend/controllers/studySharingController.js",
+      "sha256": "db7bdf2221d6422135030ec53c84ef5378dba7aa98863f13ef7c9be8ddccd4b4",
+      "category": "runtime",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-backend/controllers/userController.js",
+      "sha256": "2966264953a173daec85e71ee7b2256c54e474dcdd5f09bd36d81bb8f926bd7d",
+      "category": "runtime",
+      "state": "modified"
+    },
+    {
+      "path": "acadova-backend/docs/activity-log.md",
+      "sha256": "601ad4000814b7a1d2a6b8cfe787f11befee82a0f9ab627a57ec8ca8f4b84e19",
+      "category": "operator_guide",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-backend/docs/admin-credit-index-rollout.md",
+      "sha256": "6eb73084f1d92011b1df465c0f560506902c556dec15cebc06b4fede708adf8b",
+      "category": "operator_guide",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-backend/docs/assessment-reward-index-rollout.md",
+      "sha256": "cfd17164c2450c9de45f6e90617754cb373fda711167688b6bf31facb8f22a17",
+      "category": "operator_guide",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-backend/docs/audit-log-rollout.md",
+      "sha256": "c0158fc42a5f8dd43d9ab5c93f306adb5f209abf467e833110b997b043b67358",
+      "category": "operator_guide",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-backend/docs/credit-index-rollout.md",
+      "sha256": "1cbefb103b56bd0bcc5bd1c4919fc1a0896fba46e52b8fc9558507c291e113cf",
+      "category": "operator_guide",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-backend/docs/learning-progress-index-rollout.md",
+      "sha256": "deee9410ac5d1bcabb0af41fb396158e6066af7e0ed26efbac8ebec25fca79f2",
+      "category": "operator_guide",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-backend/docs/learning-topic-index-rollout.md",
+      "sha256": "353a7c0f79dd1509d9f75c5475b3cb9bd0e647f7d433d6e7b90ca066d52ae0fb",
+      "category": "operator_guide",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-backend/docs/learning-unlock-index-rollout.md",
+      "sha256": "21f507cfd362a9f9839b85114722373d4198e3e552ad31f26366795bcbe1af37",
+      "category": "operator_guide",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-backend/docs/p5-notification-rollout.md",
+      "sha256": "55ce6daa0cb79776412277b7fdd4b77e8f90312b4bd7bc9dffaba3d2e9127ae8",
+      "category": "operator_guide",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-backend/docs/phase3-credit-verification.md",
+      "sha256": "e84d679851f07e0307ba7fd1ccd28299a7652f1c2ae5a66a44679a880d70b610",
+      "category": "operator_guide",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-backend/docs/session-migration-plan.md",
+      "sha256": "7fcbc41c90fd94844428bf584d45ff074366e338e2aef877345997dbb90911bd",
+      "category": "operator_guide",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-backend/docs/study-set-index-rollout.md",
+      "sha256": "7dac526e97a35426db6e02b8ea16cfd5b2888d7b94d4983227bf01c2dacecae6",
+      "category": "operator_guide",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-backend/jobs/configureDnsServers.js",
+      "sha256": "0a0c41d7955a9a88f662606e80c12eea2dd09d43e097568fbfd6545bc16a1f01",
+      "category": "runtime",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-backend/jobs/notificationReminders.js",
+      "sha256": "0441df426182dcb37ef266acf169b182c07aa07fd5eae0e9176b8b64a341b0bb",
+      "category": "runtime",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-backend/middleware/apiErrors.js",
+      "sha256": "e7e1e8feb1d69e041ac796876799ac5ab280ce6ac304f6c2af59dcc76278d4d5",
+      "category": "runtime",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-backend/middleware/authMiddleware.js",
+      "sha256": "99713739f01aa197e64f64e8fa67066ab3f17b23b99f20119b0e1204fd2dfea1",
+      "category": "runtime",
+      "state": "modified"
+    },
+    {
+      "path": "acadova-backend/middleware/httpSecurity.js",
+      "sha256": "c801f84a001816c9d282ad3795e8b30868eb5752db3b36684b7e7ab4556cfc80",
+      "category": "runtime",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-backend/middleware/rateLimiter.js",
+      "sha256": "f41d8e8b9a2311a7971e12535e97b417f0f7a9eaab6f2b9b72b6c0124f6b8697",
+      "category": "runtime",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-backend/middleware/validation.js",
+      "sha256": "60210e8dba5109689b8766f007163e6461cea03f8f3eb3f3477f056cfe58d236",
+      "category": "runtime",
+      "state": "modified"
+    },
+    {
+      "path": "acadova-backend/middleware/writeLimiters.js",
+      "sha256": "e4cd2d14b60d92b04037f172026cf8dc191ebb91f8d4aefb9740a3945f545a7a",
+      "category": "runtime",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-backend/models/AcademicResource.js",
+      "sha256": "17a19e2dccdb285146745698764dff9ec13151b2ff5a9a48ad4cb2805c41677f",
+      "category": "runtime",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-backend/models/AcademicTerm.js",
+      "sha256": "e47887732d9bd5058c1378146f11303d21dbdaea2b89691371e94e97ab52961f",
+      "category": "runtime",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-backend/models/AcadiConsent.js",
+      "sha256": "f9863bcfd3992fc296262fedcd7eed5725b9cbb200e32f03224cd65567e533cc",
+      "category": "runtime",
+      "state": "untracked"
+    },
+    {
+      "path": "acadova-backend/models/AcadiQuota.js",
+      "sha256": "4feb26db1b37eff0d6ffa783f1c28a2d68883f6dddbb01efecc5b3c66a85b7f1",
+      "category": "runtime",
+      "state": "untracked"
+    },
+    {
+      "path": "acadova-backend/models/AiStudyPreview.js",
+      "sha256": "66abe78e1d79761e0d266179be9f21883412fef74af8d9708c8673c639eaa25d",
+      "category": "runtime",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-backend/models/AiStudyQuota.js",
+      "sha256": "c69d112d1884aa32c6a2ab393bbed1d85b81b8c31b8769aaeaf39efdef94aa55",
+      "category": "runtime",
+      "state": "modified"
+    },
+    {
+      "path": "acadova-backend/models/Assessment.js",
+      "sha256": "81c1182c89fb62c54f1ae6ff450bb6ea201a8565db7c1f0f690456312259d6ae",
+      "category": "runtime",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-backend/models/AssessmentAttempt.js",
+      "sha256": "c2d876a66123f495cf1909409c9b691a0af2ce5cd7ca825c3b5200567ed20f5c",
+      "category": "runtime",
+      "state": "modified"
+    },
+    {
+      "path": "acadova-backend/models/AuditLog.js",
+      "sha256": "efad52dd8f2a6dd14d923b1657571a1386d9db5144e0258bad0b0adc49be9baf",
+      "category": "runtime",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-backend/models/CreditConfig.js",
+      "sha256": "e4b15bbfe999fdc513412cb053d6d1ce0e9294cc7645104ffcf07f06791c741e",
+      "category": "runtime",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-backend/models/CreditRuleChange.js",
+      "sha256": "59cb10c1c481f4340467a698a6aa2fb2f2a70ab21469e110f2589c1812e83d4c",
+      "category": "runtime",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-backend/models/CreditTransaction.js",
+      "sha256": "aa1255ebe09e8f282ffbb6fdf68e51ae43a9f1f37236a75296f3ac38a1b96915",
+      "category": "runtime",
+      "state": "modified"
+    },
+    {
+      "path": "acadova-backend/models/ExaminationPeriod.js",
+      "sha256": "a697eeb2fc4954eab985538c401b034168e7db0f715f2fb42aa4dbc0c27b9815",
+      "category": "runtime",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-backend/models/ExpAccountLock.js",
+      "sha256": "8fac9575ee81c2c39d49e6d2802af9f87e40afa3b731573a91bf1faf6d24e545",
+      "category": "runtime",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-backend/models/ExpAward.js",
+      "sha256": "b1214585af8052a506cb08b022ea04d24a604df780e87bcb7bb1d56777dede37",
+      "category": "runtime",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-backend/models/ExpLedgerEntry.js",
+      "sha256": "2f8c50e3b3d28c5fad16901a5ba55468c23958a47ac17e6ab76d1f97421e6f53",
+      "category": "runtime",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-backend/models/LearningModule.js",
+      "sha256": "be059a2bab5d4d22a0c08a734c23d1082294815d511751929dc3c588d9023445",
+      "category": "runtime",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-backend/models/LearningResource.js",
+      "sha256": "f3ede2dace5284b25cbbd83cacd82d3172135103f1fe6458baaf306d14a72b15",
+      "category": "runtime",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-backend/models/LearningTopic.js",
+      "sha256": "d4e15e93a2e1530a6d14c2958717f800d7330a86b1c70a855f092c30a550b15b",
+      "category": "runtime",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-backend/models/LearningUnlock.js",
+      "sha256": "d61a8fbedc94132b769aff4323f04ed284d25e719d1032fc6efd09ab5a81d828",
+      "category": "runtime",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-backend/models/LegacyCreditReview.js",
+      "sha256": "d291368d8b7bb26a2eb75ea441da9bd9d87c1d67ff4ab58d3e4afef5ea874772",
+      "category": "runtime",
+      "state": "untracked"
+    },
+    {
+      "path": "acadova-backend/models/LessonCompletion.js",
+      "sha256": "80bc94009abe4cbf9a7ef677745adff5cad50be99f104d7c5cc99dfb58351fcc",
+      "category": "runtime",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-backend/models/Notification.js",
+      "sha256": "d70ba505bfd0d654b9ee772516978744bc13a3e1aecb594a8bba5055c784f2fc",
+      "category": "runtime",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-backend/models/PersonalModule.js",
+      "sha256": "2dd6f35f6678acaf00f357464341029a93f3ee710af7d0c08e158f16cdfc1612",
+      "category": "runtime",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-backend/models/PersonalSubject.js",
+      "sha256": "3257eb11220d68036f3ca3a5be291d328e280b24bee7c0bf1854402215787dd8",
+      "category": "runtime",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-backend/models/Rating.js",
+      "sha256": "aab12b1128fe5c09cc07c5ebe9f99a88ffc5a3e46491d20d950faf9560f5d038",
+      "category": "runtime",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-backend/models/Session.js",
+      "sha256": "05f3e941ba93697704dafc671cc354daa2a4b22600ccad983d699f27722bd7d6",
+      "category": "runtime",
+      "state": "modified"
+    },
+    {
+      "path": "acadova-backend/models/SessionMessage.js",
+      "sha256": "b9da272fb049a92aa21b1993f2da1da8744d5f804e95500923feeac882ee889b",
+      "category": "runtime",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-backend/models/StaffMfaChallenge.js",
+      "sha256": "dd9ea92500df9e0bb85b7315490e748e200d199cff4b6b278628d2fe79d6ccb7",
+      "category": "runtime",
+      "state": "untracked"
+    },
+    {
+      "path": "acadova-backend/models/StudyAttempt.js",
+      "sha256": "c37ada49acc23e7c39f846734b390fceee3214abb78bf97ac37622397d49f950",
+      "category": "runtime",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-backend/models/StudyCircle.js",
+      "sha256": "a91d4a660549e9084ff22bdbb7cb721d2d08adff30a00cb743574b79975f398c",
+      "category": "runtime",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-backend/models/StudyPlanItem.js",
+      "sha256": "3acd80e82adf6c724eac989bb51c06bf9d9ebedaae2dbd786d4e85167bef09ac",
+      "category": "runtime",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-backend/models/StudyReport.js",
+      "sha256": "f05668448c91deb34cfcb5915201394b2b4b0d635560edc8c765b798c28f2a04",
+      "category": "runtime",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-backend/models/StudySet.js",
+      "sha256": "0883dbee9d2f3fb127d081e041ace8bb79dd4db6c51c971e1e671ec8d8cfdda4",
+      "category": "runtime",
+      "state": "modified"
+    },
+    {
+      "path": "acadova-backend/models/User.js",
+      "sha256": "2586acc85f7d4d60b131ce30022a75aee09091f054ce78e11d7b879e6329a144",
+      "category": "runtime",
+      "state": "modified"
+    },
+    {
+      "path": "acadova-backend/models/VolunteerHost.js",
+      "sha256": "8227ca80e28314d1f8fa46f194b4541eaf76d5ca272c46307ea9c89f1b651f3b",
+      "category": "runtime",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-backend/models/academic/index.js",
+      "sha256": "a96447e8194e20fec96685869d308453c09ef7647c4dab7b935bb0bd7eb737df",
+      "category": "runtime",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-backend/package-lock.json",
+      "sha256": "72616bb215ce453a1b574a655cabe56417308fa8a3dd7bf10de41d3b1b37b4e3",
+      "category": "runtime",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-backend/package.json",
+      "sha256": "81f368198bc8aee39350554babdaffe7ccf7703837a75770f8c855d917c9c674",
+      "category": "runtime",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-backend/public/admin.html",
+      "sha256": "90dfe3a4cae8964b36624ca2467f641f5d702dc207c1e5edc60235f38bd519ec",
+      "category": "runtime",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-backend/public/css/style.css",
+      "sha256": "f26a7ea985b087df8fe9eac1b8c7b986b3726e18f50661f8426ed84470a49f11",
+      "category": "runtime",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-backend/public/dashboard.html",
+      "sha256": "98f892b78d754fce1b2d6badc95a518ef507d2097f8dc0e66a981cb3f899306a",
+      "category": "runtime",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-backend/public/js/admin.js",
+      "sha256": "c7850914fa09a8f771193208975fec0b9e606e157fde9349a2ff673143401ffb",
+      "category": "runtime",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-backend/public/js/api.js",
+      "sha256": "6008ebf31a73dc92e684b905074b4efa36ef87290a67548a9afce7a8bdd0a824",
+      "category": "runtime",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-backend/public/js/auth.js",
+      "sha256": "d440a6e5f4fad76b0104c6619fbfb9a9f3277d39d6679fbc821f4553f899c134",
+      "category": "runtime",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-backend/public/js/dashboard.js",
+      "sha256": "5590946ad6ffca1f4a4f57c92dde92e38c6a27c421574e835025a6e919bbd0bf",
+      "category": "runtime",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-backend/public/js/login.js",
+      "sha256": "dd305070a2b72ff92c4085d85ec3bf95d8dc8b00629cad1318bc0b9d7cdffd70",
+      "category": "runtime",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-backend/public/js/nav.js",
+      "sha256": "d4e830241ce02c2390c4a08bbdd07eea9f0d1d7d22ff139cc3378112d1467045",
+      "category": "runtime",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-backend/public/js/profile.js",
+      "sha256": "25e93445648a783d264bd540ab5d36eea0fb232a192cc53939a68736300022aa",
+      "category": "runtime",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-backend/public/js/register.js",
+      "sha256": "5d1e3e14857ca8960205d74a56038d8d619bbedeaea8bd93359c5cdd6e4a7d31",
+      "category": "runtime",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-backend/public/js/sessions.js",
+      "sha256": "17d17faf69a593d5566c46984056245f133974ba24e112dbb6eec96c1d5d0d5a",
+      "category": "runtime",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-backend/public/js/tutors.js",
+      "sha256": "aad925fc2b40a178d84e053a0716196e332f76cfa5adf19a3182eb37bac295fa",
+      "category": "runtime",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-backend/public/js/util.js",
+      "sha256": "413607e4c2a2b07f37ff4d7b70423a9c9146a7a84b79acc8e40a199167f0a244",
+      "category": "runtime",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-backend/public/login.html",
+      "sha256": "621f41a7d09ad61a485c495a2bb2f17090e99cc1448ba7ce922393bc117de224",
+      "category": "runtime",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-backend/public/profile.html",
+      "sha256": "1a5e25cfc283017c94093b68d34cdedc5dddbb55e006ed8b1c86fb78cba217e0",
+      "category": "runtime",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-backend/public/register.html",
+      "sha256": "94bba507d5ed0044a47aec4bfbcf2af7b11fc08b2032f9009fe0908790a58794",
+      "category": "runtime",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-backend/public/sessions.html",
+      "sha256": "ea6e4508abff4d2ae168be3340bce909fc6915eb6c59b12072090b4c9aafe6e1",
+      "category": "runtime",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-backend/public/tutors.html",
+      "sha256": "9d156f200e1fc51dc303df3ddef0952122b4c8b5c71c58d7a377968922e91f4c",
+      "category": "runtime",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-backend/routes/academicWorkspaceRoutes.js",
+      "sha256": "08ddf9836fa38f3d775e066595097818c8ab45657d435f41f21eda7883764dcc",
+      "category": "runtime",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-backend/routes/acadiRoutes.js",
+      "sha256": "34a99d894bbac67ab851529ca6344aa7b1ba574681202b501ea7fe7b67b670aa",
+      "category": "runtime",
+      "state": "untracked"
+    },
+    {
+      "path": "acadova-backend/routes/adminRoutes.js",
+      "sha256": "95adb473483aa94b1418c4b1f5fae7741be31ceb8a82a66d946dece68a2cda7a",
+      "category": "runtime",
+      "state": "modified"
+    },
+    {
+      "path": "acadova-backend/routes/aiStudyRoutes.js",
+      "sha256": "67ac02d93f42765914179630033990e51c4c424ca3cc479a59918666deb59ad9",
+      "category": "runtime",
+      "state": "modified"
+    },
+    {
+      "path": "acadova-backend/routes/analyticsRoutes.js",
+      "sha256": "95bfad4a61e646785d3e2aabc8d91a55b7285fcf8c798719ea104060f7f5c283",
+      "category": "runtime",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-backend/routes/assessmentRoutes.js",
+      "sha256": "6e3651156c1b4a75c9fe7e1e088f1656671ee9a77023bdec517b68367b5af68e",
+      "category": "runtime",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-backend/routes/authRoutes.js",
+      "sha256": "6f5be09d6787741942fdc128883e030bb9f99298dde7899d36bb39401fe15ed4",
+      "category": "runtime",
+      "state": "modified"
+    },
+    {
+      "path": "acadova-backend/routes/creditRoutes.js",
+      "sha256": "598c5e14384faa67428df807a6da3b1bb71cbaa1fb8798e049c6ccf14b6a7e90",
+      "category": "runtime",
+      "state": "modified"
+    },
+    {
+      "path": "acadova-backend/routes/growthRoutes.js",
+      "sha256": "59384aaf77f9caa380588caad4838657bc64af775d3c12e12e0f66e13306c65a",
+      "category": "runtime",
+      "state": "modified"
+    },
+    {
+      "path": "acadova-backend/routes/learningRoutes.js",
+      "sha256": "78d2e4d4f4476ede3cd79b561ca7bd7b51eb1dea249134baba7ab6a28dadf884",
+      "category": "runtime",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-backend/routes/moderatorRoutes.js",
+      "sha256": "d350d9fb732fa6a43a927a1f590b0e651cb577f8462797e648e15eb5ef17b75f",
+      "category": "runtime",
+      "state": "modified"
+    },
+    {
+      "path": "acadova-backend/routes/notificationRoutes.js",
+      "sha256": "9f1f16fa0e6074d32a8d245dc3be2b725e6d83532937f2150506b7b929682ded",
+      "category": "runtime",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-backend/routes/ratingRoutes.js",
+      "sha256": "b4da35dac05c746e8c5a5b345f39735ba2b5c20b29a301b06a458380807226d5",
+      "category": "runtime",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-backend/routes/sessionRoutes.js",
+      "sha256": "50b6e0ef23ef8d2a7d5b7f70f0ae67adedfd9d5f5739e1c30be53613ca938e6a",
+      "category": "runtime",
+      "state": "modified"
+    },
+    {
+      "path": "acadova-backend/routes/studyCircleRoutes.js",
+      "sha256": "53dbc796ed108a9b08064d483c176580a7715ea4f6630f0d36810b6a03306e93",
+      "category": "runtime",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-backend/routes/studyModerationRoutes.js",
+      "sha256": "36ed36eeec42fc9130eb9227af26c9974d3ec541fd65346b436092587a357b32",
+      "category": "runtime",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-backend/routes/studyPlanRoutes.js",
+      "sha256": "ce91d96638de8ed80ed31e25323949c20d5eb54d3bfb364a681010e294e434c6",
+      "category": "runtime",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-backend/routes/studyRoutes.js",
+      "sha256": "24b0bfacf2f53879ba112d7eac4eba0134e2010a4b6c3d7eed03af6cf4561ed2",
+      "category": "runtime",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-backend/routes/studySharingRoutes.js",
+      "sha256": "40f836ae0b248ff29db3eddc2c553ef28016b305c2f189992579bf49f09bb39b",
+      "category": "runtime",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-backend/routes/userRoutes.js",
+      "sha256": "d3a44010e50ec795e29de5e6de4a6f9e1710f0e7fcd0c2840308680e985bda41",
+      "category": "runtime",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-backend/scripts/ManualQaLocal.ps1",
+      "sha256": "538c4c9989653cba5d5caa9e3247d1596393495490d95fd0f0d1911c932857f1",
+      "category": "test_support",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-backend/scripts/Set-P7DemoPassword.ps1",
+      "sha256": "1d0d4defd77cf36c5b1d793297e5315e570bde8d5c145686429a30986039f2bd",
+      "category": "test_support",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-backend/scripts/Verify-ManualQaLocal.ps1",
+      "sha256": "1793be7e9b36c4232b161f698bb883f917f0ba5423662c935d9263bea4148240",
+      "category": "test_support",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-backend/scripts/aiStudySmokeLocal.cjs",
+      "sha256": "6b24d0cd13b5a69399f60848335b8093a5d54a15c3fc93e95461cf393d6fbe43",
+      "category": "test_support",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-backend/scripts/bundleCSmokeLocal.ps1",
+      "sha256": "f4a0e3659470b88a05eb787c5a79deb84be5ef39063f5dcc7b4a169bb3fb2f14",
+      "category": "test_support",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-backend/scripts/bundleCqaLocal.cjs",
+      "sha256": "b4c46851ddf98e2108c8e65320dbd479fbbf1065affda0dbc41a0217c1a6b698",
+      "category": "test_support",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-backend/scripts/creditReconciliationDryRun.js",
+      "sha256": "2a6806c34ade7368737706e980454ac29825e121f61bd4d687b1300a3a97884c",
+      "category": "test_support",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-backend/scripts/growthHeaderQa.cjs",
+      "sha256": "6c6eb10a86d1b46f173c4232ab208b93f9dc91815fe4dcbfaa1edf8d0c97b44b",
+      "category": "test_support",
+      "state": "untracked"
+    },
+    {
+      "path": "acadova-backend/scripts/localMfaMailbox.cjs",
+      "sha256": "1f1d66e5b2b943ecf1b434ab08d40f20c9a45c72bfc488ab88ac2571ae01f1e5",
+      "category": "test_support",
+      "state": "untracked"
+    },
+    {
+      "path": "acadova-backend/scripts/manualQaLocal.cjs",
+      "sha256": "18f77f9b52980dda22a011259def3ad5b00811a86eeac0cc0c3a842a49911489",
+      "category": "test_support",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-backend/scripts/prepareAiStudyQaLocal.cjs",
+      "sha256": "db950aeb6fb36f447cc600582ec26eae8e8b6b8befa2a1c7081abbf9880a2a83",
+      "category": "test_support",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-backend/scripts/prepareCompletionWorkerLocal.cjs",
+      "sha256": "d18f8608d15dbb24cdc8917b4e1f7a58edc187bc016310d01bc639686555c1c7",
+      "category": "test_support",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-backend/scripts/prepareP7Local.js",
+      "sha256": "1c486c655f6b5874a403200c70a3550877198f6ff0b8bd03a6a50ee6f87448ad",
+      "category": "test_support",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-backend/scripts/prepareStudyWorkerLocal.cjs",
+      "sha256": "6997a4102bc9687da38fd5e4800018aa6cbf31276b67fb7f8e0b28d58d52a9ca",
+      "category": "test_support",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-backend/scripts/seedStarterTopics.js",
+      "sha256": "0d5c327e3f28c6f4369523a95679a402e7b6be0bb4fc0bd67409128a56c0b235",
+      "category": "test_support",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-backend/scripts/sessionMigrationDryRun.js",
+      "sha256": "b43af54d395df5e7aa496f9f56b152c177589f295519dd672d7ecd7590a7f3a3",
+      "category": "test_support",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-backend/scripts/staffMfaQa.cjs",
+      "sha256": "43fc58e3e2fdb0c7caabc92e632303ba18c28c4571aa1171a365d82c0571dfa0",
+      "category": "test_support",
+      "state": "untracked"
+    },
+    {
+      "path": "acadova-backend/scripts/starterTopics.json",
+      "sha256": "7fdff0959163918d51ca3813caea2e17a3e0fdea36e37fd368b191771f5d8fe3",
+      "category": "test_support",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-backend/server.js",
+      "sha256": "3c4932b7db8ca085d4c87af533225cd72c7a766206fbc08e399969aadbb796a6",
+      "category": "runtime",
+      "state": "modified"
+    },
+    {
+      "path": "acadova-backend/services/academicWorkspaceService.js",
+      "sha256": "74804f7c49706cbecffeb80b186e7df19df0a09701d2400d26ef714848621977",
+      "category": "runtime",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-backend/services/acadiContext.js",
+      "sha256": "82fc680b0aa4f19cb0e499b364ebe0d6adeb71f750d0ac4ea74a03531bc49601",
+      "category": "runtime",
+      "state": "untracked"
+    },
+    {
+      "path": "acadova-backend/services/acadiConversation.js",
+      "sha256": "dd221ee5f0cead1f077bfce738a31ea3264d9919d20a25e8c209034572f4acbf",
+      "category": "runtime",
+      "state": "untracked"
+    },
+    {
+      "path": "acadova-backend/services/aiDocumentService.js",
+      "sha256": "152cff760cdb41412d5aefcc6d1b9c4da0cd74d22ad5e204d98e2bc782ce117d",
+      "category": "runtime",
+      "state": "modified"
+    },
+    {
+      "path": "acadova-backend/services/aiDocumentWorker.js",
+      "sha256": "fff823bc089c5a9ad04fa9968f3118d8ce5ed3c7039b7a79cff095fcf66588c2",
+      "category": "runtime",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-backend/services/auditService.js",
+      "sha256": "a187b4b86289e33aed4e0869b100837d2515e05ce16298b205fec3c18e507ab2",
+      "category": "runtime",
+      "state": "modified"
+    },
+    {
+      "path": "acadova-backend/services/completionLifecycle.js",
+      "sha256": "d1959e5c23db0e816dd9e4062f18f0ac495c1140116c0bdafc50bfc78a558ba3",
+      "category": "runtime",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-backend/services/creditRuleService.js",
+      "sha256": "4a930945388d3479c1f3b963f1e618c735501b08cc5f8a80992074fbddf7fbda",
+      "category": "runtime",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-backend/services/emailService.js",
+      "sha256": "ad554973784203185611e0b3f3dd090104309a7b953e7015586c3478c54b10a7",
+      "category": "runtime",
+      "state": "modified"
+    },
+    {
+      "path": "acadova-backend/services/expAwardService.js",
+      "sha256": "ec67ed9e6d85b5a419998c7a7ea619c8161da31aa6b0b83337c9d2e81a9f47df",
+      "category": "runtime",
+      "state": "modified"
+    },
+    {
+      "path": "acadova-backend/services/freeAssessmentService.js",
+      "sha256": "cead4c6c30553fbef0c6c58ddb7bfce8496d6c7cdf9650d731d2a7b933c20cc7",
+      "category": "runtime",
+      "state": "untracked"
+    },
+    {
+      "path": "acadova-backend/services/geminiAcadiService.js",
+      "sha256": "f47210434b79225b9643085daf9b0c1df9364b2e38ba9c003876c3fab49d48f4",
+      "category": "runtime",
+      "state": "untracked"
+    },
+    {
+      "path": "acadova-backend/services/geminiStudyService.js",
+      "sha256": "630f8183d479343fa2397b48cacae4783680780d9ab1156d532f51876d811f2d",
+      "category": "runtime",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-backend/services/googleIdentityService.js",
+      "sha256": "7da79cb0e980385ffe368c5607c6c7dd6397b3fa873bda675b1d67cfd8e198e0",
+      "category": "runtime",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-backend/services/googleMeetService.js",
+      "sha256": "1f7c3f8f59d320de7f35e039d77f8f5e39798d2cbfe29fc4d4619843f6bff3c4",
+      "category": "runtime",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-backend/services/growthFoundation.js",
+      "sha256": "4843b73ece2c6aa010d8c36e296a6a909113746cb8c1c33cdaa9222e0207e7fb",
+      "category": "runtime",
+      "state": "modified"
+    },
+    {
+      "path": "acadova-backend/services/growthPresentation.js",
+      "sha256": "bb0766f0c9ca16e91492a41a845d7a1038b72e1c714d2cdfbd023f6944f12a4f",
+      "category": "runtime",
+      "state": "untracked"
+    },
+    {
+      "path": "acadova-backend/services/growthReplay.js",
+      "sha256": "73d99038b4769662947a70faac12c171c8069114f0c87001a5cd2969ef020609",
+      "category": "runtime",
+      "state": "untracked"
+    },
+    {
+      "path": "acadova-backend/services/learningProgressService.js",
+      "sha256": "44e97d9942e290a6d4af158ce9c96c16822d9d8bc12ec5dac4a55eb331da6c36",
+      "category": "runtime",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-backend/services/legacyCreditReviewGuard.js",
+      "sha256": "437db22cbe1c8c23115487629f684a06501dadeb70c0271e0dc22ee4e2def8f0",
+      "category": "runtime",
+      "state": "untracked"
+    },
+    {
+      "path": "acadova-backend/services/loginSecurityService.js",
+      "sha256": "47704fe4030fbcdbf4f29848f621485a07d08ed3367e163613d01988cdca0bb1",
+      "category": "runtime",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-backend/services/notificationReminderService.js",
+      "sha256": "cb8d6bcf2c6da6f071fd2ce04cf74589aaa2f6501061d7a2296715cd32055ac9",
+      "category": "runtime",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-backend/services/notificationService.js",
+      "sha256": "4d42ed085523c92e04efcdea6195fcc09a2a79aa3b34c11cd42c936b886414df",
+      "category": "runtime",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-backend/services/rescheduleLifecycle.js",
+      "sha256": "b450f70f561df97bd81c1953bb369dc8aefef919d1a4bb99fa62b70d0cadd51b",
+      "category": "runtime",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-backend/services/sessionRequestIntegrity.js",
+      "sha256": "ea424f73be08f6a16fe548bcbc4018913e29b357b39124de25b6f5c213c3e108",
+      "category": "runtime",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-backend/services/sessionSettlement.js",
+      "sha256": "de30c17cf2f63fa9f13db8aa8d38cfeb4c3df24c968296f3a59aca01d6f18d30",
+      "category": "runtime",
+      "state": "modified"
+    },
+    {
+      "path": "acadova-backend/services/staffMfaService.js",
+      "sha256": "e13c2ad78b6ed1570f3151d3bfea2b3768af0db391772212c133cff68fa154f3",
+      "category": "runtime",
+      "state": "untracked"
+    },
+    {
+      "path": "acadova-backend/services/strictStudySource.js",
+      "sha256": "66d28f8c732df9f5113cc0908545968ad4aa18aa6e45c9a8d275c2030751aa35",
+      "category": "runtime",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-backend/services/studyPlanService.js",
+      "sha256": "e65cd887bac4cd45c9774f4ea2e7a1812db0ed2b7889c7881e27fdd3f56bbcf5",
+      "category": "runtime",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-backend/tests/academicWorkspace.integration.test.js",
+      "sha256": "1e6d34acdde040f5a949f0b4a93afb0ae8344fa8978333aba09a53fcb633cc9c",
+      "category": "test_support",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-backend/tests/academicWorkspace.test.js",
+      "sha256": "327dc133a7d9e3bd941f83bb4633cfbd78f57b564b663e19542db3458fb90c73",
+      "category": "test_support",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-backend/tests/adminCredits.test.js",
+      "sha256": "189c88141231e9c37630436df6d46dbce658113b7f4ce3805c0dbac0d2c1213f",
+      "category": "test_support",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-backend/tests/adminSessionCompatibility.test.js",
+      "sha256": "0d96310865d470f0736244236d3ce04432c2522bfd3b3b80d066c67d67d5b1db",
+      "category": "test_support",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-backend/tests/aiProgress.test.js",
+      "sha256": "d48aa6077717f364d20cc3887df5f426fe92b3339b3ca198aa3756aee4c2f981",
+      "category": "test_support",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-backend/tests/aiQaLogin.integration.test.js",
+      "sha256": "67fbae16c1ad33a3e18335670cda6fe25e2f7abe90a384494ca86a0257db4e99",
+      "category": "test_support",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-backend/tests/aiStudy.integration.test.js",
+      "sha256": "afa33b5b9e5582c2a263a669864bff94902aa2141b3130774885370b384c1a54",
+      "category": "test_support",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-backend/tests/aiStudy.test.js",
+      "sha256": "0323b210672681bf799ceaa5069642909e5bf9fe80ece48e81d204dc22e27c34",
+      "category": "test_support",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-backend/tests/aiStudyUploadLimit.test.js",
+      "sha256": "3f493db2ab39d8fe67bfbe3761c9f60b6664cefb1c429c44af93c0b69245562d",
+      "category": "test_support",
+      "state": "untracked"
+    },
+    {
+      "path": "acadova-backend/tests/apiSecurity.test.js",
+      "sha256": "3553c3039881a81c0c4cdb01732aa84c53f643fc5377dd0bb4ee2a8088293433",
+      "category": "test_support",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-backend/tests/assessmentFoundation.test.js",
+      "sha256": "45043746936c2fcf151d9e51254aa93161b5e932f40c27b914324845a91ef7a4",
+      "category": "test_support",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-backend/tests/assessmentTopicMetadata.test.js",
+      "sha256": "76b77814c40872c58e0a7fc8c797399f7a3f3ac49de813361598eee6016e1065",
+      "category": "test_support",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-backend/tests/authFlow.test.js",
+      "sha256": "9205310ad2da55b33a0fa1adbe834c82abf8d78180e343018d0651326418b032",
+      "category": "test_support",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-backend/tests/authIdentity.test.js",
+      "sha256": "b9d6d8d8cd5ed7489a4feffd148fa6e55056b18619c87009d4d1f3907b9e3d6f",
+      "category": "test_support",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-backend/tests/authRevocation.test.js",
+      "sha256": "78b0883fbb5da0fae1aedbabdb5c107e56b3ecc552143c25e0f4a5939096f0e5",
+      "category": "test_support",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-backend/tests/availability.test.js",
+      "sha256": "46179b53e248d85f62b17301d90c2dd45e58a46df67550cb2441dedc8e073fce",
+      "category": "test_support",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-backend/tests/batchC.test.js",
+      "sha256": "254252a02b78c7e8c648903867544d1dd910a7f5c3e3e3a5e4cd45497b194cb9",
+      "category": "test_support",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-backend/tests/bundleC.integration.test.js",
+      "sha256": "85f12761cb1f65ba04ab80b700aead5eceb415fd04e819d9927c6db7136855ef",
+      "category": "test_support",
+      "state": "modified"
+    },
+    {
+      "path": "acadova-backend/tests/canonicalCompletion.test.js",
+      "sha256": "0dbfa78919f0c113c74293a446457bd9cd7340a47ab8bce9e2e643ae20749b59",
+      "category": "test_support",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-backend/tests/checkIn.test.js",
+      "sha256": "4790403c34bb4ff24cbcb465ff89367d83048d4a7a16a2d0c4d40385af94f2dd",
+      "category": "test_support",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-backend/tests/completion.integration.test.js",
+      "sha256": "6642226848c37b67a7aca779076891df62d6db1def76e25b062a2e5917d1d144",
+      "category": "test_support",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-backend/tests/completionLifecycle.test.js",
+      "sha256": "725074feff4981eed199e5f02cd46645696ad245c9445bb764aeee9c783cb73b",
+      "category": "test_support",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-backend/tests/creditFoundation.test.js",
+      "sha256": "6f51d6189bbc7a51d9b793b6aa74e527902e8262f53d3c77f640143286da118c",
+      "category": "test_support",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-backend/tests/creditReconciliationDryRun.test.js",
+      "sha256": "9b741dc1fdb6c9f8e49ff07b788569b569d232e96a46ffacc50bff82bfd1e9ec",
+      "category": "test_support",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-backend/tests/creditWallet.test.js",
+      "sha256": "85095f6d20038d74d50e4e2447520d719bee27c607335669bde92f81379825f3",
+      "category": "test_support",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-backend/tests/emailService.test.js",
+      "sha256": "6fe43979e0e00e49c375bc529e43e1f37fb67d9ccb0da9c9e5984ecf24dd40a0",
+      "category": "test_support",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-backend/tests/expAwardEngine.integration.test.js",
+      "sha256": "1bde890b55f3bfc5efa1f1353851a9a16c4508ab437d8c913c3145dd13e2f40c",
+      "category": "test_support",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-backend/tests/expAwardEngine.test.js",
+      "sha256": "5bb14331a6e6137fd006ee635c7ae9daddfb95bb2fdcf93ff6c43c4f18f47731",
+      "category": "test_support",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-backend/tests/finalHardening.test.js",
+      "sha256": "db0c3d4f82f69e51f03f5683518b03fffb82f554ec331ad581328e7dd8178fe0",
+      "category": "test_support",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-backend/tests/fixtures/aiStudyDocuments.cjs",
+      "sha256": "04f72c6fccf801b371f8c8b6471456091b794afceabd1fc800aa9f3484f1d2ac",
+      "category": "test_support",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-backend/tests/fixtures/strictStudyDocuments.cjs",
+      "sha256": "4257e44c11fe67543a617627393c34bc937d2a3387d601a119ad7efff66414f7",
+      "category": "test_support",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-backend/tests/geminiRelease.integration.test.js",
+      "sha256": "c44662d77d0c84452987caa794462b8942dd85af26036c834bbd178f1cedeb72",
+      "category": "test_support",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-backend/tests/geminiRelease.test.js",
+      "sha256": "6a4120e70f060bd7c4a10837a6cb6d3cbce774ed904c4b9b239dde49ad0003ae",
+      "category": "test_support",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-backend/tests/googleMeet.test.js",
+      "sha256": "7e2ed7f7b7471dd78b237a2b9c37b7e262e48329e655d3820cc1cac8a36d4b94",
+      "category": "test_support",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-backend/tests/growthFoundation.test.js",
+      "sha256": "72a68bc25eb3aa9ba956fc72b327eadcc241f0e7b454bab68cd37f680991032e",
+      "category": "test_support",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-backend/tests/institutionalRegistration.test.js",
+      "sha256": "e55cf78d641eb9ea119ce36059b1ce5593a72391a1c5d07242494863c720d9c8",
+      "category": "test_support",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-backend/tests/learningBrowser.integration.test.js",
+      "sha256": "615bbd705498a2e7e12a5cf14a6a2e48ae6b47bc67a171dc6f4ed6c1620081a5",
+      "category": "test_support",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-backend/tests/learningContent.test.js",
+      "sha256": "0fbe1664b99ea2f9da38503822632ad025aeaa879d075202344c9e0980c37478",
+      "category": "test_support",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-backend/tests/learningEnhancements.integration.test.js",
+      "sha256": "de52d2397af84e63cd2c56b537364e9d3f398e1a22e8261cc72686699535c020",
+      "category": "test_support",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-backend/tests/learningProgress.test.js",
+      "sha256": "f7cadeeb180e17b6b27c5dd2ba9be52cf85245c10912869fe62533fa81010e18",
+      "category": "test_support",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-backend/tests/learningStaffEditing.test.js",
+      "sha256": "0f421cd90374c69596e7baa7d8dd83a692b8d7072badd064cb12f9c6938823cc",
+      "category": "test_support",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-backend/tests/learningUnlock.test.js",
+      "sha256": "d062d4261cd3b32ea461a9da9ac7b1ac840cd0226bbf9cd46de57aa0b5843412",
+      "category": "test_support",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-backend/tests/learningWorkflow.integration.test.js",
+      "sha256": "107ef4f2661aa42abf07bc6ae2a3ca1a8e5df3c2ab574ad8099fa1d0338f8a8c",
+      "category": "test_support",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-backend/tests/legacyCreditReviewGuard.test.js",
+      "sha256": "8a85948fc7806392a3b26adf49322ba279461e16ea813fd1115e344c0567e291",
+      "category": "test_support",
+      "state": "untracked"
+    },
+    {
+      "path": "acadova-backend/tests/loginSecurity.test.js",
+      "sha256": "fab09b5a66da96c08c9c94f41b864a1c8b6185ce731092ffe7bba571afaeac1d",
+      "category": "test_support",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-backend/tests/mapReduce.test.js",
+      "sha256": "436a7c847318f4735b135f708c2da3c3511db4c7f4d473102adc67a001c438a0",
+      "category": "test_support",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-backend/tests/masterV2.integration.test.js",
+      "sha256": "5d84f9d9c324c78e4d285cde82982eed7085b029fe30682ea24880a2ae22ba7b",
+      "category": "test_support",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-backend/tests/milestoneRequest.test.js",
+      "sha256": "cdb7c7ad2c4093820d716283a580d52b22f52c62685d42e5debb13fa74361459",
+      "category": "test_support",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-backend/tests/moderatorDefense.integration.test.js",
+      "sha256": "6ea89b15d3a101bddb1465a18e3e275fe9eca7ee1da441aa684cbd38e3b5fe79",
+      "category": "test_support",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-backend/tests/notificationWorkerDns.test.js",
+      "sha256": "9af1ab25bb8d7285243761ec9573f6c32c030a8003bc712ce4de358b4ab2b000",
+      "category": "test_support",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-backend/tests/notifications.test.js",
+      "sha256": "99c8f00916c22e4e9c837eabd5f102eec9b615f85aaef94c02e1581596571dbe",
+      "category": "test_support",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-backend/tests/p4AdminAudit.test.js",
+      "sha256": "82cc8b61a669a9046d71ccc1815cb9d1f1407ff68a0b2730ceff8c7e0a86aa0e",
+      "category": "test_support",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-backend/tests/p71Ux.test.js",
+      "sha256": "4dccd6546b0d1a2dadd06a0f263bd564c0c7155890940935815ae0cc7f018db5",
+      "category": "test_support",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-backend/tests/p7LocalFixture.test.js",
+      "sha256": "3d2158003d1a2558a7bf6527231ae0a81cd61e9cd9cf83f59119b48304f17e04",
+      "category": "test_support",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-backend/tests/phaseB1.integration.test.js",
+      "sha256": "a28f9da3fc632f690f582c66b73f0ced315b9d06a7e1ecc78bab9f467fcfcb71",
+      "category": "test_support",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-backend/tests/phaseB3.integration.test.js",
+      "sha256": "e4a82de4874e0a3fc58dda8b94b730a0e9944342d0c0bfdc7f657a124265f9ba",
+      "category": "test_support",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-backend/tests/phaseBAnalytics.integration.test.js",
+      "sha256": "6720ce664d97a73f9429938636dcba5c1da5fdce06b37be92bcf24e58535308c",
+      "category": "test_support",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-backend/tests/phaseBAnalytics.test.js",
+      "sha256": "6b8f807a6232688bf2ff1d74f2f66fd9649293017d86d39383c1079c3dc7179d",
+      "category": "test_support",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-backend/tests/phaseC2.integration.test.js",
+      "sha256": "c50465dfc334d839c0895ff0728bdfc5425dfa76da913ae5683d9a81f4f8a51a",
+      "category": "test_support",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-backend/tests/premiumAiStudy.integration.test.js",
+      "sha256": "d836e00a34ae7b29e79cae42005426503a12e149421851ab04418934dd2d327c",
+      "category": "test_support",
+      "state": "untracked"
+    },
+    {
+      "path": "acadova-backend/tests/premiumAiStudy.test.js",
+      "sha256": "2bdec1a9b13bebdb2a9a39fd417d7a4a16bb63bda6a1008a5ffde07f2d5b8dce",
+      "category": "test_support",
+      "state": "untracked"
+    },
+    {
+      "path": "acadova-backend/tests/prepareAiStudyQaLocal.test.js",
+      "sha256": "12546d4ed2e623e29bb211e45a0e76b29c7532fd0272176111399cfc59940cd3",
+      "category": "test_support",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-backend/tests/productionIndexSafety.test.js",
+      "sha256": "d7fe858db7560afe2a10dca5b03a579b91893839e698c4ce7b4463916fd308ec",
+      "category": "test_support",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-backend/tests/profileDetails.test.js",
+      "sha256": "119a3c56f238f1737bad2d63682cec111a370aa6f4336e989d183926c3c62d1a",
+      "category": "test_support",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-backend/tests/reschedule.test.js",
+      "sha256": "5a38bd59891f19aa41eeea9cd63fef0a04443d4df02f6cff0a6ad600096ce842",
+      "category": "test_support",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-backend/tests/rescheduleLifecycle.test.js",
+      "sha256": "b0a9deb24c2492b2046a159459ad8083f8a9dafe00282984c9ee9d46477c6a17",
+      "category": "test_support",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-backend/tests/sessionController.test.js",
+      "sha256": "ebddbb3c7071ff8647063cd16c8b806132cd4789c0b9ea3102ae5e143faf8417",
+      "category": "test_support",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-backend/tests/sessionExceptions.test.js",
+      "sha256": "062c4caa0dccb3466373e07bbffbfdd26d9d33c441e733999a9b18b790e57b82",
+      "category": "test_support",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-backend/tests/sessionIntegrity.integration.test.js",
+      "sha256": "665f98825100536c57fef2844c65491b694738ecc614b40d2296a1f43024040e",
+      "category": "test_support",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-backend/tests/sessionLifecycleCompatibility.test.js",
+      "sha256": "7699a72a658711ae31bba7f674dafedf3f3843343367eaa3ad23b5262b96e513",
+      "category": "test_support",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-backend/tests/sessionMigrationDryRun.test.js",
+      "sha256": "6424a78d60f1e22a0e4f740a63fd87cf7b22df02b7f8868464e523c7f4a53ad0",
+      "category": "test_support",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-backend/tests/sessionSettlement.test.js",
+      "sha256": "61736e58e8000267d6ed9d6e7418bc2be636b1508e881c38ae971ccabe07df59",
+      "category": "test_support",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-backend/tests/stabilization.test.js",
+      "sha256": "708f13ea11830597aa23c5d98703de9465823b9db17496da8888a1ae82533891",
+      "category": "test_support",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-backend/tests/staffAnalytics.integration.test.js",
+      "sha256": "69c72fd34b286d966e1260b5ecb8c73897a376a011a04296e74d5a4cf3ff1233",
+      "category": "test_support",
+      "state": "untracked"
+    },
+    {
+      "path": "acadova-backend/tests/staffDashboards.test.js",
+      "sha256": "e23fc5fc4ad6766f4dbe52f024bdc42310c2733ac02be8957b8f2d1f25542028",
+      "category": "test_support",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-backend/tests/staffMfa.integration.test.js",
+      "sha256": "d04da67fcc3d35c8608d9caecda39176481eaeaf65ca70a978c19098a2902e6a",
+      "category": "test_support",
+      "state": "untracked"
+    },
+    {
+      "path": "acadova-backend/tests/staffMfaEmail.test.js",
+      "sha256": "ad309583b0a7b252895d75fe80728fad1c62f7cdcedeac2d4ed4677ef94523e2",
+      "category": "test_support",
+      "state": "untracked"
+    },
+    {
+      "path": "acadova-backend/tests/strictStudy.integration.test.js",
+      "sha256": "7b1c5e9fc93f629209dad52d8e65f798481a3d4e5beba85bbbb4128d7abf676f",
+      "category": "test_support",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-backend/tests/strictStudy.test.js",
+      "sha256": "c788aef1f1ba25f5367ca7c55f929b9ab812af4bff79674a6557023a9cbdc7d1",
+      "category": "test_support",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-backend/tests/studentExperience.integration.test.js",
+      "sha256": "d856782b304879df753f8d3fdc7c5842423a4fb3c35d6d61d70c663fe8f435df",
+      "category": "test_support",
+      "state": "untracked"
+    },
+    {
+      "path": "acadova-backend/tests/studentExperience.test.js",
+      "sha256": "abb74d42e758483f16db1f1d4cddf09cd90b415313722501e782534c7dfb10c0",
+      "category": "test_support",
+      "state": "untracked"
+    },
+    {
+      "path": "acadova-backend/tests/studyCircle.test.js",
+      "sha256": "dbc534d629415635564cc9c2deb30ea6db425c8c5e01b848961e930e2e5cfbfa",
+      "category": "test_support",
+      "state": "modified"
+    },
+    {
+      "path": "acadova-backend/tests/studyPlan.integration.test.js",
+      "sha256": "0f88e43e81a0f5ae8930c3a8f9159478e9e1d5d96650e9e98ffd1dacd3eedfae",
+      "category": "test_support",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-backend/tests/studyPlan.test.js",
+      "sha256": "5b9f7986fbf1281cbd38952971030330339bead24ba361a2e6895fce0ff38a58",
+      "category": "test_support",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-backend/tests/studyQuiz.test.js",
+      "sha256": "2661045dde9ef0bdecdac61fc43320077c2eb345b090d9282cbd19ae4eca2bee",
+      "category": "test_support",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-backend/tests/userReviews.test.js",
+      "sha256": "ed9eaacd1677ca77fa68e87391156b80ec23e85cbe67efefe74a51e536b82383",
+      "category": "test_support",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-backend/tests/validation.test.js",
+      "sha256": "f31f9369bec309b9748af0a11b8ffc4d34840c6ae8e59c2cc7ec1aa0f762c423",
+      "category": "test_support",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-backend/utils/academicSchema.js",
+      "sha256": "6cf5060056f908336d0db22644746ab4254ae9c2ab659b53ebf12f68484e601c",
+      "category": "runtime",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-backend/utils/academicValidation.js",
+      "sha256": "e418fdb4db3286a754d20c01d33e4c22e8940fb33aa5d16b5909a7f7745c4fbb",
+      "category": "runtime",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-backend/utils/aiStudyOutput.js",
+      "sha256": "d9f0212305daa6119b7c6a0755b94c1296c7707e53f5ae2494cf135cbb734e7f",
+      "category": "runtime",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-backend/utils/analyticsWindow.js",
+      "sha256": "9ff4ac1bd0cf5e208a7dff0c85d7de90a7b9b5d0a5e65bd6a3503320def4f2c9",
+      "category": "runtime",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-backend/utils/auditFilters.js",
+      "sha256": "64a7d6d5d6baae2078fc64052403e0671e78b947dc7a6d8d7a16a01d088086cc",
+      "category": "runtime",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-backend/utils/authVersion.js",
+      "sha256": "256bcee55cf2ee012c01e81eda74c37b1529abb4cecc1bd5338b2c49b646fe89",
+      "category": "runtime",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-backend/utils/completionPresentation.js",
+      "sha256": "0270dccbf7dbd5fa70973521868d874f39f9d5c6eba9f00e9f5d30e27abad05b",
+      "category": "runtime",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-backend/utils/creditReconciliationDryRun.js",
+      "sha256": "31813373098af203b52bb5a0df35a6942495680aad0760b30f58cc8c5f2e457d",
+      "category": "runtime",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-backend/utils/mapReduce.js",
+      "sha256": "26d4ea5dbd747df10e0354db9bc1160d67b0b59d8536b0c89ea21ef2b87bbbe6",
+      "category": "runtime",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-backend/utils/nameValidation.js",
+      "sha256": "df94d766b751ba84c256149387cd89dd7dcf8f9124b51c9e861d99a77d8fd99f",
+      "category": "runtime",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-backend/utils/peerEligibility.js",
+      "sha256": "ba3fb7bdc4b478dc72b6e59c376649b1b2f656880e8ccee850f3a6e88762ecd7",
+      "category": "runtime",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-backend/utils/profileDetails.js",
+      "sha256": "856381d2c7bb280dcd3dced05c91944a070c947259ce7ffe19035e7aa301fa2e",
+      "category": "runtime",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-backend/utils/proxyTrust.js",
+      "sha256": "2d2a29cd07198f9b06e9be9e6caf13c8173c76d3ce9cb9658f76572fb3e2a312",
+      "category": "runtime",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-backend/utils/ratingReputation.js",
+      "sha256": "c6214fdf62d7e4d41a9606d409de5a84313a75f9fff8450a0491b40e82549f24",
+      "category": "runtime",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-backend/utils/securityLogger.js",
+      "sha256": "8570e91bd89a4757be9eb65f09b87953534f9dd7dbd1f375d2c12b5c54aaa42b",
+      "category": "runtime",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-backend/utils/sessionLifecycleCompatibility.js",
+      "sha256": "e1716c85a8cacbedc8fe0a634dabfb7cb8e34847b5be9c23703d932f717bed8a",
+      "category": "runtime",
+      "state": "modified"
+    },
+    {
+      "path": "acadova-backend/utils/sessionMigrationDryRun.js",
+      "sha256": "bb4f212ae4d8a3f0e1119cb4edf2352dc7528833c85d3971a4836973e1142772",
+      "category": "runtime",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-backend/utils/sessionRoleGuard.js",
+      "sha256": "9c8bf8459b9a451d2ddf9201d1b7d6488c168740673efc8550bcadc4dfc9e234",
+      "category": "runtime",
+      "state": "modified"
+    },
+    {
+      "path": "acadova-backend/utils/staffDashboardDefinitions.js",
+      "sha256": "fcc33c6622dff4b523a037393bbb0e9e54a4c0aa877e988e7aac4a553776c70e",
+      "category": "runtime",
+      "state": "modified"
+    },
+    {
+      "path": "acadova-backend/utils/strictStudyOutput.js",
+      "sha256": "ca53da6fac704cc9a49d29b750e58b382ab339148a0134766566c1049fd18d78",
+      "category": "runtime",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-backend/utils/studyCircleValidation.js",
+      "sha256": "ab869031fa7e0940fe83eef06e34cf73dd3eaf6800adffc680af5d36eff66f47",
+      "category": "runtime",
+      "state": "modified"
+    },
+    {
+      "path": "acadova-backend/utils/studyQuiz.js",
+      "sha256": "55ef5f2ab28c2d5052eb9e7b770b42e6ef52b6b8e27ad9bd247bb310c27aff21",
+      "category": "runtime",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-backend/utils/verificationTokens.js",
+      "sha256": "487b7d61d9bdb0fb1ab2920f2bdbb9428899e7aa18ff1f6d467a905760305350",
+      "category": "runtime",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-backend/utils/weeklyAvailability.js",
+      "sha256": "1993503ea6c16cc9be8f93ad2339680be2e467b260cd924c85da80b724415581",
+      "category": "runtime",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-frontend/.env.example",
+      "sha256": "80e0e5db088eaf510e8f5bc4c6e1114ee41fa0851c582a6e76eec104d1b60785",
+      "category": "runtime",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-frontend/.gitignore",
+      "sha256": "ee9776121020199a2c866e4e09c6480c53d501261cad1d890c42537a81c66243",
+      "category": "runtime",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-frontend/index.html",
+      "sha256": "f8baf76c34aab88094c5554a4904967bc067f7413c87510c6e5e8898ed8a7e24",
+      "category": "runtime",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-frontend/package-lock.json",
+      "sha256": "ac5ea5e229d6a3dfacd2f888e56c27d5452c536be96a6ebc33357a719ebd5adc",
+      "category": "runtime",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-frontend/package.json",
+      "sha256": "a1c44955c6603b68e650391943d687057a29b5afdb0bbad492a71560d05f954e",
+      "category": "runtime",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-frontend/public/acadova-mark.svg",
+      "sha256": "40f4b89c6c0ffdd3d6dbec74c50363c403329f5532e583e767e066692cea1ab1",
+      "category": "runtime",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-frontend/public/favicon.svg",
+      "sha256": "61bc9a161de58248288e6905425d7180f0624c2865007b97d763fdac12043a66",
+      "category": "runtime",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-frontend/public/icons.svg",
+      "sha256": "b45fa506195cfcdef406ba9f0c77b36ddc1a7c224040926ec70abc2fdea7b93a",
+      "category": "runtime",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-frontend/public/images/README.md",
+      "sha256": "472597c0ee178b23a9ba9ce54527cfbd6ed8f02c360d215e6a9bda91fdea20d4",
+      "category": "runtime",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-frontend/public/images/acadova-brand-identity.png",
+      "sha256": "474ac9efe2a6e9e032034e2c93387f70912c1654185d1c3d4f11f4077b6f83a4",
+      "category": "runtime",
+      "state": "untracked"
+    },
+    {
+      "path": "acadova-frontend/public/images/acadova-empty-workspace.png",
+      "sha256": "e15f773a78a96a44f87e1ddc55e1a3bbae25d52d7b75b1adf7966fbcdd62628d",
+      "category": "runtime",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-frontend/public/images/acadova-logo-new.png",
+      "sha256": "e54c8946877156fc99b0b13097c6d71000903d216d6e6fd76d1a960dba50447b",
+      "category": "runtime",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-frontend/public/images/peer-study.webp",
+      "sha256": "078f998ea5c194e937459584ae1527fed86ecac810d33d146829be8bfbb1c12a",
+      "category": "runtime",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-frontend/public/push/onesignal/OneSignalSDKWorker.js",
+      "sha256": "7c5c1ccc7b9a59a36a93c15f99e3d335468452ab4d6278fab5ed233bfa786621",
+      "category": "runtime",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-frontend/src/App.css",
+      "sha256": "6e25a776d3e8102da5bacb3cb99f4a5fc662a2e01e6143140671a556d28c3d5c",
+      "category": "runtime",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-frontend/src/App.jsx",
+      "sha256": "b070ca622df968ccd1705bc27a9b4c1bb12bfd30b067c5493db0ceaba820a624",
+      "category": "runtime",
+      "state": "modified"
+    },
+    {
+      "path": "acadova-frontend/src/assets/hero.png",
+      "sha256": "881ffbcaafc212e49addad08846a5b82761355fa20624253af3477ba33262c5c",
+      "category": "runtime",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-frontend/src/assets/meeting/SOURCES.md",
+      "sha256": "378e071fc7ce3676d9b42ac1bd4c4549021a72a848cac450fe62fec09ebb6ded",
+      "category": "runtime",
+      "state": "untracked"
+    },
+    {
+      "path": "acadova-frontend/src/assets/meeting/google-meet.svg",
+      "sha256": "ae2e86aa009fd7e1952082bff7d4fa9eca8f45ff46d0298800d53c5d6bdcb3b4",
+      "category": "runtime",
+      "state": "untracked"
+    },
+    {
+      "path": "acadova-frontend/src/assets/meeting/teams.ico",
+      "sha256": "5b47b12308f87a6a8060f63dc91ca2fd01b063e3d233aa62f5ec255cd68e6037",
+      "category": "runtime",
+      "state": "untracked"
+    },
+    {
+      "path": "acadova-frontend/src/assets/meeting/zoom.png",
+      "sha256": "cc77465861f3c4fe1c917211dee1e5e5cd962ec79cdf36cd8b719e3d6f50e9e6",
+      "category": "runtime",
+      "state": "untracked"
+    },
+    {
+      "path": "acadova-frontend/src/assets/react.svg",
+      "sha256": "35ef61ed53b323ae94a16a8ec659b3d0af3880698791133f23b084085ab1c2e5",
+      "category": "runtime",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-frontend/src/assets/vite.svg",
+      "sha256": "5be21acd42eb7b896e517f4e0f0f11eb5c5d9e54fbbcebe9453f033008fcca6f",
+      "category": "runtime",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-frontend/src/components/auth/GoogleSignInButton.jsx",
+      "sha256": "ec35f75bea3579a3f44017c649327219cbf6b37d81714548095f7bf80bac5edb",
+      "category": "runtime",
+      "state": "modified"
+    },
+    {
+      "path": "acadova-frontend/src/components/auth/PolicyReviewDialog.jsx",
+      "sha256": "bd1dc6df28bbed10df195d622b485fa288c89c7a590a22c2164544b097b13cce",
+      "category": "runtime",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-frontend/src/components/common/AccountMenu.jsx",
+      "sha256": "d75bc5818bf5fea02840cc05715e22573110cec243a43ea9d02a76341144735d",
+      "category": "runtime",
+      "state": "modified"
+    },
+    {
+      "path": "acadova-frontend/src/components/common/Alert.jsx",
+      "sha256": "619e515a73d418e62dcf7656bfd9a9c759f08fecc5f8adda53de8a5f1ac75519",
+      "category": "runtime",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-frontend/src/components/common/Badge.jsx",
+      "sha256": "c6de70697a0c746ec59a7fe09a5b5c54dd79b6c7eb1dae8662e4e00f7c9e7074",
+      "category": "runtime",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-frontend/src/components/common/DiscoverySearch.jsx",
+      "sha256": "af214318d37885a57b7caa1f4cb1125902d686226f032728b84d141d8ae83284",
+      "category": "runtime",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-frontend/src/components/common/EmptyState.jsx",
+      "sha256": "7f220adfee22263a6ed3f265abaea0f616b63304943ac39b9f14cb3a7804e4ee",
+      "category": "runtime",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-frontend/src/components/common/ExternalResourceLink.jsx",
+      "sha256": "e661ae5acde3208068579decb6983ab63c74657c6079c2409a7bdd66897aa753",
+      "category": "runtime",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-frontend/src/components/common/Footer.jsx",
+      "sha256": "17e886939afdfea5aeb635d8a51ad67f6a7f55b57fd118132124d9f5300e8b25",
+      "category": "runtime",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-frontend/src/components/common/LoadingSpinner.jsx",
+      "sha256": "bc2ea5d9213d5070c23cac55ef6d9e3affddb75bd5b330c0f3efc09cb47b4f27",
+      "category": "runtime",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-frontend/src/components/common/Modal.jsx",
+      "sha256": "d082f36131a573e3c5794ebe9a2abbef976c3ceccd8a9b1e6240a5ec267b69e5",
+      "category": "runtime",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-frontend/src/components/common/Navbar.jsx",
+      "sha256": "0befdb6f30ee1e3432d86654982659f6ac498053b467392e117226edf5041734",
+      "category": "runtime",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-frontend/src/components/common/NotificationBell.jsx",
+      "sha256": "056336260ceb1f2e8738713c006e18a0c7594a89b15a9115683ef4462a252384",
+      "category": "runtime",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-frontend/src/components/common/PeerReputation.jsx",
+      "sha256": "e3d8afb277c3242559daf56e298c3a03fce68b6203e85e8d52ee97306d4cecd5",
+      "category": "runtime",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-frontend/src/components/common/PublicBrandLogo.css",
+      "sha256": "3a2b5eafbfd0ad695e9e9c4634198c057e464313bc26603ee911b8171abcb178",
+      "category": "runtime",
+      "state": "modified"
+    },
+    {
+      "path": "acadova-frontend/src/components/common/PublicBrandLogo.jsx",
+      "sha256": "324c359731981004129bbc37a3bddc347bf0d45fb6b5365c7c5d51e3bb3ebe9a",
+      "category": "runtime",
+      "state": "modified"
+    },
+    {
+      "path": "acadova-frontend/src/components/common/StarRating.jsx",
+      "sha256": "cac75b0dc6fbd26912f2d568595646ba9b97ad5d9a4bdedf754fc36b3e04b806",
+      "category": "runtime",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-frontend/src/components/common/StatCard.jsx",
+      "sha256": "4645a6b84b5ded82e8c146ada0d1e0de9e7bc962d11ed91cf4bfdfbf861c7b62",
+      "category": "runtime",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-frontend/src/components/common/StudentNavigation.css",
+      "sha256": "ce79efdcecabcf29e8496d3cfe9747403efbdaf8cd33c4b43b582be63256b308",
+      "category": "runtime",
+      "state": "untracked"
+    },
+    {
+      "path": "acadova-frontend/src/components/common/StudentNavigation.jsx",
+      "sha256": "f31687ac8ae94fb08dd5cdcecb3694ff0ed13cd057dd7773a389a767c823e270",
+      "category": "runtime",
+      "state": "modified"
+    },
+    {
+      "path": "acadova-frontend/src/components/common/TagInput.jsx",
+      "sha256": "d0e8747a619a53c484c2896d09c13a55af21031c6ea622fd1b0b8505dc477c20",
+      "category": "runtime",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-frontend/src/components/common/WorkflowTabs.jsx",
+      "sha256": "a00e68e1c9bbe685520181a75e69411db4e34682804682c3fa509226f8bfcb48",
+      "category": "runtime",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-frontend/src/components/credits/CreditActivityList.js",
+      "sha256": "c1a261b0b07412e3680c1c73c4aaceb903c72121d5b37255b9fec2517fe64338",
+      "category": "runtime",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-frontend/src/components/learning/AcademicUi.jsx",
+      "sha256": "33f8908242ef81520fe6ff5a6c38e135595130aeb19a100a905cb68fc5c737d6",
+      "category": "runtime",
+      "state": "modified"
+    },
+    {
+      "path": "acadova-frontend/src/components/learning/AcadiChatPanel.jsx",
+      "sha256": "6ea0417ef967cb0f348470e271067c8884fbbd4d37b6f9b1149a8174a8f6c99b",
+      "category": "runtime",
+      "state": "untracked"
+    },
+    {
+      "path": "acadova-frontend/src/components/learning/AcadiHelp.jsx",
+      "sha256": "1afc34b5d097fe43d6f8783211b08976ece88f8e9d6438c76e543984edb073be",
+      "category": "runtime",
+      "state": "untracked"
+    },
+    {
+      "path": "acadova-frontend/src/components/learning/AcadiLocalGuide.jsx",
+      "sha256": "260b4cc2bbd462d5b213a2ec3bf4194435e31a8634694832e4a997fc786f4161",
+      "category": "runtime",
+      "state": "untracked"
+    },
+    {
+      "path": "acadova-frontend/src/components/learning/AiStudyPractice.jsx",
+      "sha256": "6d3973856b84213a569f414520d61b2889c885d04def3ae20e9491b9a4ef6639",
+      "category": "runtime",
+      "state": "modified"
+    },
+    {
+      "path": "acadova-frontend/src/components/learning/AssessmentCard.jsx",
+      "sha256": "d7e60886349c8273b9bdbf9c512955c4a4e41beb918321c059613aa774a25484",
+      "category": "runtime",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-frontend/src/components/learning/LearningContentTable.jsx",
+      "sha256": "1e82b0cf442a6b74a275f7a5dcc83e1a606db7016c121b9345ddf13b6e415751",
+      "category": "runtime",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-frontend/src/components/learning/LearningHeader.jsx",
+      "sha256": "c2620358d1e8da4d3bfd8bebaefb40d583c65380d3e0ca10458a7e5f77a9c3e1",
+      "category": "runtime",
+      "state": "untracked"
+    },
+    {
+      "path": "acadova-frontend/src/components/learning/LearningNavigation.jsx",
+      "sha256": "bdf4312d08822a0437518bc04c8d0900ee00e689fd906fde597c2f62110bae18",
+      "category": "runtime",
+      "state": "modified"
+    },
+    {
+      "path": "acadova-frontend/src/components/learning/LearningProgress.jsx",
+      "sha256": "114598224071c7c993fc806f673607875bbacf209d1ef4ca003ea751d9c1043b",
+      "category": "runtime",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-frontend/src/components/learning/ModuleAssessmentEntry.jsx",
+      "sha256": "55e70f68a16310368c07aa1ff653721ca14135643a164bdc4c982cc73abbd948",
+      "category": "runtime",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-frontend/src/components/learning/ModuleCurriculum.jsx",
+      "sha256": "06fe9463e4240cce539a223877047ce806c58a54daa5301640045494e7878bc7",
+      "category": "runtime",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-frontend/src/components/learning/RecentStudySets.jsx",
+      "sha256": "490cb9c1a5245ed556fe37202736fdf8964ca71755f96c5cebc9ab975fe8a6cf",
+      "category": "runtime",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-frontend/src/components/learning/ResourceRow.jsx",
+      "sha256": "44b7af08d692271f468089043353f8f9f64314544075c3bd57d60c2433c3eec9",
+      "category": "runtime",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-frontend/src/components/learning/StrictStudyPreview.jsx",
+      "sha256": "288e15b1a5d8db4948f367dce67798a25da749c79ec3153059f80086a3e0e12c",
+      "category": "runtime",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-frontend/src/components/learning/StudyPlanWidget.jsx",
+      "sha256": "5a1b68ebf0473ba96b75ae65e1a691321f360b2308e354f7de5b5be6b4ae950e",
+      "category": "runtime",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-frontend/src/components/learning/StudySetsLibrary.jsx",
+      "sha256": "b695b518d405314a4c2ba08b7eee379b9a29838fe07d3e1db3c4e68fcf8c6f02",
+      "category": "runtime",
+      "state": "untracked"
+    },
+    {
+      "path": "acadova-frontend/src/components/learning/StudyShareSettings.jsx",
+      "sha256": "d0c8a5b7aeb6ad47d5760752d2823a2f1c4bb1101fa685fe3580033daefc4850",
+      "category": "runtime",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-frontend/src/components/learning/acadiHelp.css",
+      "sha256": "cfcf016293fc3598f4f46b476e3f1049bd5ca84c9a1d6fc76ab85c0afd1b2e03",
+      "category": "runtime",
+      "state": "untracked"
+    },
+    {
+      "path": "acadova-frontend/src/components/learning/learning.css",
+      "sha256": "642695b611c410d581d46105a111680ff973dd3715e566658623c17b16b3a403",
+      "category": "runtime",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-frontend/src/components/learning/learningWorkspace.css",
+      "sha256": "cb62289e2243bae8c79f9ad771a870f1a8a8218200c8744510e07fd02e56e1bb",
+      "category": "runtime",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-frontend/src/components/learning/studentExperience.css",
+      "sha256": "f7161337f8e10bc16bd60e647ae5a3b31996eff581bc543285df49384078ceba",
+      "category": "runtime",
+      "state": "untracked"
+    },
+    {
+      "path": "acadova-frontend/src/components/learning/studentV2.css",
+      "sha256": "94631046d92f228a019a3cb91d1fb3e849504c2807433ed431ecb90185132967",
+      "category": "runtime",
+      "state": "modified"
+    },
+    {
+      "path": "acadova-frontend/src/components/staff/AdminGrowthAnalytics.jsx",
+      "sha256": "248f1aa47378cb2ae5cd1b0f0f694165f63fcb585cde702dadebc7049b9c325a",
+      "category": "runtime",
+      "state": "untracked"
+    },
+    {
+      "path": "acadova-frontend/src/components/staff/AnalyticsCharts.jsx",
+      "sha256": "50a65907636c474cf0cf38d8b9e19ce7239b072f3b72221ef953c6cd0034f61c",
+      "category": "runtime",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-frontend/src/components/staff/DashboardPrimitives.jsx",
+      "sha256": "8611b119b08919d5bbfd49afefb91c8594ddec4293968bca9cad7ee06458189e",
+      "category": "runtime",
+      "state": "modified"
+    },
+    {
+      "path": "acadova-frontend/src/components/staff/DashboardTrend.jsx",
+      "sha256": "aa3b3e8d07fe6721cb3d4d1931c92fd3962028d47e571f7cf61cffdfdafe1af4",
+      "category": "runtime",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-frontend/src/components/staff/GrowthReviewPanel.jsx",
+      "sha256": "3b0986b6f157a4efc370991eb1710d15d44af7c04b7fa61afe6620eac10069d3",
+      "category": "runtime",
+      "state": "untracked"
+    },
+    {
+      "path": "acadova-frontend/src/components/staff/ModerationQueue.jsx",
+      "sha256": "3b39dcb9eae8c7a100e0a862d720c3d9707085ce2eea595a81297446d8d927e5",
+      "category": "runtime",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-frontend/src/components/staff/ReviewModeration.jsx",
+      "sha256": "a47c777b1a7f5914d32a862a3bc247f184345c555a2f649adfc6e25ff35ad3f6",
+      "category": "runtime",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-frontend/src/components/staff/SessionReviewRecord.jsx",
+      "sha256": "f7aa59f3ea3bbffbae6566560cbd7c38c67b14f8f3f0df3f7713cfe5fd7a4f19",
+      "category": "runtime",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-frontend/src/components/staff/StaffDashboardUi.jsx",
+      "sha256": "a0059042bfe8756a5a821e913e1c7492611ea2b681edeceb7b207244c59dc0c3",
+      "category": "runtime",
+      "state": "untracked"
+    },
+    {
+      "path": "acadova-frontend/src/components/staff/staffDashboard.css",
+      "sha256": "bdd2f01b5fdad1f77b0b7945b20f1409d898a82805ac1a5238bd9d6bdd37877c",
+      "category": "runtime",
+      "state": "untracked"
+    },
+    {
+      "path": "acadova-frontend/src/components/student/CircleEditor.jsx",
+      "sha256": "e35baba6c9fcfbad2ff9cacc6ffeedff17c36f34f9e8be614332dac83d60d6c3",
+      "category": "runtime",
+      "state": "untracked"
+    },
+    {
+      "path": "acadova-frontend/src/components/student/EconomySessionReview.jsx",
+      "sha256": "17b455387653e140ff00d8cd17a4cdf3602c89f3bdf8eb8acf7702dbdb2ea43e",
+      "category": "runtime",
+      "state": "untracked"
+    },
+    {
+      "path": "acadova-frontend/src/components/student/FreeSessionRequest.jsx",
+      "sha256": "b9b9bd6e6195691a7878884a7d700ad1b51a71a11a69bfff4264c7c763bbe23a",
+      "category": "runtime",
+      "state": "untracked"
+    },
+    {
+      "path": "acadova-frontend/src/components/student/GrowthAchievement.jsx",
+      "sha256": "18922a14f05d68c03724719a0d823b9a603017eccc92f45a5fd73eb0731d2630",
+      "category": "runtime",
+      "state": "untracked"
+    },
+    {
+      "path": "acadova-frontend/src/components/student/GrowthVisibility.jsx",
+      "sha256": "a11579b54c1c9f8324066101aafae1b20c34d33f4ce925c1c3be19ff00810b94",
+      "category": "runtime",
+      "state": "untracked"
+    },
+    {
+      "path": "acadova-frontend/src/components/student/HeaderGrowth.jsx",
+      "sha256": "efe1f96b9fc5e9042b7ce1783b1d218aed7833d5b5614de607d55ab65780fdbd",
+      "category": "runtime",
+      "state": "untracked"
+    },
+    {
+      "path": "acadova-frontend/src/components/student/MeetingProviders.jsx",
+      "sha256": "81226526b0f8ff503530aa237439abb707cec2c0222fd884328daef2f5f185ca",
+      "category": "runtime",
+      "state": "untracked"
+    },
+    {
+      "path": "acadova-frontend/src/components/student/PeerCard.jsx",
+      "sha256": "fee7180a54315f33a0da389ab493cf551edbc651e5056fa22512bbc9df0a6a27",
+      "category": "runtime",
+      "state": "modified"
+    },
+    {
+      "path": "acadova-frontend/src/components/student/ProfileDetailsEditor.jsx",
+      "sha256": "17204d60e51e5ff084265b839c02834f7a83d585a507ee699e6fe0b2762f3263",
+      "category": "runtime",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-frontend/src/components/student/RankBadge.jsx",
+      "sha256": "08ba7871141dbf970709d5c1707ce1e813c42cf02e00dbe53daa971721734e1a",
+      "category": "runtime",
+      "state": "untracked"
+    },
+    {
+      "path": "acadova-frontend/src/components/student/SessionCard.jsx",
+      "sha256": "cbb8cf61adcb54c5605fc57f215898e7792f00a3ede6b8066676296ade940acf",
+      "category": "runtime",
+      "state": "modified"
+    },
+    {
+      "path": "acadova-frontend/src/components/student/SessionCompletionPanel.jsx",
+      "sha256": "7dcddc8af9a7dd89fa714a60018a7edd13c885ab8b91632a3b9c093608862659",
+      "category": "runtime",
+      "state": "modified"
+    },
+    {
+      "path": "acadova-frontend/src/components/student/SessionConversations.jsx",
+      "sha256": "ba6a6655d1275e42bfef63ccf0a9a09c0e261de8dad0e46128a7630c67d97355",
+      "category": "runtime",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-frontend/src/components/student/StudyTogetherNavigation.jsx",
+      "sha256": "26b89da4e3d88f3ab71d7ca9350aab06c4b9deda4bcf04610fc075eb262a827c",
+      "category": "runtime",
+      "state": "modified"
+    },
+    {
+      "path": "acadova-frontend/src/components/student/WeeklyAvailability.jsx",
+      "sha256": "031f3402b21e52420d2e587ebe51426047593e32c194a783c15123bf59615e68",
+      "category": "runtime",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-frontend/src/components/student/growthExperience.css",
+      "sha256": "fafc6583235f33862220aef10694d5db83e3396a642d6d7dc2a849d76e42fc2a",
+      "category": "runtime",
+      "state": "untracked"
+    },
+    {
+      "path": "acadova-frontend/src/config/roleNavigation.js",
+      "sha256": "ad16fef4436618d78378001074dc34a630482b0e5ae439737ec2983b6e937bf7",
+      "category": "runtime",
+      "state": "modified"
+    },
+    {
+      "path": "acadova-frontend/src/context/AiGenerationContext.jsx",
+      "sha256": "97ae5488b1ff2c2a6a0df714d899eea8322c3e4c43a5c833a58cd02e4c84d85f",
+      "category": "runtime",
+      "state": "modified"
+    },
+    {
+      "path": "acadova-frontend/src/context/AuthContext.jsx",
+      "sha256": "c73cdfedf3d307e3147b8ca7ef4789fb7d281bfc2b02dfb5c6c5cd18b20d221a",
+      "category": "runtime",
+      "state": "modified"
+    },
+    {
+      "path": "acadova-frontend/src/context/ConfirmContext.jsx",
+      "sha256": "9426bc239c1bd1392a3d9e8c7e75693047194dcd7915570a15a7320b35f85e14",
+      "category": "runtime",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-frontend/src/context/NotificationContext.jsx",
+      "sha256": "bd989b351486d59c6a826d9bad26859634476e88d1c1c056e801da5d168e713e",
+      "category": "runtime",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-frontend/src/context/ToastContext.jsx",
+      "sha256": "e65c4eb9999e742b7a4018a1dc0e9e961c34156d7f4acd11c022d6157ec84256",
+      "category": "runtime",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-frontend/src/context/aiGenerationAccess.js",
+      "sha256": "6d2dd6ae1e73adf96e15badf8e01a61458487f1908579dd295c93b08078c40f4",
+      "category": "runtime",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-frontend/src/context/confirmAccess.js",
+      "sha256": "b2afd0ab6255d01e55a8817735614b606945d6db586f3b2faf86108e6406f7ce",
+      "category": "runtime",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-frontend/src/context/notificationAccess.js",
+      "sha256": "58197aeff3093fcadba1024c6950ff72ccdfd18ea15ba1d5f97fe35cc69d36db",
+      "category": "runtime",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-frontend/src/context/toastAccess.js",
+      "sha256": "b315560da9845f067013c6f7514bed710e5f72e31fdbcca1439b82bb5996c882",
+      "category": "runtime",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-frontend/src/index.css",
+      "sha256": "deb3a9ab63ef9a76e673291d33372b61dacdc34b58d0cb05b9635d768ba6ed11",
+      "category": "runtime",
+      "state": "modified"
+    },
+    {
+      "path": "acadova-frontend/src/layouts/AppLayout.jsx",
+      "sha256": "b4a12f31cb8d550096213bb87e9b728913ee17e4b97dbd594b3a5397f0aece5c",
+      "category": "runtime",
+      "state": "modified"
+    },
+    {
+      "path": "acadova-frontend/src/layouts/AuthLayout.jsx",
+      "sha256": "7086a996397407a6c66fb4ecda5d08e04a55868447c81f0e7a0d13def7865b2b",
+      "category": "runtime",
+      "state": "modified"
+    },
+    {
+      "path": "acadova-frontend/src/layouts/PublicLayout.jsx",
+      "sha256": "dc0670095ef6eec64ed9901a9d102ba162224aca428cf8133c9f00969dd4fa5b",
+      "category": "runtime",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-frontend/src/layouts/StaffLayout.jsx",
+      "sha256": "fa911fccc20a98128894bf163958658d0aafdd74491b5b4c946ae815a7a79cca",
+      "category": "runtime",
+      "state": "modified"
+    },
+    {
+      "path": "acadova-frontend/src/main.jsx",
+      "sha256": "efe1c4a1167cb0912bc14e6bc1f5284f3bd67353f52fac466df1c3d109a80b31",
+      "category": "runtime",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-frontend/src/pages/AboutPage.jsx",
+      "sha256": "02b3a6c8e5f0fbf7092fdba48b73335f62f8cd7b738e99d62afae86fff8b881c",
+      "category": "runtime",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-frontend/src/pages/AcademicWorkspace.jsx",
+      "sha256": "b6894fb47b59dcea5d494da82b693775b1a22ea7396ebb031860675becfc0956",
+      "category": "runtime",
+      "state": "modified"
+    },
+    {
+      "path": "acadova-frontend/src/pages/AiStudyPage.jsx",
+      "sha256": "dbb927430c59026de5ef5da49ffb1a369782d107a3b00db44cad804aa46f6284",
+      "category": "runtime",
+      "state": "modified"
+    },
+    {
+      "path": "acadova-frontend/src/pages/AssessmentsPage.jsx",
+      "sha256": "e45634bd734d0d669202aeb606d2d93d446c52b9969d0e3028404296f7206e5e",
+      "category": "runtime",
+      "state": "modified"
+    },
+    {
+      "path": "acadova-frontend/src/pages/CreditsPage.css",
+      "sha256": "58e8801747e47d5e4c075d07cf0b7b9714acc4ec6fffb4e7bd1ed150ba7e4131",
+      "category": "runtime",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-frontend/src/pages/CreditsPage.jsx",
+      "sha256": "55ea037640d138058acd3f3e86834d58e8bae51f5e285b6ade2b5920a5708479",
+      "category": "runtime",
+      "state": "modified"
+    },
+    {
+      "path": "acadova-frontend/src/pages/DashboardPage.jsx",
+      "sha256": "c08bdacddc17bdb704e2e38780f4b12bf14f71256f689b9d3512b5aafbb3b5dd",
+      "category": "runtime",
+      "state": "modified"
+    },
+    {
+      "path": "acadova-frontend/src/pages/FeaturesPage.jsx",
+      "sha256": "4bdeaf0ebc81c127094d574d7e6896cd8ba0202d74192f1a124519e9c3847f60",
+      "category": "runtime",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-frontend/src/pages/FindTutorsPage.jsx",
+      "sha256": "8a8ce320d2fadd07e8ff9b86f28f92fe7b26f7ffa3ee17b4bed0f0bfddb7c475",
+      "category": "runtime",
+      "state": "modified"
+    },
+    {
+      "path": "acadova-frontend/src/pages/ForgotPasswordPage.jsx",
+      "sha256": "8c3aebb32ee7ce0cd0d17d663ee67ba86bc71e1ec83fde2b25512217f3571b17",
+      "category": "runtime",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-frontend/src/pages/GrowthPage.jsx",
+      "sha256": "ea98748786386c6365155b2645fe6bc5a4481781e2dc6ee8bbc0a7563a870bd1",
+      "category": "runtime",
+      "state": "modified"
+    },
+    {
+      "path": "acadova-frontend/src/pages/LandingPage.jsx",
+      "sha256": "dca3472d2941a0ae1973dd1a601c6018472111afe62b0275f3243d40d9a5292a",
+      "category": "runtime",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-frontend/src/pages/LearningPage.jsx",
+      "sha256": "38a2861ad0eb31673bb8dde6aac80665dd0c14d7fce8622882508b0e017f7f19",
+      "category": "runtime",
+      "state": "modified"
+    },
+    {
+      "path": "acadova-frontend/src/pages/LoginPage.jsx",
+      "sha256": "6ca12562308b48f55bbabb0d0038ae830896dcb493805d7907cf45a62e3dd0b7",
+      "category": "runtime",
+      "state": "modified"
+    },
+    {
+      "path": "acadova-frontend/src/pages/OnboardingPage.jsx",
+      "sha256": "04118adf53cba2a8294895aee4f5ac3c24bd17c55b7865d8bd41e9ae651890bf",
+      "category": "runtime",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-frontend/src/pages/PolicyPages.jsx",
+      "sha256": "45f67fb944470f5b0299efc6cb63b1829d3b9a54a67134411ae55aa7969d59d0",
+      "category": "runtime",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-frontend/src/pages/ProfilePage.jsx",
+      "sha256": "bb902e73fe65f64254edfbaf00600c89a9657728750d7adb8592b2d567b34561",
+      "category": "runtime",
+      "state": "modified"
+    },
+    {
+      "path": "acadova-frontend/src/pages/RegisterPage.css",
+      "sha256": "79e0969ba88b0a1a9a7af4a751e1c6116a47449e962fb59a5935f771b96a5e36",
+      "category": "runtime",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-frontend/src/pages/RegisterPage.jsx",
+      "sha256": "004019eadbc15809789d0ccaf1df3f5e3a0b8defc5d32332e0833f9042f65d76",
+      "category": "runtime",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-frontend/src/pages/ResetPasswordPage.jsx",
+      "sha256": "20e323576401aaf27c1f7c33fb3deaa67e63853f58f56dfb36ede066338704ca",
+      "category": "runtime",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-frontend/src/pages/SessionRoomPage.jsx",
+      "sha256": "21f0dbc5ad4ba0cd81a7ac05d4566409f94c97fb79ac4e5da1dc809e542d32e2",
+      "category": "runtime",
+      "state": "modified"
+    },
+    {
+      "path": "acadova-frontend/src/pages/SessionsPage.jsx",
+      "sha256": "015e2a664bc7ac94eb084aba0f0a51dfb509fbb6c662349804f5d8e5a62acd8c",
+      "category": "runtime",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-frontend/src/pages/SettingsPage.jsx",
+      "sha256": "9a3115d066333a08eb1184b7aab5d979f1d51a09e38950902ae09250f7f6b7c5",
+      "category": "runtime",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-frontend/src/pages/SharedStudySetPage.jsx",
+      "sha256": "e5e92c5668e160c171860a3879e083152faa0ac4e3bb0be46b280f634a3358dd",
+      "category": "runtime",
+      "state": "modified"
+    },
+    {
+      "path": "acadova-frontend/src/pages/StaffMfaPage.css",
+      "sha256": "b3755e876bcbc5645ea1695181a43f57a9374f28a0a6a024fd3a8ec4f57175f0",
+      "category": "runtime",
+      "state": "untracked"
+    },
+    {
+      "path": "acadova-frontend/src/pages/StaffMfaPage.jsx",
+      "sha256": "300c6d08f87eb23439ac62188ea275c629e268e3c8ee937ba52d86dd0d945de4",
+      "category": "runtime",
+      "state": "untracked"
+    },
+    {
+      "path": "acadova-frontend/src/pages/StudySetsPage.jsx",
+      "sha256": "30339bf3762abda7e9fa94442e72b8c201795bd038ad0bffe3b39a8c4f16470a",
+      "category": "runtime",
+      "state": "modified"
+    },
+    {
+      "path": "acadova-frontend/src/pages/StudyTogetherPage.jsx",
+      "sha256": "3693d0498dc8689efac0c0328bb76a23900bbdfa9affadc9d5df581f109eaff3",
+      "category": "runtime",
+      "state": "modified"
+    },
+    {
+      "path": "acadova-frontend/src/pages/TutorProfilePage.jsx",
+      "sha256": "37fda784d24f28634164cd94a7d872e2cead0ffe396d2ad32f328cfe24d87754",
+      "category": "runtime",
+      "state": "modified"
+    },
+    {
+      "path": "acadova-frontend/src/pages/VerificationPendingPage.jsx",
+      "sha256": "7f7ed46b2bbcaf18c5938174c0feac72d6368ab1301dde88cb7b0d1dbc51624e",
+      "category": "runtime",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-frontend/src/pages/VerifyEmailPage.jsx",
+      "sha256": "2e1d697c9176e09c5f343e3f3ae683bb4ff1962a6971a09c170d8e89de5900fe",
+      "category": "runtime",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-frontend/src/pages/academicWorkspace.css",
+      "sha256": "1a9f86802ad0a124915e9ce40c037296abb8e8cb12081f7fba06f2160afd4149",
+      "category": "runtime",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-frontend/src/pages/admin/AdminAnalyticsPage.jsx",
+      "sha256": "83e7026744a7322b23809c676516058b79beebd199938c412bc501d4a9c5e2f3",
+      "category": "runtime",
+      "state": "modified"
+    },
+    {
+      "path": "acadova-frontend/src/pages/admin/AdminAuditLogsPage.jsx",
+      "sha256": "8cf86917fb04aea32dfcb5ab9651ff920ce6516121ba8b0f5df43dfb4541563d",
+      "category": "runtime",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-frontend/src/pages/admin/AdminCreditsPage.jsx",
+      "sha256": "1150c9021de675656362dfcdb9ec830b31471a3f6805dc1154828da79fa13fe3",
+      "category": "runtime",
+      "state": "modified"
+    },
+    {
+      "path": "acadova-frontend/src/pages/admin/AdminModerationPage.jsx",
+      "sha256": "be9539dfb4e7e4ba594be9d4ed2b4a3f2ce8fcfd8e67895a544a7b31d76fc336",
+      "category": "runtime",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-frontend/src/pages/admin/AdminOverviewPage.jsx",
+      "sha256": "bbd59460f4e34e527f06aeb6413342062bb45fb3b37186ea1919aa9bf3fe85eb",
+      "category": "runtime",
+      "state": "modified"
+    },
+    {
+      "path": "acadova-frontend/src/pages/admin/AdminSecurityPage.jsx",
+      "sha256": "f257d622780ee5122f093a83c7403da0d464760f7436948560f95a0c629650ca",
+      "category": "runtime",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-frontend/src/pages/admin/AdminSessionsPage.jsx",
+      "sha256": "19f68fd1e3f544608a371df7b7e97e0e93b5f56bf0e5f2751912a530ed1d81ef",
+      "category": "runtime",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-frontend/src/pages/admin/AdminUsersPage.jsx",
+      "sha256": "a2fd600b837adca9bd9071c7d2f78f8b49bf0b52241d60539aaafaf2d2802399",
+      "category": "runtime",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-frontend/src/pages/admin/TrustActivityPage.jsx",
+      "sha256": "6633f083dcb7f5635935b07aeb451883d5442ab1f43207c45d71b6394308d050",
+      "category": "runtime",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-frontend/src/pages/aiStudy.css",
+      "sha256": "86f2e0f242ebb7dd47ce9520d0d161ca94164bb5abb6188a25df91d1bc8b37ab",
+      "category": "runtime",
+      "state": "modified"
+    },
+    {
+      "path": "acadova-frontend/src/pages/moderator/ModeratorAnalyticsPage.jsx",
+      "sha256": "827e66f6ee54833a44f9c352863e1c60d696685e21759810eb689a0e827bd899",
+      "category": "runtime",
+      "state": "untracked"
+    },
+    {
+      "path": "acadova-frontend/src/pages/moderator/ModeratorAssessmentsPage.jsx",
+      "sha256": "456349b22ce2f50f9c8d4f7bac486400a876b22d8e6e302eba8caf2cfcff0485",
+      "category": "runtime",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-frontend/src/pages/moderator/ModeratorCirclesPage.jsx",
+      "sha256": "857102f6b6b6f28b23f67e566644b87fb9aa794c4fb67ebf429313ff9406729d",
+      "category": "runtime",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-frontend/src/pages/moderator/ModeratorDisputesPage.jsx",
+      "sha256": "5c7680a5e1ad683f293740e46ad932efa57b860c9579e7bffe7c0b6dab2f576e",
+      "category": "runtime",
+      "state": "modified"
+    },
+    {
+      "path": "acadova-frontend/src/pages/moderator/ModeratorLearningPage.jsx",
+      "sha256": "a08f195d3c39389ccce61fea862320377fd51f481cc2ce3c5f0bc10ae6a524b9",
+      "category": "runtime",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-frontend/src/pages/moderator/ModeratorOverviewPage.jsx",
+      "sha256": "55273d18e0b36db1a6f54cdae79ac5e9ff16817b0de1812cddf0f5a8b3971fae",
+      "category": "runtime",
+      "state": "modified"
+    },
+    {
+      "path": "acadova-frontend/src/pages/moderator/ModeratorReviewsPage.jsx",
+      "sha256": "837013dc71f2fd91f6950eb00557bead7a74fa6d5efd5fad9125ad570601a073",
+      "category": "runtime",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-frontend/src/pages/moderator/ModeratorStudySetsPage.jsx",
+      "sha256": "06fcd5c2c05125c6422c3c5c7efbf655ee9e22e4d34687eddfbd033777758129",
+      "category": "runtime",
+      "state": "modified"
+    },
+    {
+      "path": "acadova-frontend/src/pages/studySets.css",
+      "sha256": "903145e303e543b95be74812ad82a7e9a0a9e25b5ddffffec76e4c285add9da2",
+      "category": "runtime",
+      "state": "untracked"
+    },
+    {
+      "path": "acadova-frontend/src/pages/studyTogether.css",
+      "sha256": "3625ea3596e285d5d4bccdf7e815edc89dc2edbc6d693d5c616dbc90a7f074d4",
+      "category": "runtime",
+      "state": "modified"
+    },
+    {
+      "path": "acadova-frontend/src/services/academicService.js",
+      "sha256": "7e94c5397753aea7a789ff72e257f5ed213d409f8b1925f2a22598d0fc6b7bda",
+      "category": "runtime",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-frontend/src/services/aiStudyService.js",
+      "sha256": "78a08a5a957524f6e76fc6f5df83ee01662b022f5448832a7d978bc9569cb80a",
+      "category": "runtime",
+      "state": "modified"
+    },
+    {
+      "path": "acadova-frontend/src/services/analyticsService.js",
+      "sha256": "d276b7dc91bfab24a513c896c6aa3495d96a75fd1c471da76e1dd2eb2169eefe",
+      "category": "runtime",
+      "state": "modified"
+    },
+    {
+      "path": "acadova-frontend/src/services/api.js",
+      "sha256": "c2806096a5f00987dcc9f79c834abac3392703f8f7bf57ff4806c3f9ce62a92a",
+      "category": "runtime",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-frontend/src/services/assessmentService.js",
+      "sha256": "40f6ff124af8251c0352af7cea927c24dacc9c5bdca3fe403eea934837aabc31",
+      "category": "runtime",
+      "state": "modified"
+    },
+    {
+      "path": "acadova-frontend/src/services/authService.js",
+      "sha256": "4d617b8281c020894a73c598d7ae717de83ce0ad3777804e905825ee01c83b7f",
+      "category": "runtime",
+      "state": "modified"
+    },
+    {
+      "path": "acadova-frontend/src/services/collaborationService.js",
+      "sha256": "e9eefdc98d8ea8e1599412c2ad85ba726cbe48ddbe76c7f69042e7050d049578",
+      "category": "runtime",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-frontend/src/services/creditService.js",
+      "sha256": "eebbcaf7cc12d2307160bf926d04156b678da977f8062e87c3e5e1550b5e2ed6",
+      "category": "runtime",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-frontend/src/services/googleCalendarAuthorization.js",
+      "sha256": "79e21c6a4c8299cf6b883ea0ca8c3fb25ce748762e7756fe25de2e8b2d4b3f3a",
+      "category": "runtime",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-frontend/src/services/learningService.js",
+      "sha256": "d975f9104c2d5e887694ecd989560327f2c0e40fc52fcf9cd6f802d5d5f7bd1c",
+      "category": "runtime",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-frontend/src/services/moderationService.js",
+      "sha256": "1f680dd8f951321b4f432983802d4ed5beec73655e755917847b2df0f4250a27",
+      "category": "runtime",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-frontend/src/services/notificationSound.js",
+      "sha256": "e947194c4cb8b7cd308465b6d98b2ba5deb0606e5d2f12e79e2ee974e4a24318",
+      "category": "runtime",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-frontend/src/services/pushClient.js",
+      "sha256": "96b771890fb77fc65ff2c5e5fcc3536c01970fe32f8add51049806c33ed30369",
+      "category": "runtime",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-frontend/src/services/ratingService.js",
+      "sha256": "fbbf58b7d4dcd66393cfb1691fcb043a8fc737c3938e9485538b959ca915ca47",
+      "category": "runtime",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-frontend/src/services/sessionService.js",
+      "sha256": "2a318374bbfb61179f260935e10f6730a54cb94e74c5c5e1e15c037010cb6df3",
+      "category": "runtime",
+      "state": "modified"
+    },
+    {
+      "path": "acadova-frontend/src/services/studyService.js",
+      "sha256": "160c2926ac2b119a97bd5a16ac6c56d43b3cafe4e702b95d325e5d1688c55b97",
+      "category": "runtime",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-frontend/src/services/uploadTransport.js",
+      "sha256": "92efd91c28576d675887f4880f4903ab05c1d6b5b4da756a4f58dd34ae82bb90",
+      "category": "runtime",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-frontend/src/services/userService.js",
+      "sha256": "4342a2ceb59b64a554fea25a6fed41cd4459ac685202f228dc6f22340d2b9bf3",
+      "category": "runtime",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-frontend/src/styles/landing.css",
+      "sha256": "afae9972705413909d73696ef9e65c3820521c82eda966ceae88486b56ba3b22",
+      "category": "runtime",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-frontend/src/utils/academicNavigation.js",
+      "sha256": "3220ebbd9757758e6093c072c6fd75051f7ba18318529ff441d1a58dfeff8b42",
+      "category": "runtime",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-frontend/src/utils/academicPresentation.js",
+      "sha256": "50b516d45dce3a7c69cc15cc5b22fe4e4b36610a88bdc9c7f10afa8d4295fa26",
+      "category": "runtime",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-frontend/src/utils/acadiLocal.js",
+      "sha256": "2a8390258ffeeee5d7215fa95cabd72728c6bf4506ffc0446141eb854f76a941",
+      "category": "runtime",
+      "state": "untracked"
+    },
+    {
+      "path": "acadova-frontend/src/utils/aiGenerationFeedback.js",
+      "sha256": "bc0888b68bc46c2fff1baaae1059c8e8f9ba6e94bbebb00a951745df129c3a9f",
+      "category": "runtime",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-frontend/src/utils/aiStudyPractice.js",
+      "sha256": "7559f6a1453e2c0afb01636b56541b9c8f02f89893a6a5642a54940acaa5dd6f",
+      "category": "runtime",
+      "state": "modified"
+    },
+    {
+      "path": "acadova-frontend/src/utils/analyticsPresentation.js",
+      "sha256": "05a7e5ff34693cc0be79a4ecf191990582d66d5b9ce0c48c9a5b498e4de5392c",
+      "category": "runtime",
+      "state": "modified"
+    },
+    {
+      "path": "acadova-frontend/src/utils/apiUrl.js",
+      "sha256": "e48fde9bf22c9865ac57e0b4453e9f170d8403cf33207b4883571fbe18bf6251",
+      "category": "runtime",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-frontend/src/utils/assessmentLearning.js",
+      "sha256": "ceea7bd0c2ef6e5df173eb9b3f6fb5cfb34b85b684bd8181b53b3f03e3e41ed3",
+      "category": "runtime",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-frontend/src/utils/authForm.js",
+      "sha256": "9c8dbfeba96f1ec6804a95a338db9802b503685cff873f5a48e2f4e9ec2cb196",
+      "category": "runtime",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-frontend/src/utils/authRecovery.js",
+      "sha256": "7aa231e282a80ca6aa4e3aa29f33ec511237f1f7db4af9708493faee742f1ea2",
+      "category": "runtime",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-frontend/src/utils/circlePresentation.js",
+      "sha256": "da28b5b3d489a7186b32c28244536d54c5a5f780841e9296102214d310c24dbb",
+      "category": "runtime",
+      "state": "untracked"
+    },
+    {
+      "path": "acadova-frontend/src/utils/completionPresentation.js",
+      "sha256": "bb5a1409414f36824ef59219e90e818ac5e8bcd853d3b8da36f6dd2fb0e52b51",
+      "category": "runtime",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-frontend/src/utils/discoverySearch.js",
+      "sha256": "41e8d1a49ca3c6ac72527d231295459ad3d7e24a0f68c737732874195cb65e71",
+      "category": "runtime",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-frontend/src/utils/focusInvalidField.js",
+      "sha256": "fbeeb39bb711cf5963f8fe8105d879765bcffbbc93ecaf8847a3676f6980d767",
+      "category": "runtime",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-frontend/src/utils/googleConfig.js",
+      "sha256": "dc99c8989c2ef6eace609ea203965d77c4b43cb530677252745f47bc9aaaf7be",
+      "category": "runtime",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-frontend/src/utils/learningCurriculum.js",
+      "sha256": "7425cc1863fc0876fb92a969e699e5e42d816beef95b5f9ba4a3080731444039",
+      "category": "runtime",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-frontend/src/utils/learningPresentation.js",
+      "sha256": "afda36bd08b5e180cf2f70b2de73c935f6a56de31aa72ee25ddca9836cebfa2a",
+      "category": "runtime",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-frontend/src/utils/learningResume.js",
+      "sha256": "821f8cd084a5bca87f0140211e973ebe603635d4cd56fe5784b2d39ae32f8189",
+      "category": "runtime",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-frontend/src/utils/meetingProviders.js",
+      "sha256": "ea269c991afdc930de5f30aadfd401b7b0f87abef23f7585ee2215b3b18817c2",
+      "category": "runtime",
+      "state": "untracked"
+    },
+    {
+      "path": "acadova-frontend/src/utils/messagingUx.js",
+      "sha256": "d88f7c52a0556e9bb593d8097e45944775aaca2b7c90d77489f75a8346d22b43",
+      "category": "runtime",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-frontend/src/utils/nameValidation.js",
+      "sha256": "e23f8faa0f37818fd29391578002569cbdb3b9041b9bb513b5ae018652a00f85",
+      "category": "runtime",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-frontend/src/utils/notificationPresentation.js",
+      "sha256": "941c8ef2867cf58f657a6620b973f834d13dd7ec19d154079044c4b4e348db9f",
+      "category": "runtime",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-frontend/src/utils/peerReputation.js",
+      "sha256": "24e63a78d9813e7a879aa656a9ca5ac2904667111112d8955ac6ace187806277",
+      "category": "runtime",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-frontend/src/utils/policyReview.js",
+      "sha256": "954e51abd6e4a2d452d6841d9be98cc930813cbf0d84cafcff0122b46c32e726",
+      "category": "runtime",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-frontend/src/utils/profileDetails.js",
+      "sha256": "2d2eae72b94636690aabe1c4c7fba379a7cc5da9031b4fdc46514ada0930b205",
+      "category": "runtime",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-frontend/src/utils/profileSetup.js",
+      "sha256": "6730c1d4ac29984a8422dcff839d544e860b6a1c3070ab2146b42774307eb6af",
+      "category": "runtime",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-frontend/src/utils/refreshGate.js",
+      "sha256": "4a2beb9284f2821604980eded5edde6dca8c16bb63c676e3667cfe6c0e0bc77d",
+      "category": "runtime",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-frontend/src/utils/scheduling.js",
+      "sha256": "2f8911293da9d985a2d88957bfea7170eefe28d187509d90d336262a14a11eea",
+      "category": "runtime",
+      "state": "untracked"
+    },
+    {
+      "path": "acadova-frontend/src/utils/sessionMessages.js",
+      "sha256": "90b24b453d9cb54b1998b9ed11311a355973c8eee46460da331a2de1d2890f52",
+      "category": "runtime",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-frontend/src/utils/sessionNavigation.js",
+      "sha256": "b1eabcc648c2a6f229b0484135a9d37dfd06691890bc7d33afc031a8f8050c9f",
+      "category": "runtime",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-frontend/src/utils/sessionPresentation.js",
+      "sha256": "7ef81f17d19bb5fd1c53e10ec1a9b83763ab9ed609d5352966084f34e5e67d8c",
+      "category": "runtime",
+      "state": "modified"
+    },
+    {
+      "path": "acadova-frontend/src/utils/sessionRequestTime.js",
+      "sha256": "61933ffcd59405448c83a25fd68b5b5f7348246fd9081eb6e6c91606b4821ba0",
+      "category": "runtime",
+      "state": "modified"
+    },
+    {
+      "path": "acadova-frontend/src/utils/staffLearningNavigation.js",
+      "sha256": "bd980f93bbb6f9ec0796a1d5ba73a137be1e7a4f5de0e2bd9941842997140416",
+      "category": "runtime",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-frontend/src/utils/staffMfa.js",
+      "sha256": "3b4db8c67d4d42ba55deab0afbbdd99c42d0fa62e97c855f3c9aa7ac57f9a6a6",
+      "category": "runtime",
+      "state": "untracked"
+    },
+    {
+      "path": "acadova-frontend/src/utils/staffPresentation.js",
+      "sha256": "f17acb8453cf8cec29257cf581d26cfddc48fa62544e7359ab054ac61202e686",
+      "category": "runtime",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-frontend/src/utils/studentExperience.js",
+      "sha256": "2af080f712304d901fac8c02542ee2a850d0bf568fecad4be42010beaaf9b440",
+      "category": "runtime",
+      "state": "untracked"
+    },
+    {
+      "path": "acadova-frontend/src/utils/studyNavigation.js",
+      "sha256": "d4173a65f734210a2a563c3f50ad1abf5043be4a2e152ec5764f4417c3551914",
+      "category": "runtime",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-frontend/src/utils/studyQuiz.js",
+      "sha256": "9969a077696d58a6262ab17a66e26879ef745ac489d8741e19d6b369a648cd90",
+      "category": "runtime",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-frontend/src/utils/toastState.js",
+      "sha256": "ac7b41f291be4dd4c43b022b420d50488d0f1e8365e0817452912458a08bd6f3",
+      "category": "runtime",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-frontend/src/utils/trustActivity.js",
+      "sha256": "4156fe2b1a9daa7f8bf5a47fff40dc1a3bade978d4d92d6bad51a5347dd427c7",
+      "category": "runtime",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-frontend/src/utils/useDashboardData.js",
+      "sha256": "511f82afbad2188631f139eddcc627c0e8d06694cb48510cb336cb9db157ca2e",
+      "category": "runtime",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-frontend/src/utils/useGrowth.js",
+      "sha256": "172aad05ce0097b42efd62d1ab08f2dbc76490243c18388cd9e8f5781ff25b1b",
+      "category": "runtime",
+      "state": "untracked"
+    },
+    {
+      "path": "acadova-frontend/src/utils/useSearchDraft.js",
+      "sha256": "9c3a42085d0d838bb5eeb7b5e0a5fa4df61d36fcdf77b2bbd3317c2da344ba0b",
+      "category": "runtime",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-frontend/src/utils/useStaffPeriod.js",
+      "sha256": "6714284dda20b1c24a8b0eb7a403d76e1c5fc89ab59431ae913045db8f718f41",
+      "category": "runtime",
+      "state": "untracked"
+    },
+    {
+      "path": "acadova-frontend/src/utils/useUnsavedChanges.js",
+      "sha256": "7923e92317fb833689b92cc2d2a84cdebba262c42a91a4a0a548348816a677ec",
+      "category": "runtime",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-frontend/src/utils/visibleRefresh.js",
+      "sha256": "f136a7bfee8826c7163cd28c6c09e3888cb17b9f004d4960d7d433a25e0f1912",
+      "category": "runtime",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-frontend/src/utils/weeklyAvailability.js",
+      "sha256": "8008383473dbe61d2ffd5dae55d2dec801ff6d5409a4a7b9eb5da89c9d3740a4",
+      "category": "runtime",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-frontend/tests/academicNavigation.test.js",
+      "sha256": "b0a983965f1dffd35224f30245073051f33bf47edba8362416b681413d38332f",
+      "category": "test_support",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-frontend/tests/academicPresentation.test.js",
+      "sha256": "1c6191f87ad14e86ac5cc622483abf6ce68e68eb4db4d0d39ff5841af215d759",
+      "category": "test_support",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-frontend/tests/acadiLocal.test.js",
+      "sha256": "126e01ab807284416aa49f9dd2669a61eb0515613ad502874ad6c6c23435b8ab",
+      "category": "test_support",
+      "state": "untracked"
+    },
+    {
+      "path": "acadova-frontend/tests/aiGenerationFeedback.test.js",
+      "sha256": "25da9fe7d252127380feabc045d67b1d94b56679d4a4450a44e8972eaedd716d",
+      "category": "test_support",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-frontend/tests/aiStudyPractice.test.js",
+      "sha256": "7e290ee140d87791c2da05360b2f12cbf17aea8af6a35c742676c1744c151fd0",
+      "category": "test_support",
+      "state": "modified"
+    },
+    {
+      "path": "acadova-frontend/tests/assessmentGrowthRefresh.test.js",
+      "sha256": "9aef3278fb7152066d3f8dbeb0327a085f6df1dbdac9cccc3512cd292d9396ca",
+      "category": "test_support",
+      "state": "untracked"
+    },
+    {
+      "path": "acadova-frontend/tests/assessmentIntegrity.test.js",
+      "sha256": "ef65994bb5f219506042e4fc3eecdc0d92aaa352717fb18bcbf49e3f699f4c6f",
+      "category": "test_support",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-frontend/tests/assessmentLearning.test.js",
+      "sha256": "b1d516480b283d5c923f584876edb0f88a7a6e3d7b77edc5adfc773a9b500ffa",
+      "category": "test_support",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-frontend/tests/authForm.test.js",
+      "sha256": "b72f3534c5c3c1d359deebd70bc9eba82edeed72c6112711291e2366ea86ff84",
+      "category": "test_support",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-frontend/tests/batchBLearningSession.test.js",
+      "sha256": "9a61a8ab291fba25461810b206ed17376ca92cf419f676da1f4f156c9d14e1bb",
+      "category": "test_support",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-frontend/tests/batchBUxFollowup.test.js",
+      "sha256": "b89f5222f1eb795d41e287e31ae3c16e09335036025712e1efb29d9e16b6da21",
+      "category": "test_support",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-frontend/tests/browser-ai-study.jsx",
+      "sha256": "e7a2c76fcef2f5cc84d731e5478851523f24c0865f038a9ac74cb81ce7509d8c",
+      "category": "test_support",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-frontend/tests/browser-ai-ux.jsx",
+      "sha256": "b1e6822300611b1fc0f658e4ed5f5d436b5b47f2cb4e7dde28da766c4b69ff36",
+      "category": "test_support",
+      "state": "modified"
+    },
+    {
+      "path": "acadova-frontend/tests/browser-bundle-a.jsx",
+      "sha256": "ddb3359623a9386d83bf2f765b58c44aeb8245305b220fe8e54664014fe25f0e",
+      "category": "test_support",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-frontend/tests/browser-bundle-b.jsx",
+      "sha256": "f10169172fac60f5a5a708a3a0f171cb21b7d45b27331bb1b80bd31130ae51de",
+      "category": "test_support",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-frontend/tests/browser-bundle-c.jsx",
+      "sha256": "e6d4f173c0a2f7ac58531fc7e16948a9ae68574b1f627306a4e86144b5fecdc7",
+      "category": "test_support",
+      "state": "modified"
+    },
+    {
+      "path": "acadova-frontend/tests/browser-chat.jsx",
+      "sha256": "4cfa62152ab46d701f473c8e812b6a517b64aa52537910c787bdf984ce3e60bb",
+      "category": "test_support",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-frontend/tests/browser-completion.jsx",
+      "sha256": "07f642f1ffe5c2fdbdfa09c8dae93e05fb20376f55cfb8abb677d09e4a06be46",
+      "category": "test_support",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-frontend/tests/browser-correction.jsx",
+      "sha256": "94f42990035f4532c3f18df6ecb1c8f6ae12b3db4d74b8bf53d95994c69ff6b7",
+      "category": "test_support",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-frontend/tests/browser-demo.jsx",
+      "sha256": "7c5266163ad61e42a66414528221d63fc0ba17a6f9c619621ec945090c6c8cf3",
+      "category": "test_support",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-frontend/tests/browser-demo.mjs",
+      "sha256": "e9e055a3f2c2b251ef9146c05a1eb6449ffbcd1ea326f6746545b85b4f5b0689",
+      "category": "test_support",
+      "state": "modified"
+    },
+    {
+      "path": "acadova-frontend/tests/browser-enhancements.jsx",
+      "sha256": "ff1193b709c6776cd787deaada8bfd6c0fd1f09638355aceae28ce2b3e92d9f0",
+      "category": "test_support",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-frontend/tests/browser-hardening.jsx",
+      "sha256": "b76a6cfceaddf55eba7a73335db871822adfedded53c236934be62e77870625f",
+      "category": "test_support",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-frontend/tests/browser-integrity.jsx",
+      "sha256": "10248468423c55959bd6e4aed5ce9e792f2fc2c5cef8c9061f13eb7e10e239ac",
+      "category": "test_support",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-frontend/tests/browser-landing.jsx",
+      "sha256": "2cfb015e251d560a57149b86f543fc603acb89c612f23ca3ff47140d1c4b6fb5",
+      "category": "test_support",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-frontend/tests/browser-learning-progress-live.jsx",
+      "sha256": "f2c281f54191d01982514786adf53664fdb3f1637ba39ed26e30a3454b91ae9d",
+      "category": "test_support",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-frontend/tests/browser-learning.jsx",
+      "sha256": "07951764329b0448d8cc5fa1e5107ad021a3bff535d6440fcace726ae83f4a25",
+      "category": "test_support",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-frontend/tests/browser-master.jsx",
+      "sha256": "9071bfff05a9678789bfdf954f8f44a02a9806d4418d243a31ec35051eb982ca",
+      "category": "test_support",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-frontend/tests/browser-milestone.jsx",
+      "sha256": "b4e7877f1ea20d6c487ec273a91635e63c2db5d68714d1a1cd663b19a9a11ed8",
+      "category": "test_support",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-frontend/tests/browser-moderator-defense-live.jsx",
+      "sha256": "57a14ecef9cdbc22d22e8c027eeec415edf3109d33339ea03c05477b0fcf4780",
+      "category": "test_support",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-frontend/tests/browser-module-ai.jsx",
+      "sha256": "0c763466f613aa6b75a7ec3fa18a47095d286a1eb8856d30a6440cb865e2ae5a",
+      "category": "test_support",
+      "state": "untracked"
+    },
+    {
+      "path": "acadova-frontend/tests/browser-p71.jsx",
+      "sha256": "138d4eb7ca6483c9df92043587753f6509a82de231d7bc42a16ff7ed422a4e36",
+      "category": "test_support",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-frontend/tests/browser-p71b.jsx",
+      "sha256": "be7ff0dcb6847289abe48d70e5306884152d2af2c34384995cf37aaad4e9e3bf",
+      "category": "test_support",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-frontend/tests/browser-phaseb.jsx",
+      "sha256": "ef74ffafcbce685d8a2b1e473bd99bea659d749afc39101a47b060a3b52dcb2d",
+      "category": "test_support",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-frontend/tests/browser-phaseb1.jsx",
+      "sha256": "4ce13f9fc3b556abc3a1b5283dab07e2ca14bcc5b335b19c6f3de9fca08360e2",
+      "category": "test_support",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-frontend/tests/browser-phaseb3.jsx",
+      "sha256": "c9777cd2b25624ea6d32941439c88fd8d962ffa187d98efe986348a7d93c98a3",
+      "category": "test_support",
+      "state": "modified"
+    },
+    {
+      "path": "acadova-frontend/tests/browser-qa.jsx",
+      "sha256": "010625f96648ba685d6a97e7f8fc180076abe3dc9ed2adae7dd82aacd3303fb6",
+      "category": "test_support",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-frontend/tests/browser-quality.jsx",
+      "sha256": "e4529210e02a50d64f98fd18ad8869e8714a6f7887695b68fe888d710f20e2ab",
+      "category": "test_support",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-frontend/tests/browser-register.jsx",
+      "sha256": "3291de526ed68fa1282c6142480a584700f152fa015b1202c2a8224e535f3512",
+      "category": "test_support",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-frontend/tests/browser-release-c1.jsx",
+      "sha256": "234adfe79b379ef9f06fdc9d3ece3a9988a748c5a8314e125d71411a6a69a578",
+      "category": "test_support",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-frontend/tests/browser-release-c2-live.jsx",
+      "sha256": "fe682a2923c181a286f2483b5ba2e07a1f93f99d6adb00c682db4b35c8ae95f7",
+      "category": "test_support",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-frontend/tests/browser-release-c2.jsx",
+      "sha256": "6e18edaad54de1f91022bb1a495f67163ac817f93250dddd9b06e57863ae8285",
+      "category": "test_support",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-frontend/tests/browser-rollback.jsx",
+      "sha256": "d99fdc7e996818417769b4852a6cb305895d3a3fc61c3c88c3c16b9f02ff9987",
+      "category": "test_support",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-frontend/tests/browser-sidebar.jsx",
+      "sha256": "3b2b4a05cf40f87810d6009043ef0ccb819e1c059af765dffb7b2972f55bf377",
+      "category": "test_support",
+      "state": "untracked"
+    },
+    {
+      "path": "acadova-frontend/tests/browser-staff-alignment.jsx",
+      "sha256": "935acc3f2a0a80f8c71b5f347d4ae836f178828d7e5b47361b3e939424134bae",
+      "category": "test_support",
+      "state": "untracked"
+    },
+    {
+      "path": "acadova-frontend/tests/browser-staff-live.jsx",
+      "sha256": "0205839cdbd7018c32c4f58e3c84eb09c6460f156394f1bd95597b52fd3f3406",
+      "category": "test_support",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-frontend/tests/browser-staff-mfa.jsx",
+      "sha256": "20e2a235ac089ba777921820840297339c6268a6cfaa77ab617dd3eb393e5010",
+      "category": "test_support",
+      "state": "untracked"
+    },
+    {
+      "path": "acadova-frontend/tests/browser-student-exp.jsx",
+      "sha256": "64b4939c82c865f397c1ba5fec77fd1c57ee545d6e753c4fa72a62f03588ba0d",
+      "category": "test_support",
+      "state": "untracked"
+    },
+    {
+      "path": "acadova-frontend/tests/browser-study-consistency.jsx",
+      "sha256": "7035b0733e24905b2bf562a63850be5167fd6d9e842801a0d5ff33c8209ebe5f",
+      "category": "test_support",
+      "state": "untracked"
+    },
+    {
+      "path": "acadova-frontend/tests/browser-ui-corrections.jsx",
+      "sha256": "eb63a3c501b32bd0efeab4521625d688b222bf5f391bf6580f37e3192984cafe",
+      "category": "test_support",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-frontend/tests/browser-ui-redesign.jsx",
+      "sha256": "c1d729f888c079080a71215fb5fdb71620865475316dab908387dc5712355201",
+      "category": "test_support",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-frontend/tests/browser-unified-student.jsx",
+      "sha256": "7e47bc17fa0dff4f00714a2c9fd3f2303e7ce7fd66155c5209d4d4c69899daaa",
+      "category": "test_support",
+      "state": "untracked"
+    },
+    {
+      "path": "acadova-frontend/tests/collaboration.test.js",
+      "sha256": "506d1fa9e52401f859ceec2b0114c3e6cfbbe87f6be7e81dd7258278e3ac7d83",
+      "category": "test_support",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-frontend/tests/completionPresentation.test.js",
+      "sha256": "b21c1ee5e19c56a69eb99eec23ae39dc0fc271c68872ffdc76af384db97300d6",
+      "category": "test_support",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-frontend/tests/creditWallet.test.js",
+      "sha256": "5c18b3df5342a5e1aa6d4abf8f82534571751c3e6315abb825db151fc9ad6603",
+      "category": "test_support",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-frontend/tests/discoverySearch.test.js",
+      "sha256": "0d1799673a67d91493b876d467aeb21eb05279d40b65b6dd3d3c6cddb5c98d06",
+      "category": "test_support",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-frontend/tests/finalHardening.test.js",
+      "sha256": "aea04a92fb97c36612c27074f4fa9a16547233982192c066eae00e8040a51058",
+      "category": "test_support",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-frontend/tests/fixtures/mockUploadTransport.js",
+      "sha256": "e0a01391aeed2066ed19b75186543f92b556d0f4b911ae2adc6813e20377c3ef",
+      "category": "test_support",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-frontend/tests/headerGrowth.test.js",
+      "sha256": "4b2617ea2ebad048fa9205feb35abacb022086c038b682c909cea48334dc5918",
+      "category": "test_support",
+      "state": "untracked"
+    },
+    {
+      "path": "acadova-frontend/tests/institutionalEmail.test.js",
+      "sha256": "eab5d613f07f2dede631fd9b4e5d89790bfcb9a0dffbbe30b3a764fc908f2e3a",
+      "category": "test_support",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-frontend/tests/learningCurriculum.test.js",
+      "sha256": "183d3319596ae791755f6a194346c3dbcaeba09299971862a63ce6b31db00ac0",
+      "category": "test_support",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-frontend/tests/learningPresentation.test.js",
+      "sha256": "de766832462e68a0842ee4204dda82367822c598fe272d33c9168d23b665151a",
+      "category": "test_support",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-frontend/tests/localFreeDevelopment.test.js",
+      "sha256": "6c8a5e5a59ca6cd9cfd354cf7a9d5ed736f42839869f1701d7d4647e58eb4b9a",
+      "category": "test_support",
+      "state": "untracked"
+    },
+    {
+      "path": "acadova-frontend/tests/meetingProviders.test.js",
+      "sha256": "0a461dab5b29296c4b64f89d40ca838cbbe530d4b80833da3ee9a2dee4a4facc",
+      "category": "test_support",
+      "state": "untracked"
+    },
+    {
+      "path": "acadova-frontend/tests/messagingUx.test.js",
+      "sha256": "d2784133899901a11f227b27880b5e1b3df30645684781fd975ddaef66c46de6",
+      "category": "test_support",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-frontend/tests/nameValidation.test.js",
+      "sha256": "192dd1b59eb7ac0063762c5d642ad03c2062cbf63d0dda07d26e2f0dc8666d52",
+      "category": "test_support",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-frontend/tests/pageContext.test.js",
+      "sha256": "7d3beca653cdc78239ffef365564da3487dd955923f7abf3436f6c8e2e88f5b2",
+      "category": "test_support",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-frontend/tests/phaseBAnalytics.test.js",
+      "sha256": "2ff14afd5fcf14bbe0c6e148fb4cb7d6a54462dae5cc4adf712adc4b417d9c3c",
+      "category": "test_support",
+      "state": "modified"
+    },
+    {
+      "path": "acadova-frontend/tests/policyReview.test.js",
+      "sha256": "1781c9ab0e062664b46caed9c99f72edebd1cb02e0d090b7fc20305348d7982e",
+      "category": "test_support",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-frontend/tests/profileSetup.test.js",
+      "sha256": "d10bc8eee25e77d330a95ad9621b636ea18ff3bd6d5969b267557612df51c41a",
+      "category": "test_support",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-frontend/tests/refreshGate.test.js",
+      "sha256": "8f87653edf73541dee482158c2785aa0c8107c40eef972aa80910c1baa4d5420",
+      "category": "test_support",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-frontend/tests/scheduling.test.js",
+      "sha256": "8a64e38af29202103e122c33a730adbe7950a2ca4bd6d7784b45bb081e02497f",
+      "category": "test_support",
+      "state": "untracked"
+    },
+    {
+      "path": "acadova-frontend/tests/sessionNavigation.test.js",
+      "sha256": "db4d56942ef8a1f5c0c6de6a329102b053b1a0ded1920a4b49c6454e1d5d9fc8",
+      "category": "test_support",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-frontend/tests/sessionPresentation.test.js",
+      "sha256": "55779793425e9a7d6762ae3f1a4fbe6c204075532c7edcb22f2b1b4f46148db5",
+      "category": "test_support",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-frontend/tests/stabilization.test.js",
+      "sha256": "64ea1fd65e967afbfa0e45bf04036c7e675ff8c3138412094e92d10bcc2232ca",
+      "category": "test_support",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-frontend/tests/staffDashboard.test.js",
+      "sha256": "baf84481c2eafa3766f13c6f2a4a8dfb68d2a55d80776ed9d1fa1fe57d8ad5fe",
+      "category": "test_support",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-frontend/tests/strictStudyNavigation.test.js",
+      "sha256": "eaeff85096f80f18f74b297d976ccc09f4a7deaea076fb6ccf4412b141e22dee",
+      "category": "test_support",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-frontend/tests/studentEconomyPresentation.test.js",
+      "sha256": "75fe3038e6f1fdc8a00e4a40193d719840d267268a27f37223d8a17c6d04aa5e",
+      "category": "test_support",
+      "state": "untracked"
+    },
+    {
+      "path": "acadova-frontend/tests/studentExperience.test.js",
+      "sha256": "35dd351e3880b578dcbd59fa6e6a374a6206c94a771b9f349723458b85dcf399",
+      "category": "test_support",
+      "state": "untracked"
+    },
+    {
+      "path": "acadova-frontend/tests/studyNavigation.test.js",
+      "sha256": "698f94c5c4e99426011afaa10faceacc5457ef2ef955431feb17d09fb5460f04",
+      "category": "test_support",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-frontend/tests/studyQuiz.test.js",
+      "sha256": "0c3892a85ff834422919a1d102e4d2382b303881b374fa929dca4c24ba2597fc",
+      "category": "test_support",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-frontend/tests/uploadTransport.test.js",
+      "sha256": "b3479c7bba5e3d462c8bec045a7450f786f7b016313035f771da586c34c98dca",
+      "category": "test_support",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-frontend/tests/visibleRefresh.test.js",
+      "sha256": "87f4d31a424001f4ee8cd897939cd5298330195364d8a8d5ba7efb77d2e12426",
+      "category": "test_support",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-frontend/tests/weeklyAvailability.test.js",
+      "sha256": "8ad50e7391e4e55bb6bb341464f951f46dba92e1befdd89b7e48d2065b398f37",
+      "category": "test_support",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-frontend/tests/workspaceNavigation.test.js",
+      "sha256": "b4859d160d0c87d8eade26c31d35c997bd0fd6f9549368a9fb4c0635d649cc6a",
+      "category": "test_support",
+      "state": "modified"
+    },
+    {
+      "path": "acadova-frontend/vite.bundle-c-qa.config.js",
+      "sha256": "cb9910061c317df30cd86e06f4199a66d091c42f25d197d186d349dad8dee01d",
+      "category": "test_support",
+      "state": "modified"
+    },
+    {
+      "path": "acadova-frontend/vite.config.js",
+      "sha256": "cf1c3725d37554b0e9d8cbca2cb3263874329e881df61cc5bc17bde538ab4f88",
+      "category": "runtime",
+      "state": "inherited"
+    },
+    {
+      "path": "acadova-frontend/vite.local-free.config.js",
+      "sha256": "c4b144456090ff0ee719e32b05581d1727b628cf8fb77ea2830f6a13b861e33a",
+      "category": "test_support",
+      "state": "untracked"
+    },
+    {
+      "path": "package.json",
+      "sha256": "ccc68f0d9671f25fb13e9a2846b622c77453153f380ed25b38c30193af49f0ba",
+      "category": "runtime",
+      "state": "inherited"
+    }
+  ],
+  "sourceChangesSince618FileCheckpoint": {
+    "originalManifestSha256": "14f8d1db060c9f63187951ef2db27247385fdeca6b2fe927e37cdd4e244de66b",
+    "changes": [
+      {
+        "path": "acadova-backend/controllers/growthReviewController.js",
+        "previousSha256": "e10f75f1f9fd1e65d897294af0516c5a22f287f6379eb36c53987aff260dc54d",
+        "sha256": "94ea29fcad23fe92029d2ee1bfc68721c46c7ab0329bce7f148f7d2e73344cf5",
+        "reason": "Cross-source legacy payment guard and focused synthetic integration fixtures"
+      },
+      {
+        "path": "acadova-backend/tests/studentExperience.integration.test.js",
+        "previousSha256": "088fa0d1e6984de1f43a79830b0ecaedddbad1b95b66c4a937ab32e69cf0c3f4",
+        "sha256": "d856782b304879df753f8d3fdc7c5842423a4fb3c35d6d61d70c663fe8f435df",
+        "reason": "Cross-source legacy payment guard and focused synthetic integration fixtures"
+      }
+    ],
+    "additions": [
+      {
+        "path": "acadova-backend/services/legacyCreditReviewGuard.js",
+        "sha256": "437db22cbe1c8c23115487629f684a06501dadeb70c0271e0dc22ee4e2def8f0",
+        "category": "runtime",
+        "state": "untracked"
+      },
+      {
+        "path": "acadova-backend/tests/legacyCreditReviewGuard.test.js",
+        "sha256": "8a85948fc7806392a3b26adf49322ba279461e16ea813fd1115e344c0567e291",
+        "category": "test_support",
+        "state": "untracked"
+      }
+    ],
+    "scope": "Offline release-critical correction; no production queries, no gate activation; original manifest retained"
+  },
+  "operatorReviewFiles": [
+    {
+      "path": "docs/ACADOVA_LOCAL_EXP_FREE_DEVELOPMENT.md",
+      "sha256": "8efd99e32cb476c955b72b61bacb10a698696e54c0a07e84ab91fde0eb4c0c3a",
+      "purpose": "Operator/local-inspection review only; never a Render startup dependency"
+    },
+    {
+      "path": "docs/ACADOVA_STAFF_MFA_ACTIVATION_RUNBOOK.md",
+      "sha256": "97c84513b546452874873216798ea7f4cb95eb5217ae07f99625f95c3d72bbe7",
+      "purpose": "Operator/local-inspection review only; never a Render startup dependency"
+    },
+    {
+      "path": "docs/ACADOVA_STAFF_MFA_INTERACTIVE_QA.md",
+      "sha256": "8b190871406862a92a1e5ecf2b37b9fbe9c7a0d4fe12758603b93c8ca73a36ab",
+      "purpose": "Operator/local-inspection review only; never a Render startup dependency"
+    },
+    {
+      "path": "docs/ACADOVA_STUDENT_EXP_ACADI_CUTOVER_PLAN.md",
+      "sha256": "216cbd2742cc863fc6ed512efd89a7cb975afe7605815b8ffe93baafb0e94228",
+      "purpose": "Operator/local-inspection review only; never a Render startup dependency"
+    },
+    {
+      "path": "docs/ACADOVA_V2_FINAL_RELEASE_READINESS.md",
+      "sha256": "a6ccfa394413a708ddf56ddcd78c99f815bc0fa1e5e57d9a34021f2affc4c870",
+      "purpose": "Operator/local-inspection review only; never a Render startup dependency"
+    },
+    {
+      "path": "docs/local-free-development-evidence/Get-LocalPassword.ps1",
+      "sha256": "a86509629296ca973beb151e4da6b0a9008a587b9f903dc241e9d9979a94ece8",
+      "purpose": "Operator/local-inspection review only; never a Render startup dependency"
+    },
+    {
+      "path": "docs/local-free-development-evidence/Start-LocalFreeDevelopment.ps1",
+      "sha256": "a118fd5b1fa4ec82ce62b89524601ec6ca603bc286bc351f7a96de0672175dda",
+      "purpose": "Operator/local-inspection review only; never a Render startup dependency"
+    },
+    {
+      "path": "docs/release-candidate-20261020/DEFENSE.md",
+      "sha256": "494769b8ae2bd3e5ccdb234a83990acade25228d6052f9dff62d454e1ff709a1",
+      "purpose": "Operator/local-inspection review only; never a Render startup dependency"
+    },
+    {
+      "path": "docs/release-candidate-20261020/Invoke-AtlasReadOnly.ps1",
+      "sha256": "afc6e8d7f55ac451b6cc2eac7924275c20a0f623b02e4c5278961d8c0ba280e3",
+      "purpose": "Operator/local-inspection review only; never a Render startup dependency"
+    },
+    {
+      "path": "docs/release-candidate-20261020/MASTER_CUTOVER_DECISION_PACKET.md",
+      "sha256": "151f77803b468dc25c7988f7fa1aed660cbdcdded0e592341c7a14c2793fdca7",
+      "purpose": "Operator/local-inspection review only; never a Render startup dependency"
+    },
+    {
+      "path": "docs/release-candidate-20261020/MASTER_DEFENSE_WALKTHROUGH.md",
+      "sha256": "b0068b37989646923c3ad5abc82785f7b95651e2b171a929b410632340bcd7db",
+      "purpose": "Operator/local-inspection review only; never a Render startup dependency"
+    },
+    {
+      "path": "docs/release-candidate-20261020/MASTER_OPERATOR_EXECUTION_PLAN.md",
+      "sha256": "b332122c8f6f0815b4e281f3afe9bd707c5351aebcc6a9116ab0d5268212e8ac",
+      "purpose": "Operator/local-inspection review only; never a Render startup dependency"
+    },
+    {
+      "path": "docs/release-candidate-20261020/OPERATIONS.md",
+      "sha256": "0efb25bc0d1b35abebf2dc4d29515e409806a3d8e2fe74a42077310b827a80b6",
+      "purpose": "Operator/local-inspection review only; never a Render startup dependency"
+    },
+    {
+      "path": "docs/release-candidate-20261020/PRESERVATION_AND_STUDENT_RELEASE_APPROVAL.md",
+      "sha256": "24d96f72312a3546ead314bbb724f18611af23bb5b511551ed871d534d5eaca0",
+      "purpose": "Operator/local-inspection review only; never a Render startup dependency"
+    },
+    {
+      "path": "docs/release-candidate-20261020/Publish-ApprovedStudentRelease.ps1",
+      "sha256": "d3d2ea34196e434a45dd515630d9f3b1bed6007b2ebd3ff479e9cc96f219c3bd",
+      "purpose": "Operator/local-inspection review only; never a Render startup dependency"
+    },
+    {
+      "path": "docs/release-candidate-20261020/SCHEMA_INDEXES.md",
+      "sha256": "4d7be8c5e0025ac37e59fd79ec9a44e22ae21dcb32d75bfc6991626bc157337f",
+      "purpose": "Operator/local-inspection review only; never a Render startup dependency"
+    },
+    {
+      "path": "docs/release-candidate-20261020/atlas-network-diagnostic.cjs",
+      "sha256": "2312bb390e509776036598dbb73cb7fcd4aa34c9eb840a92dab0beebd528fbbb",
+      "purpose": "Operator/local-inspection review only; never a Render startup dependency"
+    },
+    {
+      "path": "docs/release-candidate-20261020/atlas-readonly.cjs",
+      "sha256": "37fa0fa3753f38bf94d052287e43c62efa82bd9d3347764cd06dc0f91b9981b1",
+      "purpose": "Operator/local-inspection review only; never a Render startup dependency"
+    },
+    {
+      "path": "docs/release-candidate-20261020/bounded-atlas-inventory.cjs",
+      "sha256": "51cdd6ced5c7375f4e285a96f636c727f2551bb11e1fbbe050e9e04ac9ed8e45",
+      "purpose": "Operator/local-inspection review only; never a Render startup dependency"
+    },
+    {
+      "path": "docs/release-candidate-20261020/bounded-atlas-inventory.test.cjs",
+      "sha256": "e71855ad1e3b8cf33ad7b09cb6cef304c29aa9a6fe08ad4724d21ea6d2554e04",
+      "purpose": "Operator/local-inspection review only; never a Render startup dependency"
+    },
+    {
+      "path": "docs/release-candidate-20261020/bounded-private-reconciliation.cjs",
+      "sha256": "b077c43a26aff547289508fb63dca236857e9997649a2374db68c3a115082ac9",
+      "purpose": "Operator/local-inspection review only; never a Render startup dependency"
+    },
+    {
+      "path": "docs/release-candidate-20261020/collection-name-policy.cjs",
+      "sha256": "563bd4eddbd6c51e6025170d90b0b75c5c896a100e70f2b9711aea141c9af13f",
+      "purpose": "Operator/local-inspection review only; never a Render startup dependency"
+    },
+    {
+      "path": "docs/release-candidate-20261020/collection-name-policy.test.cjs",
+      "sha256": "865c7f4a09cfa533c0c9aba5ca249a218e995062948ad147d6062805e6e42187",
+      "purpose": "Operator/local-inspection review only; never a Render startup dependency"
+    },
+    {
+      "path": "docs/release-candidate-20261020/cross-source-credit-evidence.cjs",
+      "sha256": "ba1ef2c2b0e6a6aa7bdd5f440a89afdf395696133555ba27d8202f735d9cee55",
+      "purpose": "Operator/local-inspection review only; never a Render startup dependency"
+    },
+    {
+      "path": "docs/release-candidate-20261020/cross-source-inventory-policy.json",
+      "sha256": "b13329b2a1e0d1f7d272a46d6a7d7c97c7cebf714f439ed8d1e525abbeeaffb1",
+      "purpose": "Operator/local-inspection review only; never a Render startup dependency"
+    },
+    {
+      "path": "docs/release-candidate-20261020/cross-source-inventory.test.cjs",
+      "sha256": "d21a7bb7e9acbc8a4e0a9cdef55571a3fa4ed4c7d84e96f3c5f79e4c649edec4",
+      "purpose": "Operator/local-inspection review only; never a Render startup dependency"
+    },
+    {
+      "path": "docs/release-candidate-20261020/inspection-only-exceptions.json",
+      "sha256": "892db79c98cc24e85f447e42a86e49ada205272a4a83e2de0937675925bd91cd",
+      "purpose": "Operator/local-inspection review only; never a Render startup dependency"
+    },
+    {
+      "path": "docs/release-candidate-20261020/inspection-permission-policy.cjs",
+      "sha256": "f04fa7ee30f5d5aa9cf7a60ca3a6a9a3e3c16c76df45044d0949a7b5eb2bb88b",
+      "purpose": "Operator/local-inspection review only; never a Render startup dependency"
+    },
+    {
+      "path": "docs/release-candidate-20261020/inspection-permission-policy.test.cjs",
+      "sha256": "35892f9aad7bc4053e2bb176baf2e2c35896221a26372f1ea6431bd0f2e7469b",
+      "purpose": "Operator/local-inspection review only; never a Render startup dependency"
+    },
+    {
+      "path": "docs/release-candidate-20261020/inspection-verifier-offline.test.cjs",
+      "sha256": "6597f11beabf32906511e4032a9b44494d03ca69bdf5c51fb4d62f348ea5fde9",
+      "purpose": "Operator/local-inspection review only; never a Render startup dependency"
+    },
+    {
+      "path": "docs/release-candidate-20261020/legacy-credit-classification.cjs",
+      "sha256": "8fc2d95f83e4740e3de218da6a8d87a7aa3cf34c3e24c563e367128571817b89",
+      "purpose": "Operator/local-inspection review only; never a Render startup dependency"
+    },
+    {
+      "path": "docs/release-candidate-20261020/legacy-credit-classification.test.cjs",
+      "sha256": "1848fc097096332f92c2ab31ef46d99738a86de6c64b96ca592c85a122bd34ab",
+      "purpose": "Operator/local-inspection review only; never a Render startup dependency"
+    },
+    {
+      "path": "docs/release-candidate-20261020/manifest.json",
+      "sha256": "14f8d1db060c9f63187951ef2db27247385fdeca6b2fe927e37cdd4e244de66b",
+      "purpose": "Operator/local-inspection review only; never a Render startup dependency"
+    },
+    {
+      "path": "docs/release-candidate-20261020/master-index-preparation.json",
+      "sha256": "060af2c3a2ccfdb152d5dd626948886646f6cf0ee6d388d580fb87eb1bc298fd",
+      "purpose": "Operator/local-inspection review only; never a Render startup dependency"
+    },
+    {
+      "path": "docs/release-candidate-20261020/master-release-variants.json",
+      "sha256": "c0db4a445f981fc9144ec177933773c15f865bbbbc6174a07bb7dd26d578a5ff",
+      "purpose": "Operator/local-inspection review only; never a Render startup dependency"
+    },
+    {
+      "path": "docs/release-candidate-20261020/prepare-master-release.py",
+      "sha256": "39d946c939be1b593fb75dd60771e2013cce83376bf653f035ad45b057545a1a",
+      "purpose": "Operator/local-inspection review only; never a Render startup dependency"
+    },
+    {
+      "path": "docs/release-candidate-20261020/preservation-consistency.cjs",
+      "sha256": "c77770ee227cf27ab4248eb8da556ab8e1d318517a3320c1280f868cd181987a",
+      "purpose": "Operator/local-inspection review only; never a Render startup dependency"
+    },
+    {
+      "path": "docs/release-candidate-20261020/preservation-consistency.test.cjs",
+      "sha256": "c9526b003c05154d52d46f455545038d785e4b3864f2649cfb812ef0b0485b63",
+      "purpose": "Operator/local-inspection review only; never a Render startup dependency"
+    },
+    {
+      "path": "docs/release-candidate-20261020/preservation-equality.cjs",
+      "sha256": "c7bbf25fe1621961246f4356e6c6f9545dd0641c719a157e3c8b04e3d318ee19",
+      "purpose": "Operator/local-inspection review only; never a Render startup dependency"
+    },
+    {
+      "path": "docs/release-candidate-20261020/preservation-equality.test.cjs",
+      "sha256": "ef8969fe9888f1ff2febab86c95bcd5946e201a9c58dae5660265c0b8f08a46a",
+      "purpose": "Operator/local-inspection review only; never a Render startup dependency"
+    },
+    {
+      "path": "docs/release-candidate-20261020/private-inventory-synthetic.test.cjs",
+      "sha256": "88db7e37a76b92d4583184837fe9ae890f65529f394a4025adb7a723274f829d",
+      "purpose": "Operator/local-inspection review only; never a Render startup dependency"
+    },
+    {
+      "path": "docs/release-candidate-20261020/proposed-staff-mfa-activation.patch",
+      "sha256": "a3927942f62fc6337eaff77fa81932606da52f6049b9c6c20c5f26586dcee475",
+      "purpose": "Operator/local-inspection review only; never a Render startup dependency"
+    },
+    {
+      "path": "docs/release-candidate-20261020/proposed-student-activation.patch",
+      "sha256": "aa30351a233f308988e60fe2989614399eee910c7eadd43cf86dfa9fc4cd9ffc",
+      "purpose": "Operator/local-inspection review only; never a Render startup dependency"
+    },
+    {
+      "path": "docs/release-candidate-20261020/release-source-amendments.json",
+      "sha256": "b09c8b2a6b2cc49470ae6a59fd27adac92d745a64bfc1d89104b8663376c0fa3",
+      "purpose": "Operator/local-inspection review only; never a Render startup dependency"
+    },
+    {
+      "path": "docs/release-candidate-20261020/render-operator-evidence.template.json",
+      "sha256": "5edc469b28599b411dff4e1f220a56f99ce6454ed0f7cb6a02b48db2dd29800b",
+      "purpose": "Operator/local-inspection review only; never a Render startup dependency"
+    },
+    {
+      "path": "docs/release-candidate-20261020/review-curated-release.py",
+      "sha256": "29eb181d97fb25560fffe9667158259131febcb416b7033d7749cd014e1424f8",
+      "purpose": "Operator/local-inspection review only; never a Render startup dependency"
+    },
+    {
+      "path": "docs/release-candidate-20261020/safe-connection-error.cjs",
+      "sha256": "5dd9374706ee39d3e419de8d3e44125e8443a316aaf7b6b95d178644a238ab9d",
+      "purpose": "Operator/local-inspection review only; never a Render startup dependency"
+    },
+    {
+      "path": "docs/release-candidate-20261020/safe-connection-error.test.cjs",
+      "sha256": "8d7226f0e911d5a8ff139177112ad283ee1df256eff6737f44c7c36732a3214e",
+      "purpose": "Operator/local-inspection review only; never a Render startup dependency"
+    },
+    {
+      "path": "docs/release-candidate-20261020/schema-contracts.json",
+      "sha256": "5f2aedbc8dd7a87ece73d4e36c9bae365c9b53f5f7169351b9593bb32ad47f63",
+      "purpose": "Operator/local-inspection review only; never a Render startup dependency"
+    },
+    {
+      "path": "docs/release-candidate-20261020/synthetic-recovery.cjs",
+      "sha256": "40bbbcab6f4ba60ac2edcbbae653efe83e62b95c2bcd9b71e53b92af198fd366",
+      "purpose": "Operator/local-inspection review only; never a Render startup dependency"
+    },
+    {
+      "path": "docs/release-candidate-20261020/synthetic-secondary.cjs",
+      "sha256": "3c88e728cd0d610fc3869c63db2272a4844609187428c47ce89116cbf141eed4",
+      "purpose": "Operator/local-inspection review only; never a Render startup dependency"
+    },
+    {
+      "path": "docs/staff-mfa-preview-evidence/Get-MfaPreviewCode.ps1",
+      "sha256": "ee7818074153af8cb9919e4f65b0f0da83de05fa15cb918636fbd0d25c014a3e",
+      "purpose": "Operator/local-inspection review only; never a Render startup dependency"
+    },
+    {
+      "path": "docs/staff-mfa-preview-evidence/Get-MfaPreviewPassword.ps1",
+      "sha256": "a86509629296ca973beb151e4da6b0a9008a587b9f903dc241e9d9979a94ece8",
+      "purpose": "Operator/local-inspection review only; never a Render startup dependency"
+    },
+    {
+      "path": "docs/staff-mfa-preview-evidence/Preview-StaffMfa.ps1",
+      "sha256": "5bc782fe05f5c7d54487193fbefb74fcc0ff31cf19eb4dd2ee47a8b2b4d1c79a",
+      "purpose": "Operator/local-inspection review only; never a Render startup dependency"
+    }
+  ],
+  "operatorSourceChangesSincePriorHelperCheckpoint": [
+    {
+      "path": "docs/release-candidate-20261020/Invoke-AtlasReadOnly.ps1",
+      "previousSha256": "9ca756d8c9759bae9ff3605fb734df9715e07ad8c89856ed28b4d25eda32561f",
+      "currentSha256": "afc6e8d7f55ac451b6cc2eac7924275c20a0f623b02e4c5278961d8c0ba280e3",
+      "kind": "authorized inspection-only update"
+    },
+    {
+      "path": "docs/release-candidate-20261020/atlas-readonly.cjs",
+      "previousSha256": "21817912da3948b6eb2c3839e0833dfb9075faf00981070556df94baf372bad8",
+      "currentSha256": "37fa0fa3753f38bf94d052287e43c62efa82bd9d3347764cd06dc0f91b9981b1",
+      "kind": "authorized inspection-only update"
+    },
+    {
+      "path": "docs/release-candidate-20261020/bounded-atlas-inventory.cjs",
+      "previousSha256": "e877674a1fdaead2e67cbfd222fb9e8c39e88a3b95cbcd0a5bc7d05b850b154f",
+      "currentSha256": "51cdd6ced5c7375f4e285a96f636c727f2551bb11e1fbbe050e9e04ac9ed8e45",
+      "kind": "authorized inspection-only update"
+    },
+    {
+      "path": "docs/release-candidate-20261020/bounded-private-reconciliation.cjs",
+      "previousSha256": "c98739741f2758f1649b3d0f9ce2cb8c5d96120ea8e0bea8806b0317f7158d81",
+      "currentSha256": "b077c43a26aff547289508fb63dca236857e9997649a2374db68c3a115082ac9",
+      "kind": "authorized inspection-only update"
+    }
+  ],
+  "variantsFile": "master-release-variants.json",
+  "noNewRuntimePackages": true,
+  "reusedDependencyCheck": {
+    "path": "docs/release-candidate-20261020/dependency-check.json",
+    "sha256": "d5801d7e1177e58aab1b92ff7d66d833fa909598e860ed0d5e04ce9b8e5208fe",
+    "scope": "Original static literal imports/assets plus final curated dependency check; amended/new sources explicitly recorded, not exhaustive dynamic/Linux proof"
+  },
+  "excluded": [
+    "actual .env/credential files",
+    "DPAPI/QA credentials",
+    "database dumps/backups/synthetic data directories",
+    "production aggregate/index JSON evidence and attempt markers (local retention only)",
+    "test logs/checkpoints/screenshots/generated galleries",
+    "node_modules/dist",
+    "unrelated dirty files and root README"
+  ],
+  "secretPatternCheck": {
+    "matches": [],
+    "scope": "Known key markers only; not exhaustive. Synthetic URI literals in test fixtures are intentionally fake and no secret file is opened."
+  },
+  "hashSelfExclusion": "This JSON and its readable derivative cannot hash themselves; their final hashes are recorded in master-final-checkpoint.json.",
+  "finalOfflineOperatorReconciliation": {
+    "timestampUtc": "2026-10-20T10:21:19.157267+00:00",
+    "previousManifestSha256": "4209e333825c68f441099474f4758e81b0accf680618bc9858fa7e66df02fe85",
+    "previousManifestSnapshot": "master-release-manifest-before-final-operator-reconciliation-4209e333.log",
+    "changes": [
+      {
+        "path": "docs/release-candidate-20261020/PRESERVATION_AND_STUDENT_RELEASE_APPROVAL.md",
+        "previousSha256": "126951d49ba24278d5b4f7dc688c5afc00c088e047d07c215438df8394c886c2",
+        "sha256": "24d96f72312a3546ead314bbb724f18611af23bb5b511551ed871d534d5eaca0"
+      },
+      {
+        "path": "docs/release-candidate-20261020/render-operator-evidence.template.json",
+        "previousSha256": "89bf3b19d7dc202baca7c43bad7b204b482b8db7d8692bd3281a0313a0090681",
+        "sha256": "5edc469b28599b411dff4e1f220a56f99ce6454ed0f7cb6a02b48db2dd29800b"
+      }
+    ],
+    "scope": "Accepted owner Auto-Deploy OFF / recovery-custody confirmations and passing local previews; no runtime change. Publication helper indentation-only drift preserved separately and restored byte-identically to reviewed hash."
+  }
+}

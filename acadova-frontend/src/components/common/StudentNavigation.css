@@ -1,0 +1,38 @@
+/* One existing sidebar preference; shell padding and rail share --sidebar-width. */
+.ac-sidebar-header { display:flex; align-items:center; justify-content:space-between; gap:8px; }
+.app-shell-student .student-sidebar .ac-sidebar-header { min-height:64px; }
+.app-shell-student .student-sidebar .ac-sidebar-header .staff-brand { padding:0; min-height:44px; min-width:0; flex:1; }
+.app-shell-student .student-sidebar .ac-sidebar-header .public-brand-logo { width:174px; max-width:100%; }
+.student-sidebar .ac-sidebar-header .ac-sidebar-toggle { position:relative; isolation:isolate; flex:0 0 44px; width:44px; height:44px; min-height:44px; margin:0; padding:0; border:0; border-radius:8px; background:transparent; color:var(--ink-700); }
+.student-sidebar .ac-sidebar-header .ac-sidebar-toggle::before { content:''; position:absolute; z-index:-1; inset:4px; border:1px solid var(--border-strong); border-radius:8px; background:var(--bg-surface); }
+.student-sidebar .ac-sidebar-header .ac-sidebar-toggle:hover::before { background:var(--acadova-tint); }
+.student-sidebar .ac-sidebar-header + .student-nav { margin-top:16px; }
+.student-rail-tooltip { position:fixed; transform:translateY(-50%); z-index:160; pointer-events:none; max-width:220px; padding:8px 12px; border:1px solid var(--border-strong); border-radius:8px; color:var(--ink-900); background:var(--bg-surface); box-shadow:0 5px 20px #173b7620; font:500 13px/1.5 var(--font-body); }
+.app-shell-student .student-sidebar.ac-organized-sidebar { overflow:hidden; }
+.student-sidebar.ac-organized-sidebar .ac-navigation-content { min-height:0; flex:1 1 auto; overflow-y:auto; overflow-x:hidden; }
+.acadi-sidebar-footer { flex:0 0 auto; margin-top:12px; padding:12px; border:1px solid #dbe7fb; border-radius:15px; background:linear-gradient(135deg,#f9fcff,#eaf3ff); }
+.acadi-sidebar-identity { display:flex; align-items:center; gap:8px; margin-bottom:10px; }
+.acadi-sidebar-identity .acadi-mark { width:48px; height:48px; flex-shrink:0; }
+.acadi-sidebar-identity strong { display:block; font-size:17px; color:var(--ink-900); }
+.acadi-sidebar-identity small { display:block; font-size:11px; line-height:1.6; color:var(--ink-600); }
+.acadi-sidebar-launch { display:flex; align-items:center; justify-content:center; gap:8px; min-height:44px; width:100%; border:1px solid #6d96ef; border-radius:10px; background:#ffffffb8; color:#174dbb; font:600 13px var(--font-body); cursor:pointer; }
+.acadi-sidebar-launch:hover { background:#e1ecff; }
+.acadi-sidebar-launch .acadi-mark { width:26px; height:26px; }
+.acadi-sidebar-launch:focus-visible { outline:3px solid #246bfd; outline-offset:3px; }
+.acadi-mobile-launch { margin-top:16px; width:100%; }
+@media (min-width:1025px) {
+  .app-shell-student { transition:padding-left 160ms ease; }
+  .app-shell-student .student-sidebar { width:var(--sidebar-width); transition:width 160ms ease; }
+  .app-shell-student .student-sidebar.is-collapsed { padding-inline:12px; }
+  .app-shell-student .student-sidebar.is-collapsed .ac-sidebar-header { justify-content:center; flex-direction:column; }
+  .app-shell-student .student-sidebar.is-collapsed .ac-sidebar-header .staff-brand { display:flex; justify-content:center; flex:none; }
+  .app-shell-student .student-sidebar.is-collapsed .staff-nav-link { position:relative; width:100%; min-height:48px; padding:10px 0; justify-content:center; }
+  .app-shell-student .student-sidebar.is-collapsed .staff-nav-link > svg { flex-shrink:0; }
+  .student-sidebar.is-collapsed .acadi-sidebar-footer { padding:0; border:0; background:none; }
+  .student-sidebar.is-collapsed .acadi-sidebar-identity, .student-sidebar.is-collapsed .acadi-sidebar-launch > span { display:none; }
+  .student-sidebar.is-collapsed .acadi-sidebar-launch { height:48px; border-color:#dbe7fb; }
+  .student-sidebar.is-collapsed .acadi-sidebar-launch .acadi-mark { width:36px; height:36px; }
+}
+@media (prefers-reduced-motion:reduce) {
+  .app-shell-student, .app-shell-student .student-sidebar { transition:none; }
+}

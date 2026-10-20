@@ -29,7 +29,7 @@ function withinTutoringCaps({ earnedToday, earnedThisWeek, pairSubjectAwardsToda
     && pairSubjectAwardsToday === 0;
 }
 function requireExpActivation() {
-  if (!EXP_ACTIVE) throw Object.assign(new Error('EXP awards are not activated. Existing credits remain operational.'), { status: 503, code: 'EXP_NOT_ACTIVE' });
+  if (!EXP_ACTIVE && !require('../config/studentExperience').active()) throw Object.assign(new Error('EXP awards are not activated. Existing credits remain operational.'), { status: 503, code: 'EXP_NOT_ACTIVE' });
 }
 function correctionEntry(original, actor, reason) {
   // Pure preparation for a future transaction writer. A correction appends the
@@ -44,7 +44,7 @@ function correctionEntry(original, actor, reason) {
     reversalOf: original._id, actor: actor._id, delta: -original.delta, reason: note, policyVersion };
 }
 function growthStatus() {
-  return { active: EXP_ACTIVE, policyVersion, totalExp: null, events: [],
+  return { ...require('../config/studentExperience').capabilities(), active: EXP_ACTIVE || require('../config/studentExperience').active(), policyVersion, totalExp: null, events: [],
     message: 'EXP recognition is not active yet. Historical credits are not converted to EXP.',
     cutover: evaluateCutover(), eligibleEvents: ['First valid official assessment completion', 'Verified peer-tutoring contribution'] };
 }

@@ -1,3 +1,4 @@
+import LearningHeader from '../components/learning/LearningHeader';
 import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { BookOpen, CheckCircle2 } from 'lucide-react';
@@ -21,7 +22,7 @@ export const AssessmentsPage = () => {
   const originTopic = searchParams.get('topic');
   const originModule = searchParams.get('module');
   const originLesson = searchParams.get('lesson');
-  const { refreshUser } = useAuth();
+  const { refreshUser, freeLearning } = useAuth();
   const [list, setList] = useState([]);
   const [topics, setTopics] = useState([]);
   const [listLoading, setListLoading] = useState(true);
@@ -156,17 +157,13 @@ export const AssessmentsPage = () => {
   </div>;
 
   return <div className="assessments-page">
-    <header className="learning-page-header">
-      <nav className="learning-breadcrumbs" aria-label="Learning breadcrumb"><ol>
+    <LearningHeader headingRef={heading} title={openId ? selected?.title || 'Assessment' : 'Assessments'} breadcrumb={<nav className="learning-breadcrumbs" aria-label="Learning breadcrumb"><ol>
         <li><Link className="text-link" to="/learning">Learning</Link></li>
         <li>{openId ? <Link className="text-link" to="/assessments">Assessments</Link> : <span aria-current="page">Assessments</span>}</li>
         {openId && <li aria-current="page">{selected?.title || 'Assessment'}</li>}
-      </ol></nav>
-      <h1 ref={heading} tabIndex={-1}>{openId ? selected?.title || 'Assessment' : 'Assessments'}</h1>
-      <p>{openId ? 'Review the related material, or answer the questions when you are ready.' : 'Check your understanding. Review a topic first or take an assessment directly.'}</p>
-    </header>
-    <LearningNavigation disabled={working} />
-    <p className="assessment-hub-note">Assessments are free. Earn credits once per assessment, on your first pass. Your submitted result confirms the award.</p>
+      </ol></nav>}>{openId ? 'Review related material, or answer when you are ready.' : 'Check your understanding. Review a topic first or take an assessment directly.'}</LearningHeader>
+    {!openId && <LearningNavigation disabled={working} />}
+    <p className="assessment-hub-note">{freeLearning?'Assessments are free. A first qualifying official pass may earn EXP; only server-confirmed awards count.':'Assessments are free. Earn credits once per assessment, on your first pass. Your submitted result confirms the award.'}</p>
     {!openId ? <>
       <Alert type="warning" message={topicNotice} />
       {listLoading ? <LoadingSpinner text="Loading assessments..." /> : listError ? <>
@@ -182,15 +179,15 @@ export const AssessmentsPage = () => {
       {materialActions}{reviewNotice && <p className="form-hint">{reviewNotice}</p>}
       {result ? <div className="assessment-result" role="status">
         <h3>{result.passed ? <CheckCircle2 size={24} aria-hidden="true" /> : <BookOpen size={24} aria-hidden="true" />}{result.passed ? 'Passed' : 'Not passed yet'}</h3><p>Score: {result.score}%</p>
-        <p>{result.rewardIssued ? `+${result.creditsAwarded} credits earned` : 'No credits awarded for this attempt.'}</p>
-        {result.rewardEarned && !result.rewardIssued && <p>Reward already earned. You can keep practicing for free.</p>}
-        {result.mode === 'practice' && <p>Free practice: no credits and no reward eligibility consumed.</p>}
+        <p>{freeLearning?(result.exp?.status==='finalized'?`+${result.exp.amount} EXP confirmed`:result.exp?.status==='processing'?'EXP eligibility is processing. Check My Growth.':'No EXP confirmed for this attempt.'):(result.rewardIssued ? `+${result.creditsAwarded} credits earned` : 'No credits awarded for this attempt.')}</p>
+        {result.rewardEarned && !result.rewardIssued && (!freeLearning||result.mode==='practice') && <p>{freeLearning?'This milestone was already passed. Further attempts are free practice.':'Reward already earned. You can keep practicing for free.'}</p>}
+        {result.mode === 'practice' && <p>{freeLearning?'Free practice does not award EXP.':'Free practice: no credits and no reward eligibility consumed.'}</p>}
         {result.rewardEligible && <p>You remain eligible for the one-time reward. Failed official attempts may retry without a waiting period.</p>}
-        <div className="assessment-card-actions"><Link to="/credits" className="btn btn-secondary btn-sm">View credit wallet</Link>
+        <div className="assessment-card-actions"><Link to={freeLearning?'/growth':'/credits'} className="btn btn-secondary btn-sm">{freeLearning?'My Growth':'View credit wallet'}</Link>
           <button type="button" className="btn btn-secondary btn-sm" onClick={() => { setResult(null); setMode(selected.rewardEarned ? 'practice' : 'official'); setAnswerError(''); setAnswers(Array(selected.questions.length).fill(null)); }}>Try again</button></div>
       </div> : <form onSubmit={submit} aria-busy={working}>
         <fieldset className="assessment-mode" disabled={working}><legend>Attempt mode</legend>
-          {selected.rewardEarned ? <p>Reward already earned: all further attempts are free practice.</p> : <><label className="assessment-option"><input type="radio" name="attempt-mode" checked={mode === 'official'} onChange={() => setMode('official')} />Official attempt eligible for the one-time reward</label><label className="assessment-option"><input type="radio" name="attempt-mode" checked={mode === 'practice'} onChange={() => setMode('practice')} />Free practice (zero credits; eligibility retained)</label></>}
+          {selected.rewardEarned ? <p>Reward already earned: all further attempts are free practice.</p> : <><label className="assessment-option"><input type="radio" name="attempt-mode" checked={mode === 'official'} onChange={() => setMode('official')} />Official attempt eligible for the one-time reward</label><label className="assessment-option"><input type="radio" name="attempt-mode" checked={mode === 'practice'} onChange={() => setMode('practice')} />{freeLearning?'Free practice (no EXP)':'Free practice (zero credits; eligibility retained)'}</label></>}
           <p className="form-hint">The server checks eligibility. Failed official attempts may retry; passing the same assessment can reward you only once.</p>
         </fieldset>
         <p>Choose one answer for every question. Your answers are graded after you submit.</p>

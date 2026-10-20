@@ -1,3 +1,4 @@
+import LearningHeader from '../components/learning/LearningHeader';
 import ExternalResourceLink from '../components/common/ExternalResourceLink';
 import ResourceRow from '../components/learning/ResourceRow';
 import { learningAccessLabel, resourceSource } from '../utils/learningPresentation';
@@ -172,17 +173,12 @@ export const LearningPage = () => {
       <ExternalResourceLink href={item.externalUrl} primary /></div>;
 
   return <div className={`learning-page learning-redesign${content && !content.resourceType ? ' is-module-workspace' : ''}`}>
-    <header className="learning-page-header">
-      {section === 'library' && topic && <nav className="learning-breadcrumbs" aria-label="Learning breadcrumb"><ol>
+    <LearningHeader onNavigate={async(event,to)=>{if(!dirty||event.ctrlKey||event.metaKey||event.shiftKey||event.altKey)return;event.preventDefault();if(await confirm('Discard this unsaved resource draft?',{title:'Leave resource draft?',label:'Discard draft',cancelLabel:'Keep editing'}))navigate(to);}} title={section === 'contribute' ? 'Share a resource' : content?.title || (topic ? learningTopicTitle(topic) : 'Learning')} breadcrumb={section === 'library' && topic ? <nav className="learning-breadcrumbs" aria-label="Learning breadcrumb"><ol>
         <li><button type="button" className="text-action" onClick={() => navigateLearning({})}>Learning</button></li>
         {content && <li><button type="button" className="text-action" onClick={() => openTopic(topic.id)}>{learningTopicTitle(topic)}</button></li>}
         <li aria-current="page">{content?.title || learningTopicTitle(topic)}</li>
-      </ol></nav>}
-      <span className="learning-eyebrow"><BookOpen size={16} aria-hidden="true" />{section === 'contribute' ? 'Community contributions' : content ? content.resourceType ? 'Learning resource' : 'Self-paced module' : topic ? 'Learning topic' : 'Self-paced learning'}</span>
-      <h1>{section === 'contribute' ? 'Share a resource' : content?.title || (topic ? learningTopicTitle(topic) : 'Learning')}</h1>
-      <p>{section === 'contribute' ? 'Submit teaching material for staff review before publication.' : content ? content.description : topic ? topic.description : 'Browse approved topics, study free resources, and take assessments.'}</p>
+      </ol></nav> : undefined}>{section === 'contribute' ? 'Submit teaching material for staff review before publication.' : content ? content.description : topic ? topic.description : 'Browse approved topics, study free resources, and take assessments.'}</LearningHeader>
       {section === 'library' && topic && !content && <p className="learning-item-meta">{topic.modules.length} {topic.modules.length === 1 ? 'module' : 'modules'} · {topic.resources.length} {topic.resources.length === 1 ? 'resource' : 'resources'}{topic.assessments.length > 0 && <a className="text-link" href="#topic-assessments">Check your learning ({topic.assessments.length})</a>}</p>}
-    </header>
     <Alert type="danger" message={error} />
     {progressError && <div role="alert"><p>{progressError}</p><button className="btn btn-secondary btn-sm" type="button" onClick={() => setProgressRefresh((value) => value + 1)}>Retry progress</button></div>}
     <LearningNavigation disabled={working} onNavigate={async (event, to) => {
@@ -273,8 +269,8 @@ export const LearningPage = () => {
         </>}
       </>}
       </section>
-      <section id="learning-panel-contribute" aria-labelledby="learning-tab-contribute" hidden={section !== 'contribute'} className="learning-contribution">{topics.length ? <form className="card" data-unsaved={dirty} onSubmit={submit}><h2>Share a resource</h2>
-        <p>Share a text lesson or an HTTPS resource with other Students. A Moderator reviews your submission before it appears in Learning.</p>
+      <section id="learning-panel-contribute" aria-labelledby="learning-tab-contribute" hidden={section !== 'contribute'} className="learning-contribution">{topics.length ? <form className="card" data-unsaved={dirty} onSubmit={submit}><h2>Resource details</h2>
+
         <ol className="contribution-steps" aria-label="Resource review process"><li>Submit your resource</li><li>Moderator reviews it</li><li>Approved material is published</li></ol>
         {submissionSent && <p className="alert alert-success" role="status">Your resource is awaiting review. You'll receive an in-app notification when it is published or returned with feedback.</p>}
         <Alert type="danger" message={submissionError} />

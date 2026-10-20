@@ -110,5 +110,10 @@ async function sendProposalEmail({ recipient, name, title, message, reviewPath, 
   const html = `<h1>Acadova</h1><h2>${escapeHtml(title)}</h2><p>Hi ${escapeHtml(name)},</p><p>${escapeHtml(message)}</p><p><a href="${escapeHtml(url)}">Review this proposal</a></p><p>The confirmed schedule stays in place unless an alternative is accepted. Sign in to review the current state.</p>`;
   await sendEmail({ recipient, name, subject: `Acadova: ${title}`, plain, html, deliveryKey });
 }
-module.exports = { sendVerificationEmail, sendPasswordResetEmail, verificationUrlFor, passwordResetUrlFor,
+async function sendStaffMfaEmail({ recipient, code }) {
+  const plain = `Acadova\n\nYour staff verification code is ${code}.\n\nThis code expires in five minutes and is for Admin/Moderator sign-in only. Do not share it. If you did not attempt to sign in, ignore this message and report unexpected attempts to your Acadova administrator.`;
+  const html = `<div style="font-family:Arial,sans-serif;color:#0f2d8b;max-width:480px"><h1>Acadova</h1><h2>Verify your identity</h2><p>Your Admin/Moderator sign-in code:</p><p style="font-size:32px;letter-spacing:6px;font-weight:bold">${code}</p><p>Expires in five minutes. Do not share this code.</p><p>If you did not attempt to sign in, ignore this email and report unexpected attempts to your Acadova administrator.</p></div>`;
+  await sendEmail({ recipient, subject: 'Your Acadova Staff Verification Code', plain, html });
+}
+module.exports = { sendStaffMfaEmail, sendVerificationEmail, sendPasswordResetEmail, verificationUrlFor, passwordResetUrlFor,
   sendProposalEmail, proposalUrlFor };

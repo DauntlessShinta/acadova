@@ -58,7 +58,7 @@ export default function SessionCompletionPanel({ session, user, disabled, onEvid
     {entityId(user) === entityId(session.tutor) && session.completionReview?.canTutorRequestReview && <form onSubmit={request}>
       <label className="form-label" htmlFor="completion-review-reason">Why is completion review needed?</label>
       <textarea id="completion-review-reason" className="form-textarea" value={reason} onChange={(event) => setReason(event.target.value)} minLength={10} maxLength={500} disabled={disabled} aria-describedby="completion-review-help" rows={3} />
-      <p id="completion-review-help" className="form-hint">Submit your evidence first. This creates one review case; it does not dispute the session or approve credits.</p>
+      <p id="completion-review-help" className="form-hint">Submit your evidence first. This creates one review case; it does not dispute the session or approve a reward.</p>
       <button type="submit" className="btn btn-secondary btn-sm" disabled={disabled || !mine.length}>Request completion review</button>
     </form>}
   </div>;

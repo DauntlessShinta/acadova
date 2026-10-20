@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { scoreAiPractice, cardPosition } from '../src/utils/aiStudyPractice.js';
+import { scoreAiPractice, cardPosition, shuffledCardOrder, matchingModuleMaterial } from '../src/utils/aiStudyPractice.js';
 import { safeStudentReturnPath } from '../src/utils/studyNavigation.js';
 import { getPageContext } from '../src/config/roleNavigation.js';
 test('AI practice scoring has no reward and requires valid answers', () => {
@@ -9,6 +9,22 @@ test('AI practice scoring has no reward and requires valid answers', () => {
   assert.equal(scoreAiPractice(questions, [0, 1]).score, 50); assert.equal(scoreAiPractice(questions, [0, null]), null); assert.equal(scoreAiPractice([], []), null);
 });
 test('Flashcard navigation stays within the set', () => { assert.equal(cardPosition(0, -1, 3), 0); assert.equal(cardPosition(0, 1, 3), 1); assert.equal(cardPosition(2, 1, 3), 2); });
+
+test('shuffle keeps every source card exactly once without rewriting content', () => {
+  assert.deepEqual(shuffledCardOrder(0), []);
+  assert.deepEqual(shuffledCardOrder(1), [0]);
+  const order = shuffledCardOrder(8, () => .25);
+  assert.deepEqual([...order].sort((a, b) => a - b), [0, 1, 2, 3, 4, 5, 6, 7]);
+  assert.notDeepEqual(order, [0, 1, 2, 3, 4, 5, 6, 7]);
+});
+
+test('reuse requires compatible backend-returned format and count, including archived material', () => {
+  const source = { matches: [{ id: 'saved', type: 'both', count: 5, questionCount: 5, archivedAt: '2026-10-18' }] };
+  assert.equal(matchingModuleMaterial(source, 'both', 5).id, 'saved');
+  assert.equal(matchingModuleMaterial(source, 'quiz', 5), null);
+  assert.equal(matchingModuleMaterial(source, 'both', 4), null);
+  assert.equal(matchingModuleMaterial(null, 'both', 5), null);
+});
 test('AI study links have Learning context and safe login return destinations', () => {
   const id = '507f1f77bcf86cd799439011';
   for (const value of ['/learning/ai-study', '/learning/ai-study?view=mine', '/learning/ai-study/' + id, '/learning/ai-study/' + id + '?rename=1']) assert.equal(safeStudentReturnPath(value), value);

@@ -1,8 +1,10 @@
+import { wallTimeToInstant } from './scheduling.js';
 const entityId = (entity) => String(entity?._id || entity?.id || entity || '');
 
 // datetime-local is a wall-clock time in the browser's timezone. Send an
 // explicit UTC instant so the API never interprets it in the server's timezone.
 export const toSessionInstant = (value) => {
+  if (typeof value === 'string' && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(?::\d{2})?$/.test(value)) return wallTimeToInstant(value);
   const date = value ? new Date(value) : null;
   if (!date || Number.isNaN(date.getTime())) throw new Error('Enter a valid session date and time.');
   // Reject nonexistent local clock times instead of silently shifting a DST gap.
@@ -96,7 +98,7 @@ export const getSessionTimeline = (session) => {
   const bothCheckedIn = Boolean(session?.learnerCheckedInAt && session?.tutorCheckedInAt);
   const bothConfirmed = Boolean(session?.learnerConfirmedAt && session?.tutorConfirmedAt)
     || Boolean(session?.confirmedAt && !session?.awaitingValidationAt);
-  const completed = Boolean(session?.creditsSettledAt
+  const completed = Boolean((session?.economyVersion==='free-v1'?session.validationSettledAt:session?.creditsSettledAt)
     && (status === 'completed' || session?.resolution === 'confirm_session'));
   const stopped = ['cancelled', 'declined', 'rejected'].includes(status)
     || (status === 'resolved' && session.resolution === 'cancel_session');
@@ -117,8 +119,8 @@ export const getSessionTimeline = (session) => {
 export const getSessionNextStep = (session, isTeaching, counterpartName = 'your peer') => {
   if (session?.status === 'resolved' || session?.canonicalStatus === 'resolved') {
     return session.resolution === 'confirm_session'
-      ? 'A Moderator confirmed this session and credits were settled.'
-      : 'A Moderator did not validate this session. No credits were transferred.';
+      ? (session.economyVersion==='free-v1'?'A Moderator confirmed this session. This does not qualify for EXP.':'A Moderator confirmed this session and credits were settled.')
+      : (session.economyVersion==='free-v1'?'A Moderator did not validate this session. No EXP is awarded.':'A Moderator did not validate this session. No credits were transferred.');
   }
   if (session?.canonicalStatus != null) {
     const nextSteps = {
@@ -177,4 +179,15 @@ export const getSessionNextStep = (session, isTeaching, counterpartName = 'your 
   if (session?.status === 'no_show') return 'This session was recorded as a no-show.';
   if (session?.status === 'disputed') return 'This session is under review.';
   return 'This session state is not yet available. Refresh for the latest details.';
+};
+
+// Display the server's economy/settlement evidence without reinterpreting old
+// prices as new free sessions or treating every historical record as unpaid.
+export const getSessionEconomyLabel = (session, freeLearning = false) => {
+  if (session.economyVersion === 'free-v1') return 'Free peer tutoring';
+  if (!freeLearning) return `${session.creditAmount} credit${session.creditAmount === 1 ? '' : 's'}`;
+  if (session.settlementState === 'settled') return 'Historical paid session';
+  if (session.settlementState === 'resolved_no_transfer') return 'Historical obligation resolved';
+  if (session.settlementState === 'not_applicable') return 'Historical session';
+  return 'Historical obligation (frozen)';
 };

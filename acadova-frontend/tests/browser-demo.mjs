@@ -9,7 +9,7 @@ import react from '@vitejs/plugin-react';
 
 const browser = process.argv[2] || 'C:/Program Files/Google/Chrome/Application/chrome.exe';
 const fixture = process.argv[3] || 'browser-demo.jsx';
-if (!/^browser-(demo|p71|p71b|correction|hardening|quality|rollback|learning|landing|qa|register|integrity|completion|enhancements|milestone|phaseb|phaseb1|phaseb3|staff-live|ui-corrections|release-c1|release-c2|release-c2-live|moderator-defense-live|learning-progress-live|ai-study|ai-ux|bundle-a|bundle-b|bundle-c|ui-redesign|chat|master)\.jsx$/.test(fixture)) throw new Error('Unknown browser fixture');
+if (!/^browser-(demo|p71|p71b|correction|hardening|quality|rollback|learning|landing|qa|register|integrity|completion|enhancements|milestone|phaseb|phaseb1|phaseb3|staff-live|ui-corrections|release-c1|release-c2|release-c2-live|moderator-defense-live|learning-progress-live|ai-study|ai-ux|module-ai|sidebar|study-consistency|unified-student|student-exp|staff-mfa|staff-alignment|bundle-a|bundle-b|bundle-c|ui-redesign|chat|master)\.jsx$/.test(fixture)) throw new Error('Unknown browser fixture');
 const live = ['browser-staff-live.jsx', 'browser-release-c2-live.jsx', 'browser-moderator-defense-live.jsx', 'browser-learning-progress-live.jsx'].includes(fixture) ? JSON.parse(process.env.ACADOVA_LOCAL_BROWSER_CONFIG || '{}') : null;
 if (live) {
   const endpoint = new URL(live.url);
@@ -50,7 +50,7 @@ const pause = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 try {
 server = await createServer({
   root: fixtureRoot,
-  ...(live ? { envDir: profile, define: { 'import.meta.env.VITE_API_URL': "''", 'import.meta.env.VITE_ONESIGNAL_APP_ID': "''", 'import.meta.env.VITE_GOOGLE_CLIENT_ID': "''" } } : {}),
+  ...(live || ['browser-staff-mfa.jsx', 'browser-staff-alignment.jsx', 'browser-phaseb3.jsx', 'browser-module-ai.jsx', 'browser-sidebar.jsx', 'browser-study-consistency.jsx', 'browser-unified-student.jsx', 'browser-student-exp.jsx', 'browser-bundle-c.jsx'].includes(fixture) ? { envDir: profile, define: { 'import.meta.env.VITE_API_URL': "''", 'import.meta.env.VITE_ONESIGNAL_APP_ID': "''", 'import.meta.env.VITE_GOOGLE_CLIENT_ID': "''" } } : {}),
   ...(visualBaseline ? { configFile: false } : {}),
   logLevel: 'error',
   // Concurrent viewport runs must not overwrite each other's optimized modules.
@@ -134,15 +134,23 @@ server = await createServer({
   console.log('Browser media:', JSON.stringify(media));
   console.log('CSS viewport:', JSON.stringify((await evaluate(`({ width: innerWidth, height: innerHeight, deviceScaleFactor: devicePixelRatio, visualScale: visualViewport.scale, narrowStaff: matchMedia('(max-width: 1024px)').matches, shortStaff: matchMedia('(max-height: 700px)').matches })`)).result?.result?.value));
   await command('Page.navigate', { url: `http://127.0.0.1:${address.port}/__demo-test?capture=${encodeURIComponent(process.argv[7] || '/dashboard')}` });
-  if (process.env.ACADOVA_SCREENSHOT_DIR) await command('Page.addScriptToEvaluateOnNewDocument', { source: 'window.__acadovaCaptureEnabled = true;' });
-  await evaluate(`window.__acadovaCaptureEnabled = ${Boolean(process.env.ACADOVA_SCREENSHOT_DIR)}`);
+  if (process.env.ACADOVA_SCREENSHOT_DIR) await command('Page.addScriptToEvaluateOnNewDocument', { source: 'window.__acadovaCaptureEnabled = true;window.__acadovaExpectedViewport='+JSON.stringify({width:Math.floor(width/viewportScale),height:Math.floor(height/viewportScale)})+';' });
+  await evaluate(`window.__acadovaCaptureEnabled = ${Boolean(process.env.ACADOVA_SCREENSHOT_DIR)};window.__acadovaExpectedViewport=${JSON.stringify({width:Math.floor(width/viewportScale),height:Math.floor(height/viewportScale)})}`);
   let result;
   for (let i = 0; i < 1200; i += 1) {
     const capture = (await evaluate('window.__acadovaCapture')).result?.result?.value;
     if (capture && process.env.ACADOVA_SCREENSHOT_DIR && /^[a-z0-9-]+$/.test(capture)) {
-      const screenshot = await command('Page.captureScreenshot', { format: 'png', captureBeyondViewport: false });
-      await writeFile(path.join(process.env.ACADOVA_SCREENSHOT_DIR, `${capture}-${width}.png`), Buffer.from(screenshot.result.data, 'base64'));
       const details = (await evaluate('window.__acadovaCaptureDetails')).result?.result?.value;
+      let clip;
+      if (details?.name === capture && details.fullPage) {
+        if (width < 1024) throw new Error('Full-page evidence is desktop-only and bounded.');
+        const layout = await command('Page.getLayoutMetrics');
+        const contentHeight = Math.ceil(layout.result.cssContentSize.height);
+        if (contentHeight > 2600) throw new Error('Full-page evidence exceeds the bounded 2600px limit.');
+        clip = { x: 0, y: 0, width, height: contentHeight, scale: 1 };
+      }
+      const screenshot = await command('Page.captureScreenshot', { format: 'png', captureBeyondViewport: Boolean(clip), ...(clip ? { clip } : {}) });
+      await writeFile(path.join(process.env.ACADOVA_SCREENSHOT_DIR, `${capture}-${width}.png`), Buffer.from(screenshot.result.data, 'base64'));
       if (details?.name === capture) await writeFile(path.join(process.env.ACADOVA_SCREENSHOT_DIR, `${capture}-${width}.json`), JSON.stringify(details, null, 2));
       await evaluate('window.__acadovaCapture = null');
     }

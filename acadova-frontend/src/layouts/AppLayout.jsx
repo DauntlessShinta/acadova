@@ -3,6 +3,8 @@ import { Outlet, Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import StudentNavigation from '../components/common/StudentNavigation';
 import '../components/learning/studentV2.css';
+import '../components/learning/studentExperience.css';
+import { isUnifiedStudentPath } from '../utils/studentExperience';
 import Footer from '../components/common/Footer';
 import LoadingSpinner from '../components/common/LoadingSpinner';
 import { getRoleHomeRoute } from '../config/roleNavigation';
@@ -35,11 +37,11 @@ export const AppLayout = ({ allowedRoles = null, requireProfileSetup = true }) =
   }
 
   return (
-    <div className={`app-shell app-shell-${user?.role || 'student'}${pathname === '/dashboard' || pathname === '/subjects' || pathname.startsWith('/subjects/') || pathname === '/study-together' ? ' student-v2' : ''}`}>
+    <div className={`app-shell app-shell-${user?.role || 'student'}${isUnifiedStudentPath(pathname) ? ' student-v2' : ''}`}>
       <StudentNavigation />
       <main className="app-main" id="main-content" tabIndex={-1}>
         <div className="container">
-          {(pathname === '/profile' && hash === '#profile-skills-teach' || ['/tutors','/sessions','/dashboard/peer'].some(path => pathname === path || pathname.startsWith(path + '/'))) && <StudyTogetherNavigation/>}
+          {(pathname === '/profile' && hash === '#profile-skills-teach' || ['/tutors','/study-together','/sessions','/dashboard/peer'].some(path => pathname === path || pathname.startsWith(path + '/'))) && <StudyTogetherNavigation/>}
           <Outlet />
         </div>
       </main>

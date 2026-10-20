@@ -52,6 +52,7 @@ const unlock = (kind) => async (req, res) => {
     if (!content || !await LearningTopic.exists({ _id: content.topic, status: 'published' })) {
       return res.status(404).json({ success: false, message: 'Learning content not available.' });
     }
+    if (require('../config/studentExperience').active()) return res.json({success:true,data:{unlocked:true,alreadyAccessible:true,free:true,amountSpent:0}});
     if (content.creditCost === 0) {
       return res.json({ success: true, data: { unlocked: true, alreadyAccessible: true,
         balance: req.user.credits } });

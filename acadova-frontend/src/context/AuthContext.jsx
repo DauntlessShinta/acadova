@@ -3,6 +3,7 @@ import authService from '../services/authService';
 import userService from '../services/userService';
 import { setOnUnauthorized } from '../services/api';
 import { syncPushIdentity } from '../services/pushClient';
+import { saveStaffChallenge, clearStaffChallenge } from '../utils/staffMfa';
 
 const AuthContext = createContext(null);
 
@@ -125,8 +126,15 @@ export const AuthProvider = ({ children }) => {
   }, [refreshUser]);
 
   const establishSession = useCallback(async (res) => {
+    if (res?.success && res.data?.mfaRequired === true) {
+      logout();
+      saveStaffChallenge(res.data);
+      return res;
+    }
     if (res && res.success && res.data) {
       const { token: newToken, user: userData } = res.data;
+      if (!newToken || !userData) throw new Error('Login could not be completed.');
+      clearStaffChallenge();
       refreshVersion.current += 1;
       activeToken.current = newToken;
       setAuthNotice('');
@@ -142,7 +150,7 @@ export const AuthProvider = ({ children }) => {
       return res;
     }
     throw new Error(res?.message || 'Login failed');
-  }, [refreshUser]);
+  }, [refreshUser, logout]);
   const login = useCallback(async (email, password) =>
     establishSession(await authService.login(email, password)), [establishSession]);
   const googleLogin = useCallback(async (credential, policyAccepted) =>
@@ -164,8 +172,10 @@ export const AuthProvider = ({ children }) => {
     canModerate: user?.role === 'moderator' || user?.role === 'admin',
     isStudent: user?.role === 'student' || !user?.role,
     credits: user?.credits ?? 0,
+    freeLearning: user?.experience?.freeLearning === true,
     login,
     googleLogin,
+    verifyStaffMfa: async (challenge, code) => establishSession(await authService.verifyStaffMfa(challenge, code)),
     register,
     logout,
     refreshUser,

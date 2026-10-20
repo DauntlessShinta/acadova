@@ -68,10 +68,14 @@ try {
   await go(`/subjects/${sid}`);await until(()=>document.querySelector('.academic-resource'),'Source workspace');await capture('workspace');
   if(before)assert([...document.querySelectorAll('a')].some(a=>a.textContent==='Generate Practice Quiz'),'Saved original workspace loaded');
   if(!before){
-    const menu=document.querySelector('.ac-generate-menu');assert(menu,'Single primary generation control');menu.open=true;
-    assert([...menu.querySelectorAll('a')].map(a=>a.textContent).join(',')==='Flashcards,Quiz,Both','Three preserved source formats');
+    const resource=document.querySelector('.academic-resource');
+    const generate=[...resource.querySelectorAll('button')].find(node=>node.textContent==='Generate Study Material');assert(generate,'Single inline module generation control');
+    resource.closest('.academic-module').open=true;generate.click();
+    await until(()=>document.querySelector('.ai-study-inline #ai-synthetic-consent'),'Inline module form');
+    assert(location.pathname===`/subjects/${sid}`&&!document.querySelector('.ai-study-inline #ai-document'),'Module action keeps the authorized source and route');
+    button('Close panel').click();await pause();
+    const more=document.querySelector('.ac-material-more');more.open=true;assert(more.querySelectorAll('button').length===3,'Resource management actions preserved');more.open=false;
     const add=document.querySelector('.ac-add-material');add.open=true;assert(add.querySelectorAll('button').length===5,'All material options preserved');add.open=false;
-    menu.open=false;
   }
   const sourcePath=`/learning/ai-study?subjectId=${sid}&moduleId=${mid}&resourceId=${rid}&format=both`;
   await go(sourcePath);await until(()=>document.querySelector('#ai-synthetic-consent')&&document.body.textContent.includes('Stored source:'),'Owned source selection');await capture('create');
@@ -89,7 +93,7 @@ try {
     const dialog=document.querySelector('[role=dialog]');assert(dialog.contains(document.activeElement),'Failure receives focus');assert(dialog.textContent.includes('request fewer items'),'Server error code selects source-specific recovery');const countBefore=generated;button('Close').click();await pause();assert(generated===countBefore&&!document.querySelector('[role=dialog]'),'Closing never retries');button('View last failure details').click();await until(()=>document.querySelector('[role=dialog]'),'Explicit reopen');button('Close').click();
     // New active-page failure opens exactly once without scrolling to the top.
     await until(()=>document.querySelector('#ai-synthetic-consent'),'Retry source form');document.querySelector('#ai-synthetic-consent').click();await pause();button('Generate study material').click();await until(()=>document.querySelector('[role=dialog]'),'Active-page failure');assert(generated===countBefore+1,'One request per explicit generation');button('Close').click();
-    insufficient=false;await until(()=>button('View last failure details'),'Acknowledged active-page failure');button('View last failure details').click();await until(()=>button('Try Again'),'Reopened retry action');button('Try Again').click();await until(()=>document.querySelector('#strict-q-0-option-0'),'Preview after explicit retry');
+    insufficient=false;await until(()=>button('View last failure details'),'Acknowledged active-page failure');button('View last failure details').click();await until(()=>button('Try Again'),'Reopened retry action');button('Try Again').click();await until(()=>button('Review / edit source-grounded content'),'Preview after explicit retry');button('Review / edit source-grounded content').click();await until(()=>document.querySelector('#strict-q-0-option-0'),'Explicit review editor');
     fill('#strict-q-0-option-0','Temporary review edit');await pause();fill('#strict-q-0-option-0','Binary search');await pause();await capture('review');button('Save to My Study Sets').click();await until(()=>button('Rename set'),'Explicit source-linked save');assert(lastSave.subjectId===sid&&lastSave.moduleId===mid&&lastSave.content.questions[0].sourceId===hash,'Identity and subject/module associations preserved');
     await go('/learning/ai-study');await until(()=>document.querySelector('#ai-document'),'Upload form');const fileInput=document.querySelector('#ai-document');const transfer=new DataTransfer();transfer.items.add(new File(['bad'],'unsupported.txt',{type:'text/plain'}));fileInput.files=transfer.files;fileInput.dispatchEvent(new Event('change',{bubbles:true}));await until(()=>document.querySelector('#ai-file-error'),'Unsupported file inline');assert(!document.querySelector('[role=dialog]'),'Input errors are not modals');
     // Bound the new PDF opener without allocating another renderer or writing a download.

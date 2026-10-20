@@ -1,11 +1,11 @@
 import React, { useEffect, useId, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { ChevronDown, LogOut, User, Settings, Layers, BookOpen, Coins } from 'lucide-react';
+import { ChevronDown, LogOut, User, Settings, Layers, BookOpen, Coins, Sparkles } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useConfirm } from '../../context/confirmAccess';
 
-export default function AccountMenu({ compact = false }) {
-  const { user, logout } = useAuth();
+export default function AccountMenu({ compact = false, onOpenAcadi }) {
+  const { user, logout, freeLearning } = useAuth();
   const confirm = useConfirm();
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
@@ -39,9 +39,10 @@ export default function AccountMenu({ compact = false }) {
     {open && <div id={id} className="account-actions">
       {compact && <p className="account-menu-identity"><strong>{user?.name}</strong><small>{user?.role === 'admin' ? 'Administrator' : user?.role === 'moderator' ? 'Moderator' : 'Student'}</small></p>}
       {user?.role === 'student' && <Link to="/profile" onClick={() => setOpen(false)}><User size={17} aria-hidden="true" />Profile</Link>}
-      {user?.role === 'student' && <Link to="/growth" onClick={() => setOpen(false)}><Layers size={17} aria-hidden="true"/>Growth</Link>}
+      {user?.role === 'student' && <Link to="/growth" onClick={() => setOpen(false)}><Layers size={17} aria-hidden="true"/>{freeLearning?'My Growth':'Growth'}</Link>}
       <Link to={user?.role === 'admin' ? '/admin/settings' : user?.role === 'moderator' ? '/moderator/settings' : '/settings'} onClick={() => setOpen(false)}><Settings size={17} aria-hidden="true" />Settings</Link>
-      {user?.role === 'student' && <Link to="/credits" onClick={() => setOpen(false)}><Coins size={17} aria-hidden="true"/>Credits &amp; history</Link>}
+      {user?.role === 'student' && !freeLearning && <Link to="/credits" onClick={() => setOpen(false)}><Coins size={17} aria-hidden="true"/>Credits &amp; history</Link>}
+      {user?.role === 'student' && onOpenAcadi && <button type="button" onClick={() => { setOpen(false); onOpenAcadi(trigger.current); }}><Sparkles size={17} aria-hidden="true"/>Acadi help</button>}
       <Link to="/about" onClick={() => setOpen(false)}><BookOpen size={17} aria-hidden="true"/>Help &amp; support</Link>
       {user?.role === 'admin' && <Link to="/moderator" onClick={() => setOpen(false)}>Moderator workspace</Link>}
       {user?.role === 'admin' && <Link to="/admin" onClick={() => setOpen(false)}>Administration workspace</Link>}

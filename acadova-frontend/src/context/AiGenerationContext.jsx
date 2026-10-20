@@ -8,7 +8,7 @@ import { isGenerationPage, isInlineAiError } from '../utils/aiGenerationFeedback
 const busyPhases = new Set(['uploading','processing','saving']);
 const stages = { extracting:'Extracting content', preparing:'Preparing source material', generating:'Generating practice', validating:'Validating source evidence', ready:'Preview ready', saved:'Saved to My Study Sets', failed:'Generation failed', processing:'Processing request' };
 export function AiGenerationProvider({ children }) {
-  const { user } = useAuth(); const [job,setJob]=useState(null); const active=useRef(null); const request=useRef(null); const savePending=useRef(null);
+  const { user } = useAuth(); const [job,setJob]=useState(null); const [inlineSurface,setInlineSurface]=useState(null); const active=useRef(null); const request=useRef(null); const savePending=useRef(null);
   const owner=String(user?._id || user?.id || '');
   const credential=localStorage.getItem('acadova_token');
   useEffect(()=>()=>{active.current=null;savePending.current=null;request.current?.abort();},[owner,credential,user?.role]);
@@ -19,13 +19,32 @@ export function AiGenerationProvider({ children }) {
     const marker={owner,token};active.current=marker;const controller=new AbortController();request.current=controller;
     const current=()=>active.current===marker&&localStorage.getItem('acadova_token')===token;
     const update=values=>{if(current())setJob(previous=>({...previous,...values}));};
-    setJob({owner,token,key:options.key,mode:options.source?'strict_source':options.mode,title:options.file?.name || options.source?.name || 'Study material',resumePath:options.resumePath,phase:options.file?'uploading':'processing',stage:'processing',progress:null,result:null,error:''});
+    setJob({owner,token,key:options.key,surfaceId:options.surfaceId || null,mode:options.source?'strict_source':options.mode,title:options.file?.name || options.source?.name || 'Study material',resumePath:options.resumePath,phase:options.file?'uploading':'processing',stage:'processing',progress:null,result:null,error:''});
     let polling=false;
     const poll=async()=>{if(polling||!current())return;polling=true;try{const response=await service.progress(options.key,{signal:controller.signal});update({phase:'processing',stage:response.data.stage,stageUnavailable:false});}catch(error){if(error.status!==404&&error.name!=='AbortError')update({stageUnavailable:true});}finally{polling=false;}};
     const timer=setInterval(poll,2000);
     try{
-      const transport={syntheticOnly:options.syntheticOnly,signal:controller.signal,onUploadProgress:event=>update({progress:event,phase:event.lengthComputable&&event.loaded>=event.total?'processing':'uploading'})};
-      const response=await (options.source ? service.generateResource(options.source,options.type,options.key,options.count,transport) : service.generate(options.file,options.type,options.key,options.mode,options.count,transport));
+      const transport={autoSave:options.autoSave,regenerateOf:options.regenerateOf,regenerateVersion:options.regenerateVersion,restartInterrupted:options.restartInterrupted,syntheticOnly:options.syntheticOnly,signal:controller.signal,onUploadProgress:event=>update({progress:event,phase:event.lengthComputable&&event.loaded>=event.total?'processing':'uploading'})};
+      let response=options.recoverKey ? { data: { pending: true, requestKey: options.recoverKey } } : await (options.source ? service.generateResource(options.source,options.type,options.key,options.count,transport) : service.generate(options.file,options.type,options.key,options.mode,options.count,transport));
+      if (response.data.pending) {
+        clearInterval(timer);
+        const key = response.data.requestKey;
+        for (let attempt = 0; attempt < 60; attempt++) {
+          if (!current()) throw new DOMException('Account changed.', 'AbortError');
+          const status = (await service.progress(key, { signal: controller.signal })).data;
+          update({ stage: status.stage });
+          if (['failed','interrupted'].includes(status.state)) throw Object.assign(new Error('This request failed or was interrupted. No automatic generation retry was made. Reopen the source and explicitly regenerate if needed.'), { code: 'AI_STUDY_INTERRUPTED' });
+          if (status.result) { response = { data: status.result }; break; }
+          await new Promise(resolve => setTimeout(resolve, 2000));
+        }
+        if (response.data.pending) throw Object.assign(new Error('Still processing. Reopen this module to reconnect; do not start a duplicate request.'), { code: 'AI_STUDY_IN_PROGRESS' });
+      }
+      if (options.autoSave && response.data.previewId && !response.data.savedSet && !response.data.saveFailed) {
+        const preview = response.data;
+        update({ phase: 'saving' });
+        try { response = { data: { savedSet: (await service.save(preview.previewId, preview.title, { subjectId: options.source.subjectId, moduleId: options.source.moduleId, sourceResourceIds: [options.source.resourceId] })).data } }; }
+        catch (error) { response = { data: { ...preview, saveFailed: true, saveError: { message: error.message, code: error.code, status: error.status } } }; }
+      }
       if(!current())throw new DOMException('Account changed.','AbortError');
       update({phase:response.data.savedSet?'saved':'ready',stage:'ready',result:response.data,error:''});
       return response.data;
@@ -45,15 +64,16 @@ export function AiGenerationProvider({ children }) {
   const showFailure=()=>setJob(previous=>previous?({...previous,failureDismissed:false}):previous);
   const clear=()=>{if(!active.current&&!savePending.current)setJob(null);};
   const discard=previewId=>{if(!active.current&&!savePending.current)setJob(previous=>previous?.result?.previewId===previewId?null:previous);};
-  return <AiGenerationContext.Provider value={{job:ownedJob,start,saving,saved,saveFailed,clear,discard,acknowledgeFailure,showFailure}}>{children}</AiGenerationContext.Provider>;
+  return <AiGenerationContext.Provider value={{job:ownedJob,inlineSurface,setInlineSurface,start,saving,saved,saveFailed,clear,discard,acknowledgeFailure,showFailure}}>{children}</AiGenerationContext.Provider>;
 }
 export function AiGenerationTray() {
   const generation=useAiGeneration();const location=useLocation();const [expandedFor,setExpandedFor]=useState(null);const job=generation?.job;
+  const resume = job?.surfaceId ? `${job.resumePath}#module-${job.surfaceId.split(':')[1]}` : job?.result?.savedSet ? `/learning/ai-study/${job.result.savedSet.id}` : job?.resumePath;
   const failed=job?.phase==='failed'||job?.phase==='save_failed';
   const minimized=expandedFor!==job?.key;
-  if(!job||job.phase==='invalid'||failed&&isGenerationPage(job,location))return null;
+  if(!job||job.phase==='invalid'||job.surfaceId&&generation.inlineSurface===job.surfaceId||failed&&isGenerationPage(job,location)&&!job.surfaceId)return null;
   const measurable=job.progress?.lengthComputable&&job.progress.total>0;
   const percent=measurable?Math.min(100,Math.floor(job.progress.loaded/job.progress.total*100)):null;
   const label=job.phase==='uploading'?'Uploading':job.phase==='saving'?'Saving results':job.phase==='ready'?'Preview ready — review before saving':job.phase==='saved'?'Saved to My Study Sets':job.phase==='save_failed'?'Save failed — preview retained':job.phase==='failed'?'Generation failed':(job.stage==='validating'&&job.mode!=='strict_source'?'Validating generated output':stages[job.stage])||'Processing request';
-  return <aside className={`ai-generation-tray${minimized?' is-minimized':''}`} aria-label="AI generation status"><div className="ai-tray-heading"><div><strong title={job.title}>{job.title}</strong><p role="status" aria-live="polite">{label}{job.phase==='uploading'&&measurable?` · ${percent}%`:''}</p></div>{failed&&<Link className="btn btn-ghost" to={job.resumePath} onClick={generation.showFailure}>Details</Link>}{minimized&&!failed&&<Link className="btn btn-ghost" to={job.result?.savedSet?`/learning/ai-study/${job.result.savedSet.id}`:job.resumePath}>{job.phase==='ready'?'Review':'Open'}</Link>}<button className="btn btn-ghost" aria-label={minimized?'Expand generation status':'Minimize generation status'} aria-expanded={!minimized} onClick={()=>setExpandedFor(minimized?job.key:null)}>{minimized?'+':'−'}</button></div>{!minimized&&<>{job.phase==='uploading'&&<div>{measurable?<progress max={job.progress.total} value={job.progress.loaded} aria-label="Bytes uploaded"/>:<p>Sending document…</p>}</div>}{job.phase==='processing'&&<progress aria-label={label}/>}<p className="form-hint">{busyPhases.has(job.phase)?'You can browse Acadova. Keep this tab open; reloading may lose your unsaved preview.':job.phase==='ready'?'Review the private preview before its expiry.':''}{job.stageUnavailable?' Live stage unavailable; the original request is still tracked.':''}</p><div className="ai-actions"><Link className="btn btn-secondary" to={job.result?.savedSet?`/learning/ai-study/${job.result.savedSet.id}`:job.resumePath} onClick={failed?generation.showFailure:undefined}>{job.phase==='saved'?'Open saved set':job.phase==='ready'||job.phase==='save_failed'?'Review preview':failed?'View failure details':'Open study tools'}</Link>{['saved','failed'].includes(job.phase)&&<button className="btn btn-ghost" onClick={generation.clear}>Dismiss status</button>}</div></>}</aside>;
+  return <aside className={`ai-generation-tray${minimized?' is-minimized':''}`} aria-label="AI generation status"><div className="ai-tray-heading"><div><strong title={job.title}>{job.title}</strong><p role="status" aria-live="polite">{label}{job.phase==='uploading'&&measurable?` · ${percent}%`:''}</p></div>{failed&&<Link className="btn btn-ghost" to={resume} onClick={generation.showFailure}>Details</Link>}{minimized&&!failed&&<Link className="btn btn-ghost" to={resume}>{job.phase==='ready'?'Review':'Open'}</Link>}<button className="btn btn-ghost" aria-label={minimized?'Expand generation status':'Minimize generation status'} aria-expanded={!minimized} onClick={()=>setExpandedFor(minimized?job.key:null)}>{minimized?'+':'−'}</button></div>{!minimized&&<>{job.phase==='uploading'&&<div>{measurable?<progress max={job.progress.total} value={job.progress.loaded} aria-label="Bytes uploaded"/>:<p>Sending document…</p>}</div>}{job.phase==='processing'&&<progress aria-label={label}/>}<p className="form-hint">{busyPhases.has(job.phase)?'You can browse Acadova. Keep this tab open; reloading may lose your unsaved preview.':job.phase==='ready'?'Review the private preview before its expiry.':''}{job.stageUnavailable?' Live stage unavailable; the original request is still tracked.':''}</p><div className="ai-actions"><Link className="btn btn-secondary" to={resume} onClick={failed?generation.showFailure:undefined}>{job.phase==='saved'?'Open saved set':job.phase==='ready'||job.phase==='save_failed'?'Review preview':failed?'View failure details':'Open study tools'}</Link>{['saved','failed'].includes(job.phase)&&<button className="btn btn-ghost" onClick={generation.clear}>Dismiss status</button>}</div></>}</aside>;
 }

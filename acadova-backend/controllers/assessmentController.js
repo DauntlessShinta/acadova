@@ -25,7 +25,7 @@ const publicAssessment = (assessment) => ({
 });
 async function rewardEligibility(student, assessment) {
   const account = await User.findById(student).select('+rewardedAssessments').lean();
-  const rewardEarned = (account?.rewardedAssessments || []).some((id) => String(id) === String(assessment));
+  const rewardEarned = (account?.rewardedAssessments || []).some((id) => String(id) === String(assessment)) || Boolean(require('../config/studentExperience').active() && await AssessmentAttempt.exists({student,assessment,mode:{$ne:'practice'},passed:true}));
   return { rewardEligible: Boolean(account && account.role === 'student' && !rewardEarned), rewardEarned };
 }
 const resultView = (attempt) => ({
@@ -35,6 +35,12 @@ const resultView = (attempt) => ({
   creditsAwarded: attempt.rewardIssued ? (attempt.rewardAmount ?? assessmentReward) : 0,
   submittedAt: attempt.submittedAt,
 });
+
+async function expResult(owner,attempt) {
+  if(attempt.progressionVersion!=='student-free-exp-1')return {};
+  const award=await require('../models/ExpAward').findOne({owner,sourceId:attempt._id}).lean();
+  return {exp:{status:award?.status || (attempt.expOutcome==='ineligible'||!attempt.passed||attempt.mode!=='official'?'ineligible':'processing'),amount:award?.status==='finalized'?award.amount:0}};
+}
 
 exports.listPublishedAssessments = async (req, res) => {
   try {
@@ -58,13 +64,19 @@ exports.getOwnAttempt = async (req, res) => {
   try {
     const attempt = await AssessmentAttempt.findOne({ _id: req.params.id, student: req.user.id }).lean();
     if (!attempt) return res.status(404).json({ success: false, message: 'Result not found.' });
-    return res.json({ success: true, data: { ...resultView(attempt), ...await rewardEligibility(req.user.id, attempt.assessment) } });
+    return res.json({ success: true, data: { ...resultView(attempt), ...await rewardEligibility(req.user.id, attempt.assessment), ...await expResult(req.user.id,attempt) } });
   } catch { return res.status(500).json({ success: false, message: 'Result could not be loaded.' }); }
 };
 
 exports.submitAssessment = async (req, res) => {
   let dbSession;
   try {
+    if(require('../config/studentExperience').active()) {
+      const attempt=await require('../services/freeAssessmentService').submit({owner:req.user.id,assessmentId:req.params.id,answers:req.body.answers,practice:req.assessmentMode==='practice'});
+      await require('../services/growthReplay').replayOwner(String(req.user.id));
+      const current=await AssessmentAttempt.findById(attempt._id).lean();
+      return res.json({success:true,data:{...resultView(current),...await rewardEligibility(req.user.id,current.assessment),...await expResult(req.user.id,current)}});
+    }
     const assessment = await Assessment.findOne({ _id: req.params.id, status: 'published' }).lean();
     if (!assessment) return res.status(404).json({ success: false, message: 'Assessment not available.' });
     const answers = req.body.answers;
@@ -81,7 +93,7 @@ exports.submitAssessment = async (req, res) => {
       score, passed, rewardIssued: false, submittedAt: new Date() };
     if (!passed || practice) {
       const attempt = await AssessmentAttempt.create(baseAttempt);
-      return res.json({ success: true, data: { ...resultView(attempt), ...await rewardEligibility(req.user.id, attempt.assessment) } });
+      return res.json({ success: true, data: { ...resultView(attempt), ...await rewardEligibility(req.user.id, attempt.assessment), ...await expResult(req.user.id,attempt) } });
     }
 
     // Production must have the separately rolled-out unique ledger index.
@@ -114,7 +126,7 @@ exports.submitAssessment = async (req, res) => {
     });
     return res.json({ success: true, data: result });
   } catch (error) {
-    return res.status(500).json({ success: false, message: 'Assessment submission could not be completed.' });
+    return res.status(error.status||500).json({ success: false, message: error.status?error.message:'Assessment submission could not be completed.' });
   } finally {
     if (dbSession) await dbSession.endSession();
   }

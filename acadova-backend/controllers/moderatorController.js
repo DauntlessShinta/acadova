@@ -106,7 +106,7 @@ exports.listResolvedSessions = async (req, res) => {
   try {
     const rows = await Session.find({ $or: [{ status: 'resolved' },
       { status: 'completed', 'reviewReferral.closure': 'participant_completion' }] })
-      .select('subject status learner tutor scheduledAt disputedAt resolvedAt resolution resolutionNote creditsSettledAt reviewReferral completedAt')
+      .select('subject status learner tutor scheduledAt disputedAt resolvedAt resolvedBy resolution resolutionNote creditsSettledAt reviewReferral completedAt economyVersion validationSettledAt creditAmount lifecycleVersion disputeReason learnerCheckedInAt tutorCheckedInAt startedAt awaitingValidationAt learnerConfirmedAt tutorConfirmedAt')
       .populate([{ path: 'learner', select: 'name' }, { path: 'tutor', select: 'name' }])
       .sort({ resolvedAt: -1 }).limit(100).lean();
     return res.json({ success: true, data: rows });
@@ -131,6 +131,7 @@ exports.resolveSessionDispute = async (req, res) => {
       resolvedSession = undefined;
       const session = await Session.findById(req.params.id).session(dbSession);
       if (!session) throw Object.assign(new Error('Session not found.'), { status: 404 });
+      if(require('../config/studentExperience').active() && session.economyVersion!=='free-v1') throw Object.assign(new Error('Legacy obligations are frozen. Use the audited legacy review and participant-consent workflow.'),{status:410});
       const referralReview = session.status === 'awaiting_validation' && session.reviewReferral && !session.reviewReferral.closedAt;
       if (!completion.isOpenReview(session)) throw completion.conflict();
       if ([String(session.learner), String(session.tutor)].includes(req.user.id)) throw Object.assign(new Error('A participant cannot approve or reject their own session.'), { status: 403 });
@@ -153,7 +154,7 @@ exports.resolveSessionDispute = async (req, res) => {
       };
       if (resolution === 'confirm_session') {
         changes.completedAt = now;
-        changes.creditsSettledAt = now;
+        if(session.economyVersion==='free-v1') changes.validationSettledAt=now; else changes.creditsSettledAt = now;
       }
       if (session.reviewReferral && !session.reviewReferral.closedAt) {
         changes['reviewReferral.closedAt'] = now;
@@ -191,7 +192,7 @@ exports.resolveSessionDispute = async (req, res) => {
       [resolvedSession.learner, resolvedSession.tutor]);
     return res.json({
       success: true,
-      message: resolution === 'confirm_session'
+      message: resolvedSession.economyVersion==='free-v1' ? (resolution==='confirm_session'?'Free session review resolved as valid. Staff resolution alone does not award EXP.':'Free session review resolved as invalid. No EXP is awarded.') : resolution === 'confirm_session'
         ? 'Session review resolved as valid. Credits transferred once.'
         : 'Session review resolved as invalid. No credits transferred.',
       data: resolvedSession,

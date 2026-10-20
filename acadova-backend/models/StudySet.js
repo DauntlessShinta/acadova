@@ -14,6 +14,7 @@ const schema = new mongoose.Schema({ owner: { type: mongoose.Schema.Types.Object
   unlistedActive: { type: Boolean, default: false }, unlistedHash: { type: String, select: false, maxlength: 64 },
   approvedRevision: Number, publicationId: String, submittedAt: Date, publishedAt: Date,
   decision: { type: new mongoose.Schema({ actor: { type: mongoose.Schema.Types.ObjectId, ref: 'User' }, reason: { type: String, maxlength: 500 }, at: Date, outcome: String }, { _id: false }) },
+  archivedAt: { type: Date, default: null },
   deletedAt: { type: Date, default: null }, attemptGuard: { type: Number, default: 0 },
   origin: { type: String, enum: ['manual', 'ai'], default: 'manual', immutable: true },
   flashcards: { type: [new mongoose.Schema({ front: { type: String, maxlength: 300 }, back: { type: String, maxlength: 1000 }, sourceRef: Number, ...proofFields }, { _id: false })], default: [], validate: value => value.length <= 10 },
@@ -23,6 +24,7 @@ const schema = new mongoose.Schema({ owner: { type: mongoose.Schema.Types.Object
     validationVersion: { type: String, maxlength: 40, immutable: true }, validationNote: { type: String, maxlength: 500, immutable: true },
     coverage: { type: String, maxlength: 300 }, rejectionReasons: { type: [String], default: undefined }, requestedCards: Number, requestedQuestions: Number,
     sourceFormat: { type: String, enum: ['pdf', 'pptx'] }, sourceUnits: Number, sourceBytes: Number,
+    recipeKey: { type: String, maxlength: 64, immutable: true }, regeneratedFrom: { type: mongoose.Schema.Types.ObjectId, ref: 'StudySet', immutable: true }, parentVersion: Number,
     model: { type: String, maxlength: 120 }, modelVersion: { type: String, maxlength: 120 }, limitation: { type: String, maxlength: 500 }, }, { _id: false }) },
   practiceHistory: { type: [new mongoose.Schema({ at: Date, correct: Number, total: Number, score: Number }, { _id: false })], default: [], validate: value => value.length <= 20 },
 }, { timestamps: true, autoIndex: process.env.NODE_ENV !== 'production' });

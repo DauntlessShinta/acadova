@@ -188,6 +188,7 @@ input, button, select, textarea {
 
 /* Buttons */
 .btn {
+  min-height:44px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -275,6 +276,7 @@ textarea:focus-visible {
 }
 
 .btn-sm {
+  min-height:36px;
   padding: 6px 14px;
   font-size: 0.85rem;
   border-radius: var(--radius-sm);
@@ -4343,6 +4345,7 @@ button.learning-resource-row:disabled { cursor: progress; opacity: .65; }
 /* Acadova 2.0 navigation: four stable destinations, optional icon rail. */
 .ac-sidebar-toggle { display:flex; align-items:center; justify-content:center; gap:8px; min-height:44px; border:1px solid var(--border-subtle); border-radius:10px; background:var(--bg-surface); color:var(--ink-700); font:inherit; cursor:pointer; }
 @media(min-width:1025px) {
+ .app-shell-student { --sidebar-width:256px; }
  .app-shell-student:has(.student-sidebar.is-collapsed) { --sidebar-width:76px; }
  .student-sidebar.is-collapsed { padding-inline:10px; }
  .student-sidebar.is-collapsed .ac-nav-label { position:absolute; width:1px; height:1px; overflow:hidden; clip-path:inset(50%); }

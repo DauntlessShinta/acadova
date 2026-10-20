@@ -1,3 +1,4 @@
+import { Navigate } from 'react-router-dom';
 import React, { useCallback, useEffect, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import creditService from '../services/creditService';
@@ -9,7 +10,7 @@ import CreditActivityList from '../components/credits/CreditActivityList';
 import './CreditsPage.css';
 
 export const CreditsPage = () => {
-  const { credits, refreshUser } = useAuth();
+  const { credits, refreshUser, freeLearning } = useAuth();
   const [history, setHistory] = useState([]);
   const [summary, setSummary] = useState(null);
   const [page, setPage] = useState(1);
@@ -36,10 +37,12 @@ export const CreditsPage = () => {
   }, [refreshUser]);
 
   useEffect(() => {
+    if(freeLearning)return;
     const initialLoad = setTimeout(() => { fetchCreditHistory(); }, 0);
     return () => clearTimeout(initialLoad);
-  }, [fetchCreditHistory]);
+  }, [fetchCreditHistory,freeLearning]);
 
+  if(freeLearning)return <Navigate to="/growth" replace/>;
   return (
     <div>
       <div className="credit-wallet-heading">

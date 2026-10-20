@@ -295,6 +295,11 @@ function isValidObjectId(id) {
 }
 
 const schemas = {
+  staffMfaVerify: { challenge: verificationToken, code: value => {
+    if (typeof value !== 'string' || !/^[0-9]{6}$/.test(value)) throw new InvalidInput('Enter the six-digit verification code.');
+    return value;
+  } },
+  staffMfaResend: { challenge: verificationToken },
   register: {
     name: fullName, email: emailAddress, password: registrationPassword,
     policyAccepted: (value) => {

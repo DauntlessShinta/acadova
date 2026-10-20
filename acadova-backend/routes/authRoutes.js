@@ -28,5 +28,9 @@ const recoveryLimiter = createRateLimiter({ windowMs: 15 * 60 * 1000, max: 5,
 router.post('/forgot-password', recoveryLimiter, validateBody(schemas.forgotPassword), forgotPassword);
 router.post('/reset-password', recoveryLimiter, validateBody(schemas.resetPassword), resetPassword);
 router.post('/google', authLimiter, validateBody(schemas.googleLogin), googleLogin);
+const mfaLimiter = createRateLimiter({ windowMs: 15 * 60 * 1000, max: 30,
+  message: 'Too many verification attempts. Return to sign-in later.' });
+router.post('/staff-mfa/verify', mfaLimiter, validateBody(schemas.staffMfaVerify), require('../controllers/authController').verifyStaffMfa);
+router.post('/staff-mfa/resend', resendLimiter, validateBody(schemas.staffMfaResend), require('../controllers/authController').resendStaffMfa);
 
 module.exports = router;

@@ -3,6 +3,8 @@ const CreditTransaction = require('../models/CreditTransaction');
 
 // Call only after a conditional Session claim, inside the same MongoDB transaction.
 const transferSessionCredits = async (session, dbSession) => {
+  if (session.economyVersion==='free-v1') return;
+  require('../config/studentExperience').rejectCreditWrite();
   if (!Number.isSafeInteger(session.creditAmount) || session.creditAmount < 1
     || String(session.learner) === String(session.tutor)) {
     throw Object.assign(new Error('This session has invalid credit evidence.'), { status: 400 });

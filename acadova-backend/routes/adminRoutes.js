@@ -14,14 +14,16 @@ router.get('/audit-logs', listAuditLogs);
 router.get('/security', getSecurityOverview);
 router.get('/users', validateQuery(schemas.userDirectory), listUsers);
 router.get('/sessions', validateQuery(schemas.sessionDirectory), listSessions);
+router.get('/dashboard', require('../utils/analyticsWindow').analyticsWindow, require('../controllers/staffAnalyticsController').getAdminDashboard);
+router.get('/exp-analytics', require('../utils/analyticsWindow').analyticsWindow, require('../controllers/adminGrowthController').getExpAnalytics);
 router.use(validateQuery());
 
 router.get('/overview', getOverview);
 router.get('/operations', getOperations);
 router.get('/trust-summary', getTrustSummary);
 router.get('/credits/rules', getCreditRules);
-router.patch('/credits/rules', staffActionLimiter, validateBody(schemas.creditRules), updateCreditRules);
-router.post('/credits/adjustments', staffActionLimiter, validateBody(schemas.adminCreditAdjustment), adjustCredits);
+router.patch('/credits/rules', staffActionLimiter, require('../config/studentExperience').retired, validateBody(schemas.creditRules), updateCreditRules);
+router.post('/credits/adjustments', staffActionLimiter, require('../config/studentExperience').retired, validateBody(schemas.adminCreditAdjustment), adjustCredits);
 router.get('/credits/activity', getRecentCreditActivity);
 router.patch('/users/:id/role', staffActionLimiter, validateParams(schemas.userId), validateBody(schemas.role), updateUserRole);
 router.patch('/users/:id/status', staffActionLimiter, validateParams(schemas.userId), validateBody(schemas.userStatus), updateUserStatus);

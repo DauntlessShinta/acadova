@@ -5,7 +5,7 @@ const { createHash } = require('node:crypto');
 let activeWorkers = 0;
 function validateFile(file, config) {
   if (!file?.buffer?.length) throw aiError('Choose a nonempty PDF or PPTX document.');
-  if (file.buffer.length > config.maxBytes) throw aiError('Document exceeds the upload limit (maximum 5 MB).', 413);
+  if (file.buffer.length > config.maxBytes) throw aiError(`Document exceeds the upload limit (maximum ${Math.round(config.maxBytes / 1048576)} MiB).`, 413);
   const name = path.basename(String(file.originalname || '').replace(/\\/g, '/')).replace(/[\u0000-\u001f]/g, '').slice(0, 160);
   const ext = path.extname(name).toLowerCase();
   const pdf = file.buffer.subarray(0, 5).toString() === '%PDF-';

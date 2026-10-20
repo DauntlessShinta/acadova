@@ -24,6 +24,9 @@ function createAiStudyRouter(options) {
     mode: value => { if (value !== 'strict_source') throw new InvalidInput('Stored files require Strict Source mode.'); return value; },
     syntheticConsent: value => { if (value === undefined) return undefined; if (value !== true) throw new InvalidInput('Confirm synthetic QA consent.'); return value; },
     providerConsent: value => { if (value === undefined) return undefined; if (value !== true) throw new InvalidInput('Consent to processing your authorized material.'); return value; },
+    autoSave: value => { if (value === undefined) return undefined; if (value !== true) throw new InvalidInput('Use module autosave explicitly.'); return value; },
+    restartInterrupted: value => { if (value === undefined) return undefined; if (value !== true) throw new InvalidInput('Confirm an interrupted request retry.'); return value; },
+    regenerateOf: value => value === undefined ? undefined : objectId(value), regenerateVersion: value => value === undefined ? undefined : version(value),
     count: value => { if (value === undefined) return undefined; if (!Number.isSafeInteger(value) || value < 1 || value > 10) throw new InvalidInput('Choose a bounded item count.'); return value; },
   }), (req, res, next) => { req.sourceRequest = true; next(); }, controller.generate);
   router.post('/generate', sessionActionLimiter, controller.configured, (req, res, next) => {
@@ -31,13 +34,14 @@ function createAiStudyRouter(options) {
     upload(req, res, error => {
       if (!error) return next();
       if (req.file?.buffer) req.file.buffer.fill(0);
-      res.status(error.code === 'LIMIT_FILE_SIZE' ? 413 : 400).json({ success: false, message: error.code === 'LIMIT_FILE_SIZE' ? 'Document exceeds the upload limit (maximum 5 MB).' : 'Upload one PDF/PPTX with the generation type and synthetic-document confirmation.' });
+      res.status(error.code === 'LIMIT_FILE_SIZE' ? 413 : 400).json({ success: false, message: error.code === 'LIMIT_FILE_SIZE' ? `Document exceeds the upload limit (maximum ${Math.round(aiStudyConfig().maxBytes / 1048576)} MiB).` : 'Upload one PDF/PPTX with the generation type and synthetic-document confirmation.' });
     });
   }, controller.generate);
   router.get('/sets', controller.mine);
   router.post('/sets', sessionActionLimiter, validateBody({ previewId: value => { if (typeof value !== 'string' || !/^[a-f\d-]{36}$/.test(value)) throw new InvalidInput('Use a current generation preview.'); return value; }, title, content, ...associations }), controller.save);
   router.get('/sets/:id', validateParams(schemas.assessmentId), controller.get);
   router.patch('/sets/:id', sessionActionLimiter, validateParams(schemas.assessmentId), validateBody({ title, version }), controller.rename);
+  router.post('/sets/:id/archive', sessionActionLimiter, validateParams(schemas.assessmentId), validateBody({ version, archived: value => { if (typeof value !== 'boolean') throw new InvalidInput('Choose archive or restore.'); return value; } }), controller.archive);
   router.post('/sets/:id/delete', sessionActionLimiter, validateParams(schemas.assessmentId), validateBody({ version }), controller.remove);
   router.post('/sets/:id/practice', sessionActionLimiter, validateParams(schemas.assessmentId), validateBody({ answers: value => {
     if (!Array.isArray(value) || !value.length || value.length > 5 || value.some(item => !Number.isInteger(item) || item < 0 || item > 3)) throw new InvalidInput('Answer every AI practice question.'); return value;

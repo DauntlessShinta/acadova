@@ -2,6 +2,7 @@ const AuditLog = require('../models/AuditLog');
 const mongoose = require('mongoose');
 
 const ACTIONS = Object.freeze({
+  legacyProposal:'credit.legacy_closure_proposed', expReportReviewed:'exp.report_reviewed',
   expPending: 'exp.award_pending', expFinalized: 'exp.award_finalized',
   expHeld: 'exp.award_held', expReleased: 'exp.hold_released', expReversed: 'exp.award_reversed',
   circleReview: 'circle.report_reviewed',
@@ -35,7 +36,7 @@ async function recordAudit({ actor, action, targetType, targetId, summary, metad
   if (!actor?.id || !['moderator', 'admin'].includes(actor.role)
     || !Object.values(ACTIONS).includes(action) || LOGIN_SECURITY_ACTIONS.has(action)
     || !['Session', 'CreditConfig', 'CreditTransaction', 'LearningTopic', 'LearningResource',
-      'LearningModule', 'Assessment', 'Rating', 'User', 'StudySet', 'StudyReport', 'StudyCircle', 'ExpAward', 'ExpLedgerEntry'].includes(targetType)
+      'LearningModule', 'Assessment', 'Rating', 'User', 'StudySet', 'StudyReport', 'StudyCircle', 'ExpAward', 'ExpLedgerEntry', 'LegacyCreditReview'].includes(targetType)
     || !targetId || typeof summary !== 'string') throw new Error('Invalid audit event');
   const safe = Object.fromEntries(Object.entries(metadata).filter(([key, value]) =>
     SAFE_FIELDS.has(key) && ['string', 'number', 'boolean'].includes(typeof value)));
@@ -43,7 +44,7 @@ async function recordAudit({ actor, action, targetType, targetId, summary, metad
     safe.suspensionReason = metadata.suspensionReason.trim().slice(0, 500);
   }
   if ([ACTIONS.dispute, ACTIONS.completionReview, ACTIONS.clarification, ACTIONS.studyDecision, ACTIONS.studyReportClosed, ACTIONS.circleReview,
-    ACTIONS.expHeld, ACTIONS.expReleased, ACTIONS.expReversed].includes(action)
+    ACTIONS.expHeld, ACTIONS.expReleased, ACTIONS.expReversed, ACTIONS.legacyProposal, ACTIONS.expReportReviewed].includes(action)
     && typeof metadata.reason === 'string') safe.reason = metadata.reason.trim().slice(0, 500);
   const [entry] = await AuditLog.create([{ actor: actor.id, actorRole: actor.role, action,
     targetType, targetId: String(targetId), summary: summary.slice(0, 200), metadata: safe }],

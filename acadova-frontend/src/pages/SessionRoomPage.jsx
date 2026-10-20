@@ -1,3 +1,6 @@
+import EconomySessionReview from '../components/student/EconomySessionReview';
+import MeetingProviders from '../components/student/MeetingProviders';
+import { minimumLocalDateTime } from '../utils/scheduling';
 import { useNotifications } from '../context/notificationAccess';
 import { isChatViewed, isNearChatBottom, newIncomingMessages, canMessageSession } from '../utils/messagingUx';
 import { resourceSource } from '../utils/learningPresentation';
@@ -37,7 +40,7 @@ import {
   formatSessionDateTime,
   getSessionNextStep,
   getSessionPerspective,
-  getSessionStatus,
+  getSessionStatus, getSessionEconomyLabel,
   getSessionTimeline, canCancelSession,
 } from '../utils/sessionPresentation';
 
@@ -61,7 +64,7 @@ const SessionRoom = ({ id }) => {
   const [activeSection, setActiveSection] = useState(targetProposalId ? 'details' : hash === '#session-messages' ? 'messages' : 'overview');
   const { refresh: refreshNotifications, setActiveThread } = useNotifications();
   const confirm = useConfirm();
-  const { user, refreshUser } = useAuth();
+  const { user, refreshUser, freeLearning } = useAuth();
   const toast = useToast();
   const [session, setSession] = useState(null);
   const [messages, setMessages] = useState([]);
@@ -126,6 +129,7 @@ const SessionRoom = ({ id }) => {
   const chatPanel = useRef(null);
   const composerRef = useRef(null);
   const chatScrollSnapshot = useRef(null);
+  const [meetingProvider, setMeetingProvider] = useState('meet');
   const [meetingValue, setMeetingValue] = useState('');
   const [googleReady, setGoogleReady] = useState(false);
   const [proposedTime, setProposedTime] = useState('');
@@ -328,8 +332,8 @@ const SessionRoom = ({ id }) => {
   const runStatusAction = async (status) => {
     const prompts = {
       declined: 'Decline this session request? The learner will need to find another peer.',
-      cancelled: session.status === 'pending' ? 'This request will be cancelled for both participants. No credits will be transferred.' : 'The scheduled session will be cancelled for both participants. No credits will be transferred.',
-      completed: `Mark this ${session.subject} session as finished?\n\n${session.learner?.name || 'The learner'} will be asked to confirm before credits are transferred.`,
+      cancelled: session.economyVersion==='free-v1'?'Cancel this free session for both participants? No EXP is awarded.':session.status === 'pending' ? 'This request will be cancelled for both participants. No credits will be transferred.' : 'The scheduled session will be cancelled for both participants. No credits will be transferred.',
+      completed: session.economyVersion==='free-v1' ? 'Mark this free session as finished? Both participants must confirm completion separately.' : `Mark this ${session.subject} session as finished?\n\n${session.learner?.name || 'The learner'} will be asked to confirm before credits are transferred.`,
     };
     if (prompts[status] && !await confirm(prompts[status], { title: status === 'cancelled' ? 'Cancel this session?' : status === 'declined' ? 'Decline request' : 'Finish Session', label: status === 'cancelled' ? 'Cancel Session' : status === 'declined' ? 'Decline request' : 'Finish Session' })) return;
     if (!beginAction()) return;
@@ -451,7 +455,7 @@ const SessionRoom = ({ id }) => {
   };
 
   const handleFinishSession = async () => {
-    if (!await confirm('Finish the live session? Both participants must then confirm before credits transfer.', { title: 'Finish Session', label: 'Finish Session', destructive: false })) return;
+    if (!await confirm(session.economyVersion==='free-v1'?'Finish the live session? Both participants must then confirm completion.':'Finish the live session? Both participants must then confirm before credits transfer.', { title: 'Finish Session', label: 'Finish Session', destructive: false })) return;
     if (!beginAction()) return;
     try {
       const response = await sessionService.finishSession(id);
@@ -465,7 +469,7 @@ const SessionRoom = ({ id }) => {
   };
 
   const handleNoShow = async () => {
-    if (!await confirm('Record this session as a no-show? Check-in evidence determines who was absent. No credits will transfer.', { title: 'Record no-show', label: 'Record no-show' })) return;
+    if (!await confirm(session.economyVersion==='free-v1'?'Record this session as a no-show? Check-in evidence determines who was absent. No EXP is awarded.':'Record this session as a no-show? Check-in evidence determines who was absent. No credits will transfer.', { title: 'Record no-show', label: 'Record no-show' })) return;
     if (!beginAction()) return;
     try {
       const response = await sessionService.reportNoShow(id);
@@ -496,7 +500,7 @@ const SessionRoom = ({ id }) => {
 
   const handleConfirm = async () => {
     const credits = `${session.creditAmount} credit${session.creditAmount === 1 ? '' : 's'}`;
-    const prompt = session.status === 'awaiting_validation'
+    const prompt = session.economyVersion==='free-v1' ? 'Confirm that the tutoring interaction happened? Both participants must confirm separately. Eligible EXP remains pending during the reporting window.' : session.status === 'awaiting_validation'
       ? `Confirm that the tutoring interaction happened? ${credits} transfer only after both participants confirm.`
       : `Confirm that this session was completed and transfer ${credits} to ${session.tutor?.name || 'the Tutor'}?`;
     if (!await confirm(prompt, { title: 'Confirm Session', label: 'Confirm Session', destructive: false })) return;
@@ -590,7 +594,8 @@ const SessionRoom = ({ id }) => {
   const meetingMethodLabel = session.meetingMethod === 'online'
     ? 'Online'
     : session.meetingMethod === 'in-person' ? 'In person' : 'Not recorded';
-  const creditLabel = `${session.creditAmount} credit${session.creditAmount === 1 ? '' : 's'}`;
+  const freeSession=session.economyVersion==='free-v1';
+  const creditLabel = getSessionEconomyLabel(session, freeLearning);
   const myValidation = isTeaching ? session.tutorConfirmedAt : session.learnerConfirmedAt;
   const isClosed = ['cancelled', 'declined', 'rejected', 'no_show', 'resolved'].includes(session.status);
   const hasSecondaryActions = usesLegacyActions && (
@@ -625,24 +630,25 @@ const SessionRoom = ({ id }) => {
         <ul className="session-room-summary" aria-label="Session summary">
           <li><Calendar size={16} aria-hidden="true" /><time dateTime={session.scheduledAt}>{scheduledLabel || 'Not scheduled'}</time></li>
           <li><MapPin size={16} aria-hidden="true" /><span>{meetingMethodLabel}</span></li>
-          <li><Coins size={16} aria-hidden="true" /><span>{creditLabel}</span></li>
+          <li>{freeSession?<CheckCircle2 size={16} aria-hidden="true" />:<Coins size={16} aria-hidden="true" />}<span>{creditLabel}</span></li>
         </ul>
       </header>
 
+      {freeLearning&&((session.economyVersion==='free-v1'&&session.status==='completed')||(session.economyVersion!=='free-v1'&&!session.creditsSettledAt&&session.settlementState!=='settled'))&&<EconomySessionReview session={session}/>}
       <section className={`session-next-step ${displayStatus.key === 'completed' ? 'is-complete' : isClosed ? 'is-closed' : ''}`} aria-labelledby="next-step-heading">
         <CheckCircle2 size={19} aria-hidden="true" />
         <div>
           <span>Next step</span>
           <h2 id="next-step-heading">{hasRescheduleProposal && !expiredProposal ? 'Review the alternative or check in at the confirmed original time.' : needsMeetingDetails ? 'Add the agreed meeting details for your peer.' : canReportNoShow ? 'The check-in window ended. Review attendance and report a no-show if needed.' : nextStep}</h2>
           {session.status === 'pending' && !isTeaching && <p>No action is required from you right now.</p>}
-          {session.creditsSettledAt && <p>{creditLabel} transferred.</p>}
+          {!freeLearning && session.creditsSettledAt && <p>{creditLabel} transferred.</p>}
         </div>
         {usesLegacyActions && isTeaching && session.status === 'pending' && <button className="btn btn-primary btn-sm" type="button" disabled={actionLoading} onClick={() => runStatusAction('scheduled')}>Accept request</button>}
         {usesLegacyActions && isTeaching && session.status === 'accepted' && !needsMeetingDetails && <button className={`btn btn-sm ${canCheckIn ? 'btn-secondary' : 'btn-primary'}`} type="button" disabled={actionLoading} onClick={() => runStatusAction('completed')}>Complete session</button>}
         {usesLegacyActions && isTeaching && session.status === 'in_progress' && <button className="btn btn-primary btn-sm" type="button" disabled={actionLoading} onClick={handleFinishSession}>Finish live session</button>}
-        {usesLegacyActions && session.status === 'awaiting_validation' && !myValidation && <button className="btn btn-primary btn-sm" type="button" disabled={actionLoading} onClick={handleConfirm}>Confirm session</button>}
+        {usesLegacyActions && (!freeLearning||session.economyVersion==='free-v1') && session.status === 'awaiting_validation' && !myValidation && <button className="btn btn-primary btn-sm" type="button" disabled={actionLoading} onClick={handleConfirm}>Confirm session</button>}
         {canReportNoShow && <button className="btn btn-primary btn-sm" type="button" disabled={actionLoading} onClick={handleNoShow}>Report no-show</button>}
-        {usesLegacyActions && !isTeaching && session.status === 'completed' && !session.confirmedAt && <button className="btn btn-primary btn-sm" type="button" disabled={actionLoading} onClick={handleConfirm}>Confirm completion and transfer {creditLabel}</button>}
+        {usesLegacyActions && !freeLearning && !isTeaching && session.status === 'completed' && !session.confirmedAt && <button className="btn btn-primary btn-sm" type="button" disabled={actionLoading} onClick={handleConfirm}>Confirm completion and transfer {creditLabel}</button>}
         {canCheckIn && <button type="button" className={`btn btn-sm ${needsMeetingDetails ? 'btn-secondary' : 'btn-primary'}`} disabled={actionLoading} onClick={handleCheckIn}>Check in</button>}
         {session.meetingMethod === 'online' && ['accepted', 'scheduled', 'in_progress'].includes(session.status) && resourceSource(session.meetingLink) && <a className="btn btn-secondary btn-sm" href={session.meetingLink} target="_blank" rel="noopener noreferrer">Join Meeting <ExternalLink size={14} aria-hidden="true" /><span className="sr-only"> (opens in a new tab)</span></a>}
         {needsMeetingDetails && <button type="button" className={`btn btn-sm ${hasRescheduleProposal ? 'btn-secondary' : 'btn-primary'}`} onClick={() => changeSection('details')}>Add meeting details</button>}
@@ -653,7 +659,7 @@ const SessionRoom = ({ id }) => {
             <section className="card session-room-section session-actions-panel" aria-labelledby="actions-heading">
               <h2 id="actions-heading">Actions</h2>
               {isTeaching && session.status === 'pending' && <button className="btn btn-ghost session-destructive-action" type="button" disabled={actionLoading} onClick={() => runStatusAction('declined')}>Decline request</button>}
-              {isTeaching && session.status === 'completed' && <p>Waiting for learner confirmation. No credits have transferred yet.</p>}
+              {isTeaching && session.status === 'completed' && <p>{freeSession?'Waiting for participant confirmation. No EXP is confirmed yet.':'Waiting for learner confirmation. No credits have transferred yet.'}</p>}
               {canCancelSession(session) && <button className="btn btn-ghost session-cancel-action" type="button" disabled={actionLoading} onClick={() => runStatusAction('cancelled')}>Cancel session</button>}
             </section>
           )}</details>
@@ -666,7 +672,7 @@ const SessionRoom = ({ id }) => {
             {checkInStateVisible && (
               <div className="session-check-in">
                 <h3>Session check-in</h3>
-                <p className="session-muted-copy">Check-in is self-reported presence, available from 15 minutes before until 4 hours after the agreed time. Opening the meeting link records no attendance or credits.</p>
+                <p className="session-muted-copy">Check-in is self-reported presence, available from 15 minutes before until 4 hours after the agreed time. {freeSession?'Opening the meeting link does not verify attendance or award EXP.':'Opening the meeting link records no attendance or credits.'}</p>
                 <p>Learner: {session.learnerCheckedInAt ? `Checked in ${formatSessionDateTime(session.learnerCheckedInAt)}` : 'Not checked in'}</p>
                 <p>Tutor: {session.tutorCheckedInAt ? `Checked in ${formatSessionDateTime(session.tutorCheckedInAt)}` : 'Not checked in'}</p>
                 {session.status === 'in_progress' ? (
@@ -683,7 +689,7 @@ const SessionRoom = ({ id }) => {
             {session.status === 'awaiting_validation' && (
               <div className="session-validation">
                 <h3>Session validation</h3>
-                <p>The Tutor finished the live session. Finish is not a positive completion confirmation. Each participant must confirm separately; the second positive confirmation settles credits once.</p>
+                <p>{freeSession?'The Tutor finished the live session. Each participant must confirm separately. A qualifying contribution remains pending for at least 48 hours.':'The Tutor finished the live session. Finish is not a positive completion confirmation. Each participant must confirm separately; the second positive confirmation settles credits once.'}</p>
                 <p>Learner: {session.learnerConfirmedAt ? 'Confirmed' : 'Waiting for confirmation'}</p>
                 <p>Tutor: {session.tutorConfirmedAt ? 'Confirmed' : 'Waiting for confirmation'}</p>
                 {myValidation && <p>Thanks for confirming. Waiting for your peer.</p>}
@@ -693,7 +699,7 @@ const SessionRoom = ({ id }) => {
             {usesLegacyActions && ['awaiting_validation', 'no_show'].includes(session.status) && (
               <form className="session-validation" onSubmit={handleDispute}>
                 <h3>Disagree or report a problem</h3>
-                <p>A Moderator will review the session evidence. Opening a dispute does not transfer credits.</p>
+                <p>{freeSession?'A Moderator will review the session evidence. A dispute does not create EXP.':'A Moderator will review the session evidence. Opening a dispute does not transfer credits.'}</p>
                 <label className="form-label" htmlFor="dispute-reason">Reason</label>
                 <textarea id="dispute-reason" className="form-textarea" rows={3} minLength={10} maxLength={500} required value={disputeReason} onChange={(event) => setDisputeReason(event.target.value)} disabled={actionLoading} />
                 <button className="btn btn-secondary btn-sm" type="submit" disabled={actionLoading}>Submit dispute</button>
@@ -709,13 +715,13 @@ const SessionRoom = ({ id }) => {
             {session.status === 'no_show' && (
               <div className="session-validation">
                 <h3>No-show recorded</h3>
-                <p>{session.noShowAbsent === 'both' ? 'Neither participant checked in.' : session.noShowAbsent === 'learner' ? 'The Learner did not check in.' : 'The Tutor did not check in.'} No tutoring credits were transferred.</p>
+                <p>{session.noShowAbsent === 'both' ? 'Neither participant checked in.' : session.noShowAbsent === 'learner' ? 'The Learner did not check in.' : 'The Tutor did not check in.'} {freeSession?'No EXP is awarded.':'No tutoring credits were transferred.'}</p>
               </div>
             )}
             {session.status === 'disputed' && (
               <div className="session-validation">
                 <h3>Moderator review required</h3>
-                <p>Normal confirmation is paused. No credits have transferred.</p>
+                <p>{freeSession?'Normal confirmation is paused. No reward is implied.':'Normal confirmation is paused. No credits have transferred.'}</p>
                 <p><strong>Reason:</strong> {session.disputeReason}</p>
               </div>
             )}
@@ -723,8 +729,8 @@ const SessionRoom = ({ id }) => {
               <div className="session-validation">
                 <h3>Session review resolved</h3>
                 <p>{session.resolution === 'confirm_session'
-                  ? 'The tutoring session was confirmed by a Moderator and credits were settled.'
-                  : 'The tutoring session was not validated. No credits were transferred.'}</p>
+                  ? (freeSession?'The tutoring session was confirmed by a Moderator. This alone does not qualify for EXP.':'The tutoring session was confirmed by a Moderator and credits were settled.')
+                  : (freeSession?'The tutoring session was not validated. No EXP is awarded.':'The tutoring session was not validated. No credits were transferred.')}</p>
                 <p><strong>Decision note:</strong> {session.resolutionNote}</p>
               </div>
             )}
@@ -832,7 +838,7 @@ const SessionRoom = ({ id }) => {
                   <form onSubmit={handleRescheduleProposal}>
                     <label className="form-label" htmlFor="reschedule-time">{hasRescheduleProposal && !expiredProposal ? 'Replace with a new date and time' : 'Propose a new date and time'}</label>
                     <div className="session-reschedule-actions">
-                      <input id="reschedule-time" className="form-input" type="datetime-local" value={proposedTime} onChange={(event) => setProposedTime(event.target.value)} aria-describedby="proposal-time-help" required disabled={actionLoading} />
+                      <input id="reschedule-time" className="form-input" type="datetime-local" min={minimumLocalDateTime()} value={proposedTime} onChange={(event) => setProposedTime(event.target.value)} aria-describedby="proposal-time-help" required disabled={actionLoading} />
                       <button type="submit" className="btn btn-secondary btn-sm" disabled={actionLoading}>{hasRescheduleProposal && !expiredProposal ? 'Replace proposal' : 'Propose time'}</button>
                     </div>
                     <p className="form-hint" id="proposal-time-help">Time is in your device timezone. Alternatives expire at their start, at the original check-in window end, or after the configured lifetime, whichever is earlier.</p>
@@ -846,7 +852,7 @@ const SessionRoom = ({ id }) => {
               <div><dt><UserRound size={16} /> Other participant</dt><dd>{counterpart?.name || 'Peer student'}</dd></div>
               <div><dt><Calendar size={16} /> Date and time</dt><dd>{scheduledLabel || 'Not scheduled'}</dd></div>
               <div><dt><MapPin size={16} /> Method</dt><dd>{meetingMethodLabel}</dd></div>
-              <div><dt><Coins size={16} /> Credits</dt><dd>{usesLegacyActions ? `${creditLabel} transferred after confirmation` : creditLabel}</dd></div>
+              <div><dt>{freeSession?<CheckCircle2 size={16} />:<Coins size={16} />} {freeSession?'Free tutoring':freeLearning?'Historical credits':'Credits'}</dt><dd>{usesLegacyActions&&!freeLearning ? `${creditLabel} transferred after confirmation` : creditLabel}</dd></div>
             </dl>
 
             <div className="session-request-message">
@@ -874,6 +880,7 @@ const SessionRoom = ({ id }) => {
                   {session.meetingMethod === 'online' ? 'Paste meeting link (Google Meet, Teams, Zoom, or HTTPS)' : 'Meeting location'}
                 </label>
                 <div>
+                  {session.meetingMethod === 'online' && <MeetingProviders selected={meetingProvider} onSelect={setMeetingProvider}/>}
                   <input
                     id="meeting-detail"
                     type={session.meetingMethod === 'online' ? 'url' : 'text'}

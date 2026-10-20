@@ -17,6 +17,7 @@ import LandingPage from './pages/LandingPage';
 import AboutPage from './pages/AboutPage';
 import FeaturesPage from './pages/FeaturesPage';
 import LoginPage from './pages/LoginPage';
+import StaffMfaPage from './pages/StaffMfaPage';
 import RegisterPage from './pages/RegisterPage';
 import VerificationPendingPage from './pages/VerificationPendingPage';
 import VerifyEmailPage from './pages/VerifyEmailPage';
@@ -53,6 +54,7 @@ import AdminCreditsPage from './pages/admin/AdminCreditsPage';
 import AdminModerationPage from './pages/admin/AdminModerationPage';
 import ModeratorStudySetsPage from './pages/moderator/ModeratorStudySetsPage';
 import ModeratorOverviewPage from './pages/moderator/ModeratorOverviewPage';
+import ModeratorAnalyticsPage from './pages/moderator/ModeratorAnalyticsPage';
 import ModeratorReviewsPage from './pages/moderator/ModeratorReviewsPage';
 import ModeratorDisputesPage from './pages/moderator/ModeratorDisputesPage';
 import ModeratorAssessmentsPage from './pages/moderator/ModeratorAssessmentsPage';
@@ -90,6 +92,7 @@ export const App = () => {
 
       <Route element={<AuthLayout />}>
         <Route path="/login" element={<GuestOnly><LoginPage /></GuestOnly>} />
+        <Route path="/staff-verify" element={<GuestOnly><StaffMfaPage /></GuestOnly>} />
         <Route path="/register" element={<GuestOnly><RegisterPage /></GuestOnly>} />
         <Route path="/verify-email/pending" element={<VerificationPendingPage />} />
         <Route path="/verify-email" element={<VerifyEmailPage />} />
@@ -125,6 +128,7 @@ export const App = () => {
       {/* Protected Moderator Routes */}
       <Route path="/moderator" element={<StaffLayout area="moderator" />}>
         <Route index element={<ModeratorOverviewPage />} />
+        <Route path="analytics" element={<ModeratorAnalyticsPage />} />
         <Route path="settings" element={<SettingsPage />} />
         <Route path="reviews" element={<ModeratorReviewsPage />} />
         <Route path="disputes" element={<ModeratorDisputesPage />} />

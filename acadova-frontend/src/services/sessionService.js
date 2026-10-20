@@ -1,5 +1,6 @@
 import api from './api';
 import { toSessionInstant } from '../utils/sessionPresentation';
+import { requireFutureStart } from '../utils/scheduling';
 
 const legacyStatusActions = new Set(['accepted', 'scheduled', 'rejected', 'declined', 'completed', 'cancelled']);
 
@@ -8,7 +9,7 @@ export const sessionService = {
     return api.post('/api/sessions', {
       tutorId,
       subject,
-      scheduledAt: toSessionInstant(scheduledAt),
+      scheduledAt: requireFutureStart(toSessionInstant(scheduledAt)),
       meetingMethod,
       requestMessage,
     });
@@ -34,7 +35,7 @@ export const sessionService = {
   ),
 
   proposeReschedule: async (sessionId, scheduledAt, proposalId) => (
-    api.post(`/api/sessions/${sessionId}/reschedule`, { scheduledAt: toSessionInstant(scheduledAt), ...(proposalId ? { proposalId } : {}) })
+    api.post(`/api/sessions/${sessionId}/reschedule`, { scheduledAt: requireFutureStart(toSessionInstant(scheduledAt)), ...(proposalId ? { proposalId } : {}) })
   ),
 
   acceptReschedule: async (sessionId, proposalId) => (

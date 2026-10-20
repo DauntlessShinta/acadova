@@ -3,7 +3,7 @@ import api from './api';
 export const assessmentService = {
   list: () => api.get('/api/assessments'),
   get: (id) => api.get(`/api/assessments/${id}`),
-  submit: (id, answers) => api.post(`/api/assessments/${id}/submit`, { answers }),
+  submit: async (id, answers) => { const response=await api.post(`/api/assessments/${id}/submit`, { answers }); window.dispatchEvent(new Event('acadova:growth-refresh')); return response; },
   practice: (id, answers) => api.post(`/api/assessments/${id}/practice`, { answers }),
   getResult: (id) => api.get(`/api/assessments/attempts/${id}`),
   staffList: () => api.get('/api/moderator/assessments'),

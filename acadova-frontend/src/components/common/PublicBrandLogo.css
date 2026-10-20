@@ -1,4 +1,8 @@
 .public-brand-link { min-height: 44px; }
 .public-brand-logo { display: block; width: 180px; height: auto; flex-shrink: 0; }
+.acadova-brand-symbol { display:block; width:36px; height:32px; flex-shrink:0; }
+.staff-premium .staff-brand { flex-direction:column; align-items:flex-start; gap:4px; }
+.staff-premium .staff-brand .public-brand-logo { width:154px; max-width:100%; }
+.staff-premium.is-collapsed .staff-brand { align-items:center; }
 .public-brand-footer { padding: 10px 12px; background: var(--bg-surface); border: 1px solid var(--border-subtle); border-radius: var(--radius-sm); }
 .public-brand-footer .public-brand-logo { width: 160px; }

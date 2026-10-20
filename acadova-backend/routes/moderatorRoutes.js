@@ -16,7 +16,8 @@ const assessmentController = require('../controllers/assessmentController');
 const learningController = require('../controllers/learningController');
 
 router.use(authenticateToken, requireRole('moderator', 'admin'));
-router.get('/overview', require('../controllers/staffDashboardController').getModeratorOverview);
+router.get('/analytics', require('../utils/analyticsWindow').analyticsWindow, require('../controllers/staffAnalyticsController').getModeratorAnalytics);
+router.get('/overview', (req, res, next) => ('from' in req.query || 'to' in req.query) ? require('../utils/analyticsWindow').analyticsWindow(req, res, next) : next(), require('../controllers/staffDashboardController').getModeratorOverview);
 router.use(validateQuery());
 
 router.get('/ratings', listRatingsForModeration);

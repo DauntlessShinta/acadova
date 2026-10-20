@@ -11,6 +11,7 @@ import Alert from '../components/common/Alert';
 import LoadingSpinner from '../components/common/LoadingSpinner';
 import EmptyState from '../components/common/EmptyState';
 import PeerCard from '../components/student/PeerCard';
+import FreeSessionRequest from '../components/student/FreeSessionRequest';
 import creditService from '../services/creditService';
 import { useSearchDraft } from '../utils/useSearchDraft';
 import { Link } from 'react-router-dom';
@@ -33,7 +34,7 @@ const POPULAR_SUBJECTS = [
 
 export const FindTutorsPage = () => {
   const toast = useToast();
-  const { user, credits, refreshUser } = useAuth();
+  const { user, credits, refreshUser, freeLearning } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
   const currentSubjectQuery = searchParams.get('subject') || '';
   const search = useSearchDraft(searchParams, setSearchParams);
@@ -59,9 +60,10 @@ export const FindTutorsPage = () => {
   const searchVersion = useRef(0);
 
   useEffect(() => {
+    if(freeLearning)return;
     creditService.getCurrentRules().then((response) => setSessionCost(response.data.tutoringSessionCost))
       .catch(() => setSessionCost(null));
-  }, []);
+  }, [freeLearning]);
 
   const fetchTutors = useCallback(async (subject = '', q = '') => {
     const version = ++searchVersion.current;
@@ -171,7 +173,7 @@ export const FindTutorsPage = () => {
           Find Tutors
         </h1>
         <p>
-          Discover students who can help with the subjects you want to learn, then request a peer session using credits.
+          Discover students who teach your topic. Review their profile and suggest a time to learn together.
         </p>
       </div></header>
 
@@ -243,8 +245,9 @@ export const FindTutorsPage = () => {
       )}
 
       {/* REQUEST SESSION MODAL */}
+      {freeLearning&&isModalOpen&&selectedTutor&&<FreeSessionRequest key={selectedTutor._id} tutor={selectedTutor} close={()=>setIsModalOpen(false)}/>}
       <Modal
-        isOpen={isModalOpen}
+        isOpen={!freeLearning&&isModalOpen}
         onClose={() => { if (!submittingRef.current) setIsModalOpen(false); }}
         title={`Request Session with ${selectedTutor?.name || 'Peer'}`}
       >

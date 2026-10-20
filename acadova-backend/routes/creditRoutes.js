@@ -19,7 +19,7 @@ const historyQuery = (req, res, next) => {
   next();
 };
 
-router.use(authenticateToken, requireRole('student'));
+router.use(authenticateToken, requireRole('student'),require('../config/studentExperience').retired);
 
 router.get('/mine', historyQuery, getMyCreditHistory);
 router.get('/rules', (req, res, next) => Object.keys(req.query).length

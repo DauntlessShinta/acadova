@@ -1,0 +1,13 @@
+.staff-mfa { max-width:420px; margin-inline:auto; color:var(--ink-900); }
+.staff-mfa .public-brand-logo { width:166px; margin-bottom:28px; }
+.staff-mfa > a:first-child { display:block; width:fit-content; }
+.staff-mfa-emblem { display:block; color:#2563ff; margin-bottom:12px; }
+.staff-mfa h2 { font-size:28px; letter-spacing:-.025em; }
+.staff-mfa p { line-height:1.6; color:var(--ink-600); }
+.staff-mfa form { display:grid; gap:12px; margin-top:24px; }
+.staff-mfa form .form-label { margin:0; }
+.staff-mfa-code { text-align:center; font-size:26px; letter-spacing:.4em; min-height:54px; }
+.staff-mfa .btn { min-height:44px; border-radius:9px; }
+.staff-mfa [role=alert] { color:#a32032; }
+.staff-mfa-back { display:inline-flex; align-items:center; min-height:44px; }
+.staff-mfa small { display:block; margin-top:16px; line-height:1.6; color:var(--ink-600); }

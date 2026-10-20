@@ -43,7 +43,7 @@ async function assertIndexes() {
 }
 
 // Not exported: all production-facing entry points below fail before reaching this engine.
-function engine(clock, policy) {
+function engine(clock, policy, newEventsOnly = false) {
   const now = () => { const value = new Date(clock()); if (!Number.isFinite(value.getTime())) fail('EXP_CLOCK_INVALID', 'Server clock unavailable.', 503); return value; };
   async function transaction(participants, write) {
     await assertIndexes();
@@ -82,8 +82,9 @@ function engine(clock, policy) {
     return { id: String(row._id), role: row.role };
   };
   async function fence(Model, sourceId, tx) {
-    return Model.findOneAndUpdate({ _id: sourceId }, { $currentDate: { updatedAt: true } },
-      { session: tx, timestamps: false, returnDocument: 'after' }).lean();
+    const query=Model.findOneAndUpdate({ _id: sourceId }, { $currentDate: { updatedAt: true } },
+      { session: tx, timestamps: false, returnDocument: 'after' });
+    return (Model===Session?query.select('+expReport'):query).lean();
   }
   async function systemAudit(action, award, tx) {
     await Audit.create([{ actorRole: 'system', action, targetType: 'ExpAward', targetId: String(award._id),
@@ -113,6 +114,7 @@ function engine(clock, policy) {
     const row = await fence(Session, sessionId, tx);
     if (!row || !users.has(String(row.tutor)) || !users.has(String(row.learner))) fail('EXP_EVIDENCE_CHANGED', 'Session participants changed.');
     student(users.get(String(row.tutor))); student(users.get(String(row.learner)));
+    if(newEventsOnly && row.economyVersion!=='free-v1' || row.expReport?.status==='open' || row.expReport?.status==='upheld') fail('EXP_REPORT_HOLD','This contribution requires review.');
     // Match the existing check-in workflow: 15 minutes early through 4 hours late.
     const inCheckInWindow = time => time >= new Date(row.scheduledAt).getTime() - 15 * 60000
       && time <= new Date(row.scheduledAt).getTime() + 4 * 3600000;
@@ -131,8 +133,9 @@ function engine(clock, policy) {
       const attempt = await fence(Attempt, attemptId, tx);
       if (!attempt || !users.has(String(attempt.student))) fail('EXP_EVIDENCE_CHANGED', 'Attempt owner changed.');
       student(users.get(String(attempt.student)));
+      if(newEventsOnly && attempt.progressionVersion!=='student-free-exp-1') fail('EXP_HISTORICAL_EVENT','Historical events are not replayed.');
       const assessment = await fence(Assessment, attempt.assessment, tx);
-      const first = await Attempt.findOne({ student: attempt.student, assessment: attempt.assessment, mode: 'official', passed: true })
+      const first = await Attempt.findOne({ student: attempt.student, assessment: attempt.assessment, mode: newEventsOnly?{$ne:'practice'}:'official', passed: true })
         .sort({ submittedAt: 1, _id: 1 }).session(tx).lean();
       if (!assessment || assessment.status !== 'published' || !assessment.approvedBy || same(assessment.approvedBy, attempt.student)
         || !assessment.publishedAt || attempt.mode !== 'official' || attempt.passed !== true
@@ -265,7 +268,9 @@ async function createIsolatedExpEngine({ clock = () => new Date() } = {}) {
 // never request bodies. The constant hard-off gate runs before policy or database work.
 const gated = method => async (...args) => {
   requireExpActivation();
-  return engine(() => new Date(), expEnginePolicy())[method](...args);
+  const p=expEnginePolicy();
+  const policy={...p,version:'student-free-exp-1',minimumMinutes:Math.max(15,p.minimumMinutes),reportWindowHours:Math.max(48,p.reportWindowHours),tutoringDaily:Math.min(2,p.tutoringDaily),tutoringWeekly:Math.min(8,p.tutoringWeekly),pairDaily:Math.min(1,p.pairDaily),pairWeekly:Math.min(2,p.pairWeekly)};
+  return engine(() => new Date(), policy, true)[method](...args);
 };
 module.exports = { awardAssessment: gated('awardAssessment'), queueTutoring: gated('queueTutoring'),
   finalizeTutoring: gated('finalizeTutoring'), holdTutoring: gated('holdTutoring'),

@@ -1,3 +1,5 @@
+import GrowthReviewPanel from '../../components/staff/GrowthReviewPanel';
+import { useAuth } from '../../context/AuthContext';
 import { useConfirm } from '../../context/confirmAccess';
 import React, { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { useLocation } from 'react-router-dom';
@@ -13,6 +15,7 @@ import SessionReviewRecord from '../../components/staff/SessionReviewRecord';
 const participantName = (value) => value?.name || 'Student account';
 
 export const ModeratorDisputesPage = () => {
+  const {freeLearning}=useAuth();
   const { pathname, search } = useLocation();
   const staffLabel = pathname.startsWith('/admin') ? 'Administration' : 'Moderator';
   const confirm = useConfirm();
@@ -123,6 +126,7 @@ export const ModeratorDisputesPage = () => {
   return (
     <div className="staff-page">
       <header className="staff-page-header"><div><span className="staff-eyebrow">{staffLabel} / Sessions</span><h1>Session disputes and completion reviews</h1><p>Review self-reported attendance, confirmations, messages and submitted work. Silence alone never approves completion.</p></div></header>
+      {freeLearning&&<GrowthReviewPanel/>}
       <Alert type="danger" message={error} />
       <div className="card staff-filter-bar"><label className="staff-filter-select">View <select className="form-select" value={viewStatus}
         onChange={(event) => setViewStatus(event.target.value)}><option value="open">Open exceptions</option><option value="resolved">Resolved cases</option></select></label>

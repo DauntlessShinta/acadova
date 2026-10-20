@@ -2,6 +2,8 @@ import api from './api';
 const endpoint = (name, params = {}) => `/api/analytics/${name}` + (Object.keys(params).length ? `?${new URLSearchParams(params)}` : '');
 
 export const analyticsService = {
+  getAdminDashboard: (params, options) => api.get('/api/admin/dashboard?' + new URLSearchParams(params), options),
+  getModeratorAnalytics: (params, options) => api.get('/api/moderator/analytics?' + new URLSearchParams(params), options),
   getSubjectAnalytics: async (params, options) => {
     return api.get(endpoint('subjects', params), options);
   },

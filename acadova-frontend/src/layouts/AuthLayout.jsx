@@ -1,6 +1,7 @@
 import React from 'react';
 import { Link, Outlet, useLocation } from 'react-router-dom';
-import { ArrowRightLeft, BookOpen, Layers, Network, Sparkles } from 'lucide-react';
+import { ArrowRightLeft, BookOpen, Network, Sparkles } from 'lucide-react';
+import PublicBrandLogo from '../components/common/PublicBrandLogo';
 
 export const AuthLayout = () => {
   const { pathname } = useLocation();
@@ -9,7 +10,7 @@ export const AuthLayout = () => {
   return (
   <main className={`auth-shell${isRegister ? ' auth-shell--register' : ''}`}>
     <section className="auth-brand-panel" aria-label="About Acadova">
-      <Link to="/" className="auth-brand-link" aria-label="Acadova home"><span><Layers size={23} /></span><strong>Acadova</strong></Link>
+      <Link to="/" className="auth-brand-link" aria-label="Acadova home"><PublicBrandLogo /></Link>
       <div className="auth-brand-content">
         <span className="auth-eyebrow"><Sparkles size={15} /> A workspace for your learning</span>
         <BrandHeading className={isRegister ? 'register-brand-heading' : undefined}>Organize your subjects.<br />Build your study routine.</BrandHeading>

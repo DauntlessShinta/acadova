@@ -37,15 +37,16 @@ function auditSuspendedLoginSafely(userId) {
   void auditLoginSafely({ userId, action: ACTIONS.suspendedLoginAttempt, failureCount: 0 });
 }
 
-function signToken(user) {
+function signToken(user, staffVerified = false) {
   if (!validAuthVersion(user.authVersion)) throw new Error('Invalid authentication state');
   return jwt.sign({ id: user._id, role: user.role,
+    ...(staffVerified ? { staffMfa: true, mfaEmail: require('../services/staffMfaService').emailFingerprint(user.email) } : {}),
     ...(user.authVersion !== undefined ? { authVersion: user.authVersion } : {}) },
   process.env.JWT_SECRET, { expiresIn: '7d' });
 }
 
 function publicUser(user) {
-  return { id: user._id, name: user.name, email: user.email, credits: user.credits,
+  return { experience:require('../config/studentExperience').capabilities(), id: user._id, name: user.name, email: user.email, credits: user.credits,
     role: user.role, skillsToLearn: user.skillsToLearn || [], skillsToTeach: user.skillsToTeach || [] };
 }
 
@@ -71,15 +72,14 @@ exports.register = async (req, res) => {
     const existing = await User.findOne({ email }).lean();
     if (existing) return existingRegistrationResponse(res, existing);
     const verification = createVerificationToken();
-    const rules = await getEffectiveCreditRules();
+    const rules = require('../config/studentExperience').active()?{startingCreditGrant:0}:await getEffectiveCreditRules();
     const user = await User.create({
       name,
       email,
       password: await bcrypt.hash(password, 10),
       credits: 0,
       emailVerified: false,
-      openingGrantEligible: true,
-      openingGrantAmount: rules.startingCreditGrant,
+      ...(!require('../config/studentExperience').active()?{openingGrantEligible:true,openingGrantAmount:rules.startingCreditGrant}:{}),
       emailVerificationTokenHash: verification.hash,
       emailVerificationExpires: verification.expires,
       emailVerificationSentAt: new Date(),
@@ -130,7 +130,8 @@ exports.verifyEmail = async (req, res) => {
         emailVerificationTokenHash: 1, emailVerificationExpires: 1, emailVerificationSentAt: 1,
         openingGrantEligible: 1, openingGrantAmount: 1,
       } };
-      user = await User.findOneAndUpdate(
+      if(require('../config/studentExperience').active()){delete verifiedFields.$unset.openingGrantEligible;delete verifiedFields.$unset.openingGrantAmount;if(pending)verifiedFields.$set.openingGrantFrozenAt=now;}
+      user = !require('../config/studentExperience').active() && await User.findOneAndUpdate(
         { ...tokenFilter, role: 'student', openingGrantEligible: true },
         { ...verifiedFields, $inc: { credits: grantAmount } },
         { new: true, session: dbSession },
@@ -194,6 +195,7 @@ exports.resendVerification = async (req, res) => {
 };
 
 exports.login = async (req, res) => {
+  let stage = 'account_lookup';
   try {
     const { email, password } = req.body;
     const genericFailure = () => {
@@ -212,7 +214,9 @@ exports.login = async (req, res) => {
     const cooldownResponse = () => res.status(429).json({ success: false,
       message: 'Too many login attempts. Please try again shortly.' });
     if (user.loginCooldownUntil && new Date(user.loginCooldownUntil) > now) return cooldownResponse();
+    stage = 'password_check';
     if (!await bcrypt.compare(password, user.password)) {
+      stage = 'failure_counter';
       const failure = await loginSecurity.recordFailedLogin(user, now);
       if (failure?.count >= failureThreshold) {
         await auditLoginSafely({ userId: user._id,
@@ -228,6 +232,7 @@ exports.login = async (req, res) => {
     if (user.emailVerified === false) {
       return res.status(403).json({ success: false, code: 'EMAIL_VERIFICATION_REQUIRED', message: 'Please verify your email before logging in.' });
     }
+    stage = 'success_revalidation';
     const active = await loginSecurity.resetAfterSuccess(user, now);
     if (!active) {
       // A concurrent suspension, verification change, password change, or
@@ -242,9 +247,18 @@ exports.login = async (req, res) => {
     }
     if (user.failedLoginAttempts > 0) await auditLoginSafely({ userId: user._id,
       action: ACTIONS.loginSuccessAfterFailures, failureCount: user.failedLoginAttempts });
+    stage = 'staff_verification';
+    if (require('../config/staffMfa').enabled() && require('../config/staffMfa').isStaff(active.role)) {
+      return res.json({ success: true, data: await require('../services/staffMfaService').begin(active) });
+    }
+    stage = 'token_signing';
     return res.json({ success: true, message: 'Login successful', data: { token: signToken(active), user: publicUser(active) } });
-  } catch {
-    logSecurityEvent('auth.login_error', req, { status: 500 });
+  } catch (error) {
+    if (stage === 'staff_verification' && error.status
+      && (error.code?.startsWith('MFA_') || error.code === 'STAFF_EMAIL_VERIFICATION_REQUIRED')) {
+      return res.status(error.status).json({ success: false, code: error.code, message: error.message });
+    }
+    logSecurityEvent('auth.login_error', req, { status: 500, stage });
     return res.status(500).json({ success: false, message: 'Server error during login' });
   }
 };
@@ -336,6 +350,8 @@ exports.googleLogin = async (req, res) => {
         denied = 'IDENTITY_CONFLICT'; return;
       }
       const existing = bySub || byEmail;
+      if (existing && require('../config/staffMfa').enabled() && require('../config/staffMfa').isStaff(existing.role)
+        && existing.emailVerified !== true) { denied = 'STAFF_EMAIL_VERIFICATION_REQUIRED'; return; }
       if (existing?.googleSub && existing.googleSub !== identity.sub) {
         denied = 'IDENTITY_CONFLICT'; return;
       }
@@ -344,7 +360,7 @@ exports.googleLogin = async (req, res) => {
         denied = 'LOGIN_COOLDOWN'; return;
       }
       if (existing) {
-        const eligible = existing.role === 'student'
+        const eligible = !require('../config/studentExperience').active() && existing.role === 'student'
           && existing.emailVerified === false && existing.openingGrantEligible === true;
         const grantAmount = eligible ? (existing.openingGrantAmount || startingCredits) : 0;
         const update = { $set: { googleSub: identity.sub, emailVerified: true,
@@ -359,6 +375,7 @@ exports.googleLogin = async (req, res) => {
           update.$unset.passwordResetTokenHash = 1;
           update.$unset.passwordResetExpires = 1;
         }
+        if(require('../config/studentExperience').active()){delete update.$unset.openingGrantEligible;delete update.$unset.openingGrantAmount;if(existing.openingGrantEligible)update.$set.openingGrantFrozenAt=now;}
         if (grantAmount) update.$inc = { credits: grantAmount };
         account = await User.findOneAndUpdate(
           { _id: existing._id, suspendedAt: null,
@@ -376,14 +393,14 @@ exports.googleLogin = async (req, res) => {
         if (req.body.policyAccepted !== true) { denied = 'POLICY_ACCEPTANCE_REQUIRED'; return; }
         // Unknown local password is never disclosed; password recovery can set one later.
         const password = await bcrypt.hash(randomBytes(48).toString('hex'), 10);
-        const rules = await getEffectiveCreditRules();
+        const rules = require('../config/studentExperience').active()?{startingCreditGrant:0}:await getEffectiveCreditRules();
         const [created] = await User.create([{
           name: safeGoogleName(identity.name), email, googleSub: identity.sub,
           password, role: 'student', emailVerified: true, emailVerifiedAt: now,
           credits: rules.startingCreditGrant,
           policyAcceptedAt: now, policyVersion,
         }], { session: dbSession });
-        await CreditTransaction.create([{
+        if (!require('../config/studentExperience').active()) await CreditTransaction.create([{
           type: 'initial_grant', toUser: created._id, amount: rules.startingCreditGrant,
         }], { session: dbSession });
         account = created;
@@ -393,6 +410,8 @@ exports.googleLogin = async (req, res) => {
       code: denied, message: 'Use your approved PHINMAED institutional email address without a plus alias.' });
     if (denied === 'POLICY_ACCEPTANCE_REQUIRED') return res.status(409).json({ success: false,
       code: denied, message: 'Please accept the account policies to create your account.' });
+    if (denied === 'STAFF_EMAIL_VERIFICATION_REQUIRED') return res.status(403).json({ success: false,
+      code: denied, message: 'A verified staff email is required. Contact an administrator.' });
     if (denied === 'ACCOUNT_SUSPENDED') {
       if (suspendedId) auditSuspendedLoginSafely(suspendedId);
       return res.status(403).json({ success: false,
@@ -405,10 +424,14 @@ exports.googleLogin = async (req, res) => {
     const active = await loginSecurity.resetAfterSuccess(account, new Date());
     if (!active) return res.status(409).json({ success: false,
       message: 'Account state changed during sign-in. Please try again.' });
+    if (require('../config/staffMfa').enabled() && require('../config/staffMfa').isStaff(active.role)) {
+      return res.json({ success: true, data: await require('../services/staffMfaService').begin(active) });
+    }
     return res.json({ success: true, message: 'Login successful',
       data: { token: signToken(active), user: publicUser(active) } });
   } catch (error) {
     // Unique email/sub conflicts can occur under concurrent sign-ins. Retry safely.
+    if (error.status && error.code?.startsWith('MFA_')) return res.status(error.status).json({ success: false, code: error.code, message: error.message });
     if (error.code === 11000 || error.hasErrorLabel?.('TransientTransactionError')) {
       return res.status(409).json({ success: false,
         message: 'Sign-in is in progress. Please try again.' });
@@ -419,3 +442,21 @@ exports.googleLogin = async (req, res) => {
     if (dbSession) await dbSession.endSession();
   }
 };
+
+async function staffMfaAction(req, res, resend = false) {
+  res.set('Cache-Control', 'no-store');
+  try {
+    const service = require('../services/staffMfaService');
+    if (resend) return res.json({ success: true, data: await service.resend(req.body.challenge) });
+    const user = await service.verify(req.body.challenge, req.body.code);
+    return res.json({ success: true, data: { token: signToken(user, true), user: publicUser(user) } });
+  } catch (error) {
+    const safe = error.code?.startsWith('MFA_');
+    if (!safe) logSecurityEvent('auth.staff_mfa_unavailable', req, { status: 503 });
+    return res.status(safe ? error.status : 503).json({ success: false,
+      code: safe ? error.code : 'MFA_UNAVAILABLE',
+      message: safe ? error.message : 'Staff verification is unavailable. Return to sign-in or contact an administrator.' });
+  }
+}
+exports.verifyStaffMfa = (req, res) => staffMfaAction(req, res);
+exports.resendStaffMfa = (req, res) => staffMfaAction(req, res, true);

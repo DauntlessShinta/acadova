@@ -29,6 +29,7 @@ exports.get = handle(async (req, res) => { const row = await read(req.params.id)
 exports.create = handle(async (req, res) => { const body = circleInput(req.body); const row = await withOwner(req.user.id, async session => {
   if (await Circle.countDocuments({ host: req.user.id, status: 'scheduled', endsAt: { $gt: new Date() } }).session(session) >= 20) fail('Manage your existing circles before creating more.', 429);
   if (body.subjectId) await owned(Subject, req.user.id, body.subjectId, session);
+  circleInput(req.body); // Recheck the current clock after owner locking/retries.
   return (await Circle.create([{ ...body, host: req.user.id }], { session }))[0];
 }); await response(row, req, res, 201); });
 exports.action = handle(async (req, res) => { const action = req.params.action; if (!req.body || typeof req.body !== 'object' || Array.isArray(req.body)) fail('Enter valid circle details.', 400); const row = await withOwner(req.user.id, async session => {
@@ -41,7 +42,7 @@ exports.action = handle(async (req, res) => { const action = req.params.action; 
   else if (action === 'leave') { if (host || !member(current, req.user.id)) fail('You are not an attendee.'); current.participants = current.participants.filter(id => idOf(id) !== req.user.id); }
   else if (action === 'cancel') current.status = 'cancelled';
   else if (action === 'complete') { if (current.endsAt > new Date()) fail('The scheduled end must pass before closing the circle.'); current.status = 'completed'; }
-  else if (action === 'edit') { if (current.startsAt <= new Date()) fail('Started circles cannot be edited.'); const { version, ...input } = req.body; void version; const body = circleInput(input); if ((body.capacity ?? 12) < current.participants.length) fail('Capacity cannot be below the enrolled count.'); if (body.subjectId) await owned(Subject, req.user.id, body.subjectId, session); Object.assign(current, body); }
+  else if (action === 'edit') { if (current.startsAt <= new Date()) fail('Started circles cannot be edited.'); const { version, ...input } = req.body; void version; const body = circleInput(input, current); if ((body.capacity ?? 12) < current.participants.length) fail('Capacity cannot be below the enrolled count.'); if (body.subjectId) await owned(Subject, req.user.id, body.subjectId, session); Object.assign(current, body); }
   else if (action === 'remove') { if (!member(current, req.body.participantId)) fail('Attendee unavailable.', 404); current.participants = current.participants.filter(id => idOf(id) !== req.body.participantId); }
   else fail('Unknown circle action.', 400);
   current.version++; await current.save({ session }); return current;

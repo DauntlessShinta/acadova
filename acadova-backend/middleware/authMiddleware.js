@@ -47,6 +47,12 @@ async function authenticateToken(req, res, next) {
       return res.status(403).json({ success: false, message: 'Email verification required' });
     }
 
+    if (require('../config/staffMfa').enabled() && require('../config/staffMfa').isStaff(user.role)
+      && (user.emailVerified !== true || payload.staffMfa !== true || payload.role !== user.role
+        || payload.mfaEmail !== require('../services/staffMfaService').emailFingerprint(user.email))) {
+      return res.status(401).json({ success: false, code: 'STAFF_MFA_REQUIRED', message: 'Sign in again to verify staff access.' });
+    }
+
     req.user = {
       id: user._id.toString(),
       name: user.name,

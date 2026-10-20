@@ -1,11 +1,11 @@
 import React from 'react';
 import './PublicBrandLogo.css';
 
-// Display the complete supplied wordmark, excluding only transparent/near-transparent
-// canvas padding. The original PNG artwork and its proportions remain unchanged.
-const PublicBrandLogo = () => (
-  <svg className="public-brand-logo" viewBox="59 397 1362 308" width="1362" height="308" aria-hidden="true" focusable="false">
-    <image href="/images/acadova-logo-new.png" width="1448" height="1086" />
+// Exact authorized raster artwork, framed from the owner's composite board.
+// This is not a traced vector. Separate vector/favicon masters remain required.
+const PublicBrandLogo = ({ symbol = false }) => (
+  <svg className={symbol ? 'acadova-brand-symbol' : 'public-brand-logo'} viewBox={symbol ? '160 150 295 225' : '160 150 1130 225'} width={symbol ? '295' : '1130'} height="225" aria-hidden="true" focusable="false">
+    <image href="/images/acadova-brand-identity.png" width="1448" height="1086" />
   </svg>
 );
 

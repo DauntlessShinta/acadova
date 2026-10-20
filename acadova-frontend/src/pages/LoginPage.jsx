@@ -33,6 +33,7 @@ export const LoginPage = () => {
       submittingRef.current = true;
       setSubmitting(true);
       const response = await login(normalizeEmail(email), password);
+      if (response?.data?.mfaRequired) { setPassword(''); navigate('/staff-verify', { replace: true }); return; }
       toast('success', 'Welcome back.');
       const role = response?.data?.user?.role;
       navigate((role === 'student' && studentReturnFromSearch(search)) || getRoleHomeRoute(role), { replace: true });

@@ -74,7 +74,8 @@ test('password recovery has generic responses and single-use, expiring hashed to
   assert.equal(await bcrypt.compare('NewPassword2!', user.password), true);
 });
 
-test('Google identity links existing users and grants only new or pending verified Students once', async (t) => {
+test('Google identity links existing users; grants retire or issue once according to the reviewed gate', async (t) => {
+  const free=require('../config/studentExperience').active();
   const original = { findOne: User.findOne, findOneAndUpdate: User.findOneAndUpdate,
     create: User.create, startSession: mongoose.startSession, transactionCreate: CreditTransaction.create,
     configFind: CreditConfig.findById, verify: googleIdentity.verifyGoogleCredential,
@@ -143,14 +144,14 @@ test('Google identity links existing users and grants only new or pending verifi
   assert.equal(users.length, 1);
   assert.equal(users[0].role, 'student');
   assert.equal(users[0].emailVerified, true);
-  assert.equal(users[0].credits, 100);
+  assert.equal(users[0].credits, free?0:100);
   assert.ok(users[0].policyAcceptedAt instanceof Date);
-  assert.equal(grants.length, 1);
-  assert.equal(grants[0].type, 'initial_grant');
+  assert.equal(grants.length, free?0:1);
+  if(!free)assert.equal(grants[0].type, 'initial_grant');
   const repeat = await call();
   assert.equal(repeat.statusCode, 200);
   assert.equal(users.length, 1);
-  assert.equal(grants.length, 1);
+  assert.equal(grants.length, free?0:1);
   assert.equal(first.body.data.user.id, repeat.body.data.user.id);
   assert.doesNotMatch(JSON.stringify(first.body.data.user), /googleSub|password|credential/);
 
@@ -164,7 +165,7 @@ test('Google identity links existing users and grants only new or pending verifi
   assert.equal(staff.googleSub, 'google-staff');
   assert.equal(staff.credits, 8);
   assert.equal(users.length, 2);
-  assert.equal(grants.length, 1);
+  assert.equal(grants.length, free?0:1);
   staff.suspendedAt = new Date();
   assert.equal((await call()).statusCode, 403);
   staff.suspendedAt = null;
@@ -186,10 +187,11 @@ test('Google identity links existing users and grants only new or pending verifi
   assert.match(pending.authVersion, /^[a-f0-9]{64}$/);
   assert.equal(pending.passwordResetTokenHash, undefined);
   assert.equal(pending.passwordResetExpires, undefined);
-  assert.equal(pending.credits, 30);
-  assert.equal(grants.length, 2);
+  assert.equal(pending.credits, free?0:30);
+  if(free){assert.equal(pending.openingGrantEligible,true);assert.equal(pending.openingGrantAmount,30);assert.ok(pending.openingGrantFrozenAt instanceof Date);}
+  assert.equal(grants.length, free?0:2);
   assert.equal((await call()).statusCode, 200);
-  assert.equal(grants.length, 2);
+  assert.equal(grants.length, free?0:2);
   const legacy = { _id: new mongoose.Types.ObjectId(), email: 'legacy-google@example.test',
     role: 'student', credits: 12, password: await bcrypt.hash('LegacyPassword1!', 10) };
   users.push(legacy);
@@ -198,7 +200,7 @@ test('Google identity links existing users and grants only new or pending verifi
   assert.equal(await bcrypt.compare('LegacyPassword1!', legacy.password), true);
   assert.equal(legacy.authVersion, undefined);
   assert.equal(legacy.credits, 12);
-  assert.equal(grants.length, 2);
+  assert.equal(grants.length, free?0:2);
   googleIdentity.verifyGoogleCredential = async () => { throw new Error('secret credential'); };
   const invalid = await call();
   assert.equal(invalid.statusCode, 401);

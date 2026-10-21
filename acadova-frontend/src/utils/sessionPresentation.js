@@ -186,8 +186,5 @@ export const getSessionNextStep = (session, isTeaching, counterpartName = 'your 
 export const getSessionEconomyLabel = (session, freeLearning = false) => {
   if (session.economyVersion === 'free-v1') return 'Free peer tutoring';
   if (!freeLearning) return `${session.creditAmount} credit${session.creditAmount === 1 ? '' : 's'}`;
-  if (session.settlementState === 'settled') return 'Historical paid session';
-  if (session.settlementState === 'resolved_no_transfer') return 'Historical obligation resolved';
-  if (session.settlementState === 'not_applicable') return 'Historical session';
-  return 'Historical obligation (frozen)';
+  return 'Historical session (read only)';
 };

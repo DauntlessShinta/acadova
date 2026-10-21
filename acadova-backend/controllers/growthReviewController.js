@@ -8,10 +8,15 @@ const {assertLegacyReviewable}=require('../services/legacyCreditReviewGuard');
 const Audit=require('../models/AuditLog');
 const {recordAudit,ACTIONS}=require('../services/auditService');
 const policy=require('../config/studentExperience');
+const releaseSafety=require('../config/studentReleaseSafety');
 const same=(a,b)=>String(a?._id||a)===String(b?._id||b);
 const fail=(message,status=409)=>{throw Object.assign(new Error(message),{status});};
 const reason=text=>{if(typeof text!=='string'||text.trim().length<10||text.length>500||/[\p{Cc}\p{Cf}]/u.test(text))fail('Enter an audit reason of 10 to 500 characters.',400);return text.trim();};
 const wrap=fn=>async(req,res)=>{try{if(!policy.active())fail('This cutover is not activated.',503);res.set('Cache-Control','private, no-store').json({success:true,data:await fn(req)});}catch(error){res.status(error.status||503).json({success:false,message:error.status?error.message:'Review is temporarily unavailable. No credit records were changed.'});}};
+const legacyMutation=fn=>wrap(req=>{
+  if(!releaseSafety.legacyCaseWritesAllowed())fail('This historical case remains frozen. A separately authorized case review is required before any proposal or disposition.',423);
+  return fn(req);
+});
 async function transact(req,sessionId,write){
   const tx=await mongoose.startSession();let output;
   try{await tx.withTransaction(async()=>{
@@ -47,16 +52,16 @@ exports.legacyList=wrap(async()=>{
   const rows=await Session.find({economyVersion:{$ne:'free-v1'},creditsSettledAt:null,legacyObligationResolvedAt:null,status:{$in:['pending','accepted','scheduled','in_progress','awaiting_validation','no_show','disputed','completed']}}).select('_id subject learner tutor creditAmount status').sort({_id:1}).limit(100).lean();
   const payments=await require('../models/CreditTransaction').find({session:{$in:rows.map(r=>r._id)}}).lean();
   const proposals=await Review.find({session:{$in:rows.map(row=>row._id)}}).select('session reason state version learnerConsentAt tutorConsentAt').lean();
-  return rows.filter(row=>require('../utils/sessionLifecycleCompatibility').classifyLegacySession(row,payments.filter(p=>same(p.session,row._id))).settlementState!=='settled').map(row=>({...row,review:proposals.find(proposal=>same(proposal.session,row._id))||null}));
+  return rows.filter(row=>require('../utils/sessionLifecycleCompatibility').classifyLegacySession(row,payments.filter(p=>same(p.session,row._id))).settlementState!=='settled').map(row=>({...row,caseWritesAllowed:false,review:proposals.find(proposal=>same(proposal.session,row._id))||null}));
 });
 exports.legacyGet=wrap(async req=>{
   const row=await Session.findById(req.params.id).lean();if(!row)fail('Session unavailable.',404);
   if(!['admin','moderator'].includes(req.user.role)&&!same(row.learner,req.user.id)&&!same(row.tutor,req.user.id))fail('Not authorized.',403);
   const payments=await require('../models/CreditTransaction').find({session:row._id}).lean();
   const state=require('../utils/sessionLifecycleCompatibility').classifyLegacySession(row,payments);
-  return {frozen:state.settlementState!=='settled'&&row.economyVersion!=='free-v1'&&!row.creditsSettledAt&&!row.legacyObligationResolvedAt,review:await Review.findOne({session:row._id}).lean()};
+  return {frozen:state.settlementState!=='settled'&&row.economyVersion!=='free-v1'&&!row.creditsSettledAt&&!row.legacyObligationResolvedAt,caseWritesAllowed:false,restrictions:{creditTransfer:false,automaticSettlement:false,noTransferDisposition:false},review:await Review.findOne({session:row._id}).lean()};
 });
-exports.proposeLegacy=wrap(req=>transact(req,req.params.id,async(tx,row)=>{
+exports.proposeLegacy=legacyMutation(req=>transact(req,req.params.id,async(tx,row)=>{
   if(row.economyVersion==='free-v1'||row.creditsSettledAt||row.legacyObligationResolvedAt)fail('Only unresolved legacy obligations can be reviewed.');
   if(same(row.tutor,req.user.id)||same(row.learner,req.user.id))fail('An independent staff reviewer is required.',403);
   await assertLegacyReviewable(row,tx,{Credit,User});
@@ -68,7 +73,7 @@ exports.proposeLegacy=wrap(req=>transact(req,req.params.id,async(tx,row)=>{
   await recordAudit({actor:req.user,action:ACTIONS.legacyProposal,targetType:'LegacyCreditReview',targetId:review._id,summary:'Proposed explicit closure without credit transfer; both participant consents required',metadata:{reason:note},session:tx});
   return review;
 }));
-exports.consentLegacy=wrap(req=>transact(req,req.params.id,async(tx,row)=>{
+exports.consentLegacy=legacyMutation(req=>transact(req,req.params.id,async(tx,row)=>{
   const learner=same(row.learner,req.user.id),tutor=same(row.tutor,req.user.id);
   if(!learner&&!tutor)fail('Only the actual participants can consent.',403);
   await assertLegacyReviewable(row,tx,{Credit,User});

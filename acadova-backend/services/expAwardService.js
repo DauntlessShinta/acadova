@@ -267,6 +267,7 @@ async function createIsolatedExpEngine({ clock = () => new Date() } = {}) {
 // Internal server adapters only. Actor IDs must come from authenticated server context,
 // never request bodies. The constant hard-off gate runs before policy or database work.
 const gated = method => async (...args) => {
+  if(require('../config/studentReleaseSafety').recoveryWriteHold())fail('STUDENT_RELEASE_WRITE_HOLD','EXP mutations are paused for recovery.',503);
   requireExpActivation();
   const p=expEnginePolicy();
   const policy={...p,version:'student-free-exp-1',minimumMinutes:Math.max(15,p.minimumMinutes),reportWindowHours:Math.max(48,p.reportWindowHours),tutoringDaily:Math.min(2,p.tutoringDaily),tutoringWeekly:Math.min(8,p.tutoringWeekly),pairDaily:Math.min(1,p.pairDaily),pairWeekly:Math.min(2,p.pairWeekly)};

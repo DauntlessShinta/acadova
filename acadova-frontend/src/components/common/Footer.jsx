@@ -54,7 +54,7 @@ export const Footer = () => {
             <ul>
               {!isAuthenticated ? <><li><Link to="/#features">Subjects &amp; study tools</Link></li><li><Link to="/#community">Privacy &amp; trust</Link></li><li><Link to="/about#contact">Contact</Link></li></> : <>
                 <li><Link to="/tutors">Find Tutors</Link></li>
-                <li><Link to="/learning">Learning library</Link></li>
+                <li><Link to="/learning">Learning Hub</Link></li>
                 <li><Link to="/#features">Two ways to learn</Link></li>
               </>}
             </ul>

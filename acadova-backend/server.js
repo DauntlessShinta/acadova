@@ -12,6 +12,7 @@ require('dotenv').config();
 const { securityHeaders, corsMiddleware } = require('./middleware/httpSecurity');
 const { apiNotFound, notFound, unexpectedError } = require('./middleware/apiErrors');
 const { apiIdentity } = require('./config/apiIdentity');
+let studentDatabaseReady=false;
 
 const app = express();
 require('./utils/proxyTrust').configureProxyTrust(app);
@@ -19,6 +20,7 @@ require('./utils/proxyTrust').configureProxyTrust(app);
 app.use(securityHeaders);
 app.use(corsMiddleware);
 app.use(express.json({ limit: '100kb' }));
+app.use(require('./config/studentReleaseSafety').requestGuard);
 
 // Fix express-mongo-sanitize for Express v5 read-only req.query
 app.use((req, res, next) => {
@@ -37,14 +39,25 @@ app.use(express.static(path.join(__dirname, 'public')));
 // Database Connection
 mongoose.connect(process.env.MONGO_URI, {
   dbName: "acadova",
+  autoCreate: false,
+  autoIndex: false,
   serverSelectionTimeoutMS: 5000,
   family: 4
 })
-  .then(() => console.log('Acadova database connected'))
+  .then(async () => {
+    if(require('./config/studentExperience').active())await require('./services/studentReleaseReadiness').verifyStudentIndexes(mongoose.connection.db);
+    studentDatabaseReady=true;
+    console.log('Acadova database connected; required Student indexes ready');
+  })
   .catch(() => {
     console.error('DB Connection Error');
   });
 
+// No mutating endpoint is admitted on an unverified new Student deployment.
+app.use('/api',(req,res,next)=>{
+  if(!require('./config/studentExperience').active()||studentDatabaseReady||req.path==='/health')return next();
+  return res.status(503).json({success:false,code:'STUDENT_DATABASE_NOT_READY',message:'Acadova is preparing its learning services. Please try again shortly.'});
+});
 // API Routes
 app.use('/api/auth', require('./routes/authRoutes'));
 app.use('/api/sessions', require('./routes/sessionRoutes'));
@@ -67,7 +80,7 @@ app.use('/api/admin', require('./routes/adminRoutes'));
 app.use('/api/notifications', require('./routes/notificationRoutes'));
 
 // Identity describes this code revision, not database/provider readiness.
-app.get('/api/health', validateQuery(), (req, res) => res.json(apiIdentity()));
+app.get('/api/health', validateQuery(), (req, res) => res.status(studentDatabaseReady?200:503).json({...apiIdentity(),databaseReady:studentDatabaseReady,studentExperience:require('./config/studentExperience').capabilities()}));
 
 // The Express service is API-only. The user-facing application is served by Vite.
 app.get('/', (req, res) => {
@@ -85,7 +98,7 @@ app.use(validationErrorHandler);
 app.use(unexpectedError);
 
 // Inactive unless the separately reviewed economy cutover is enabled.
-const growthTimer=setInterval(()=>{void require('./services/growthReplay').replayBatch().catch(()=>{});},60000);
+const growthTimer=setInterval(()=>{if(studentDatabaseReady)void require('./services/growthReplay').replayBatch().catch(()=>{});},60000);
 growthTimer.unref();
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {

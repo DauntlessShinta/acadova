@@ -11,7 +11,7 @@ const authenticatedNavigation = {
     { to: '/study-sets', label: 'Study Sets' },
     { to: '/study-together', label: 'Study Together' },
     { to: '/tutors', label: 'Find Tutors' },
-    { to: '/learning', label: 'Learning' },
+    { to: '/learning', label: 'Learning Hub' },
     { to: '/sessions', label: 'Sessions' },
     { to: '/sessions?view=messages', label: 'Messages' },
     { to: '/credits', label: 'Credits' },
@@ -89,7 +89,7 @@ export function staffWorkspaceGroup(area, pathname, search = '', hash = '') {
 export function getPageContext(pathname, search = '') {
   const path = pathname.replace(/\/$/, '') || '/';
   const params = new URLSearchParams(search);
-  if (path === '/growth') return { title: 'Growth', to: '/growth' };
+  if (path === '/growth') return { title: 'My Growth', to: '/growth' };
   if (path === '/subjects' || path.startsWith('/subjects/')) return { title: 'My Subjects', to: '/subjects', learning: true };
   if (path.startsWith('/study-share/')) return { title: 'Shared study set', to: '/study-sets', learning: true };
   if (path === '/dashboard/peer') return { title: 'Study Together', to: '/dashboard/peer' };
@@ -102,7 +102,7 @@ export function getPageContext(pathname, search = '') {
   if (path === '/learning/ai-study' || path.startsWith('/learning/ai-study/')) return { title: params.get('view') === 'mine' ? 'My AI Study Sets' : 'AI Study Tools', to: '/learning/ai-study', learning: true };
   if (path === '/study-sets' || path.startsWith('/study-sets/')) return { title: path === '/study-sets/new' ? 'Create a study set' : path !== '/study-sets' ? params.get('edit') === '1' ? 'Edit study set' : params.has('attempt') ? 'Study quiz' : 'Study set' : 'Study sets', to: '/study-sets', learning: true };
   if (path === '/assessments') return { title: 'Assessments', to: '/assessments', learning: true };
-  if (path === '/learning') return { title: 'Learning', to: '/learning', learning: true };
+  if (path === '/learning') return { title: 'Learning Hub', to: '/learning', learning: true };
   if (path.startsWith('/tutors/')) return { title: 'Tutor profile', to: '/tutors' };
   if (path.startsWith('/sessions/')) return { title: 'Session room', to: '/sessions' };
   if (path === '/sessions' && params.get('view') === 'messages') return { title: 'Messages', to: '/sessions?view=messages' };

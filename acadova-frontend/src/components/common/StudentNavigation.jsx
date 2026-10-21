@@ -16,7 +16,7 @@ import { isUnifiedStudentPath } from '../../utils/studentExperience';
 import { useAuth } from '../../context/AuthContext';
 import { getPageContext, getRoleNavigation } from '../../config/roleNavigation';
 
-const icons = { Home, 'My Subjects': BookOpen, 'Study Sets': NotebookTabs, 'Study Together': UsersRound, 'Find Tutors': GraduationCap, Learning: BookOpen, Sessions: CalendarDays, Messages: MessageCircle, Credits: Coins, Profile: UserRound, Settings };
+const icons = { Home, 'My Subjects': BookOpen, 'Study Sets': NotebookTabs, 'Study Together': UsersRound, 'Find Tutors': GraduationCap, Learning: BookOpen, 'Learning Hub': BookOpen, Sessions: CalendarDays, Messages: MessageCircle, Credits: Coins, Profile: UserRound, Settings };
 const allLinks = getRoleNavigation('student').map(({ to, label }) => [to, label, icons[label]]);
 const compactQuery = '(max-width: 1024px)';
 const subscribeViewport = (changed) => {

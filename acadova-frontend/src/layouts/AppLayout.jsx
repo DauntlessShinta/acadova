@@ -41,6 +41,7 @@ export const AppLayout = ({ allowedRoles = null, requireProfileSetup = true }) =
       <StudentNavigation />
       <main className="app-main" id="main-content" tabIndex={-1}>
         <div className="container">
+          {user?.experience?.recoveryWriteHold === true && <p className="form-hint" role="status">Recovery mode: your learning history and EXP remain available. Changes are temporarily paused.</p>}
           {(pathname === '/profile' && hash === '#profile-skills-teach' || ['/tutors','/study-together','/sessions','/dashboard/peer'].some(path => pathname === path || pathname.startsWith(path + '/'))) && <StudyTogetherNavigation/>}
           <Outlet />
         </div>

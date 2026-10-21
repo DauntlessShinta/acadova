@@ -173,7 +173,7 @@ export const LearningPage = () => {
       <ExternalResourceLink href={item.externalUrl} primary /></div>;
 
   return <div className={`learning-page learning-redesign${content && !content.resourceType ? ' is-module-workspace' : ''}`}>
-    <LearningHeader onNavigate={async(event,to)=>{if(!dirty||event.ctrlKey||event.metaKey||event.shiftKey||event.altKey)return;event.preventDefault();if(await confirm('Discard this unsaved resource draft?',{title:'Leave resource draft?',label:'Discard draft',cancelLabel:'Keep editing'}))navigate(to);}} title={section === 'contribute' ? 'Share a resource' : content?.title || (topic ? learningTopicTitle(topic) : 'Learning')} breadcrumb={section === 'library' && topic ? <nav className="learning-breadcrumbs" aria-label="Learning breadcrumb"><ol>
+    <LearningHeader onNavigate={async(event,to)=>{if(!dirty||event.ctrlKey||event.metaKey||event.shiftKey||event.altKey)return;event.preventDefault();if(await confirm('Discard this unsaved resource draft?',{title:'Leave resource draft?',label:'Discard draft',cancelLabel:'Keep editing'}))navigate(to);}} title={section === 'contribute' ? 'Share a resource' : content?.title || (topic ? learningTopicTitle(topic) : 'Learning Hub')} breadcrumb={section === 'library' && topic ? <nav className="learning-breadcrumbs" aria-label="Learning breadcrumb"><ol>
         <li><button type="button" className="text-action" onClick={() => navigateLearning({})}>Learning</button></li>
         {content && <li><button type="button" className="text-action" onClick={() => openTopic(topic.id)}>{learningTopicTitle(topic)}</button></li>}
         <li aria-current="page">{content?.title || learningTopicTitle(topic)}</li>

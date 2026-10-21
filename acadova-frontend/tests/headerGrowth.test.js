@@ -58,7 +58,7 @@ test('disabled actual useGrowth effect makes no Growth API request', () => {
   const context = vm.createContext({ useAuth: () => ({ user: { id: 'synthetic-only', role: 'student' } }), useLocation: () => ({ pathname: '/dashboard' }), useCallback: fn => fn, useState: value => [value, () => {}], useEffect: fn => fn(), api: { get: () => { calls += 1; throw new Error('Unexpected request'); } } });
   vm.runInContext(source + '\nuseGrowth(false);', context); assert.equal(calls, 0);
 });
-test('inactive real backend summary returns null totals without reading ledgers or users', async t => {
+test('inactive real backend summary returns null totals without reading ledgers or users', {skip:backend('./config/studentExperience').active()}, async t => {
   const policy = backend('./config/studentExperience'); assert.equal(policy.active(), false);
   const Ledger = backend('./models/ExpLedgerEntry'), User = backend('./models/User');
   t.mock.method(Ledger, 'aggregate', () => { throw new Error('Inactive ledger read'); });
@@ -79,7 +79,8 @@ test('preview proxy is opt-in and preserves the existing manual QA configuration
   }
 });
 test('preview environment flag cannot enable the normal economy', () => {
+  const gate=backend('./config/studentExperience').active();
   const previous = process.env.ACADOVA_GROWTH_HEADER_PREVIEW;
-  try { process.env.ACADOVA_GROWTH_HEADER_PREVIEW = '1'; assert.equal(backend('./config/studentExperience').active(), false); }
+  try { process.env.ACADOVA_GROWTH_HEADER_PREVIEW = '1'; assert.equal(backend('./config/studentExperience').active(), gate); }
   finally { if (previous === undefined) delete process.env.ACADOVA_GROWTH_HEADER_PREVIEW; else process.env.ACADOVA_GROWTH_HEADER_PREVIEW = previous; }
 });

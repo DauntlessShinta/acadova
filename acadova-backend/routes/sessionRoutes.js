@@ -27,6 +27,7 @@ const completion = require('../controllers/completionController');
 router.use(authenticateToken);
 router.use(requireRole('student'));
 router.use(validateQuery());
+router.use(require('../middleware/legacySessionFreeze'));
 
 router.post('/', sessionCreationLimiter, validateBody(schemas.session), createSession);
 router.get('/', getMySessions);

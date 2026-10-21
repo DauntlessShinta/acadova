@@ -1,6 +1,6 @@
 // Production cutover requires a separately reviewed source change and operator
 // reconciliation. Neither an environment variable nor a client can enable it.
-const RELEASE_APPROVED = false;
+const RELEASE_APPROVED = true;
 let isolated;
 function active() {
   if (RELEASE_APPROVED) return true;
@@ -18,7 +18,7 @@ async function activateIsolatedStudentExperience() {
   if (hello.setName !== 'acadovaExpQA' || hello.hosts?.length !== 1 || hello.hosts[0] !== '127.0.0.1:27032') throw new Error('Unexpected isolated topology.');
   isolated = Object.freeze({ client:c.getClient(), database:c.name });
 }
-function capabilities() { return { freeLearning:active(), expActive:active(), version:active()?'student-free-exp-1':'legacy-credits' }; }
+function capabilities() { const safety=require('./studentReleaseSafety');return { freeLearning:active(), expActive:active(), version:active()?'student-free-exp-1':'legacy-credits', legacyCaseWritesAllowed:safety.legacyCaseWritesAllowed(), recoveryWriteHold:safety.recoveryWriteHold() }; }
 function rejectCreditWrite() {
   if (active()) throw Object.assign(new Error('The credit economy is retired. Historical records are read-only.'), { status:410, code:'CREDIT_ECONOMY_RETIRED' });
 }

@@ -52,7 +52,7 @@ exports.state = handle(async (req, res) => {
 exports.selectTerm = handle(async (req, res) => {
   const result = await withOwner(req.user.id, async (session, user) => {
     if (req.body.currentTermId) await owned(AcademicTerm, req.user.id, req.body.currentTermId, session);
-    user.currentTermId = req.body.currentTermId; await user.save({ session }); return user.currentTermId;
+    await User.updateOne({_id:user._id},{$set:{currentTermId:req.body.currentTermId}},{session,runValidators:true}); return req.body.currentTermId;
   }); res.json({ success: true, data: { currentTermId: result } });
 });
 exports.subject = handle(async (req, res) => {
@@ -71,7 +71,7 @@ exports.create = type => handle(async (req, res) => {
     await relationships(type, req.user.id, body, session);
     if (await types[type].countDocuments({ owner: req.user.id }).session(session) >= limits[type]) fail(`Workspace limit reached for ${type}.`, 429);
     const result = (await types[type].create([{ ...body, owner: req.user.id }], { session }))[0];
-    if (type === 'terms' && !user.currentTermId) { user.currentTermId = result._id; await user.save({ session }); }
+    if (type === 'terms' && !user.currentTermId) await User.updateOne({_id:user._id},{$set:{currentTermId:result._id}},{session,runValidators:true});
     return result;
   }); res.status(201).json({ success: true, data: view(row) });
 });
@@ -95,7 +95,7 @@ exports.remove = type => handle(async (req, res) => {
     const checks = type === 'terms' ? [[PersonalSubject, { termId: row._id }]] : type === 'subjects' ? [[ExaminationPeriod, { subjectId: row._id }], [PersonalModule, { subjectId: row._id }], [AcademicResource, { subjectId: row._id }], [StudySet, { subjectId: row._id, deletedAt: null }]] : type === 'periods' ? [[PersonalModule, { periodId: row._id }]] : type === 'modules' ? [[AcademicResource, { moduleId: row._id }], [StudySet, { moduleId: row._id, deletedAt: null }]] : [[StudySet, { sourceResourceIds: row._id, deletedAt: null }]];
     for (const [Model, query] of checks) if (await Model.exists({ owner, ...query }).session(session)) fail('Move or remove child records and detach study sets before deleting this record.', 409);
     await types[type].deleteOne({ _id: row._id, owner }, { session });
-    if (type === 'terms' && String(user.currentTermId) === String(row._id)) { user.currentTermId = null; await user.save({ session }); }
+    if (type === 'terms' && String(user.currentTermId) === String(row._id)) await User.updateOne({_id:user._id},{$set:{currentTermId:null}},{session,runValidators:true});
   }); res.json({ success: true });
 });
 exports.associate = handle(async (req, res) => {

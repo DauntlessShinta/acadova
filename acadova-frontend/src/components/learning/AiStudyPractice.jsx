@@ -60,7 +60,7 @@ export default function AiStudyPractice({ item, onComplete }) {
         {error && <p className="form-error" role="alert">{error}</p>}
         <div className="ai-actions ai-quiz-actions">{!checked ? <button className="btn btn-primary" disabled={answers[question] === null} onClick={() => setChecked(true)}>Submit Answer<ArrowRight size={17} aria-hidden="true"/></button> : question < questions.length - 1 ? <button className="btn btn-primary" onClick={() => { setQuestion(value => value + 1); setChecked(false); }}>Next question<ArrowRight size={17} aria-hidden="true"/></button> : <button className="btn btn-primary" disabled={working} onClick={finish}>{working ? 'Saving practice...' : error ? 'Retry saving result' : 'Finish practice quiz'}<ArrowRight size={17} aria-hidden="true"/></button>}<button className="btn btn-ghost" disabled={working} onClick={reset}>Restart quiz</button></div>
       </div>}
-      <p className="ai-practice-disclaimer">AI-generated practice / Zero credits. This does not affect official assessments or learning progress.</p>
+      <p className="ai-practice-disclaimer">AI-generated practice is free and does not earn EXP. Your official assessment progress stays unchanged.</p>
     </section>}
     </div>
   </>;

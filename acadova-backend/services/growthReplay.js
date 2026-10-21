@@ -22,6 +22,7 @@ const mark=async(Model,row,eventKey,write)=>{
 // Source records are durable retry evidence. Only newly marked events are read.
 // No engine transaction is invoked inside an uncommitted lifecycle transaction.
 async function replayOwner(owner) {
+  if(require('../config/studentReleaseSafety').recoveryWriteHold())return;
   if(!policy.active()||running.has(String(owner)))return;
   running.add(String(owner));
   try {
@@ -39,6 +40,7 @@ async function replayOwner(owner) {
   finally{running.delete(String(owner));}
 }
 async function replayBatch() {
+  if(require('../config/studentReleaseSafety').recoveryWriteHold())return;
   if(!policy.active())return;
   const rows=await Attempt.find({expProcessedAt:null,progressionVersion:'student-free-exp-1',mode:'official',passed:true}).sort({submittedAt:1}).limit(20).select('student').lean();
   const sessions=await Session.find({expProcessedAt:null,economyVersion:'free-v1',status:'completed',...unreported}).sort({completedAt:1}).limit(20).select('tutor').lean();

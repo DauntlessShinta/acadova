@@ -152,7 +152,7 @@ export const AssessmentsPage = () => {
   const materialActions = <div className="assessment-review-actions">
     {reviewLoading ? <p role="status">Finding related learning material...</p> : review
       ? <Link className="btn btn-secondary btn-sm" to={learningReviewHref(review.context)}>Review {review.context.moduleId ? 'module' : 'topic'}</Link>
-      : <Link className="btn btn-secondary btn-sm" to={browseMaterials}>Browse learning</Link>}
+      : <Link className="btn btn-secondary btn-sm" to={browseMaterials}>Learning Hub</Link>}
     {review && <span className="learning-item-meta">{review.title}</span>}
   </div>;
 
@@ -163,12 +163,12 @@ export const AssessmentsPage = () => {
         {openId && <li aria-current="page">{selected?.title || 'Assessment'}</li>}
       </ol></nav>}>{openId ? 'Review related material, or answer when you are ready.' : 'Check your understanding. Review a topic first or take an assessment directly.'}</LearningHeader>
     {!openId && <LearningNavigation disabled={working} />}
-    <p className="assessment-hub-note">{freeLearning?'Assessments are free. A first qualifying official pass may earn EXP; only server-confirmed awards count.':'Assessments are free. Earn credits once per assessment, on your first pass. Your submitted result confirms the award.'}</p>
+    <p className="assessment-hub-note">{freeLearning?'Assessments are free. Your first qualifying official pass may earn EXP. Confirmed awards appear in My Growth.':'Assessments are free. Earn credits once per assessment, on your first pass. Your submitted result confirms the award.'}</p>
     {!openId ? <>
       <Alert type="warning" message={topicNotice} />
       {listLoading ? <LoadingSpinner text="Loading assessments..." /> : listError ? <>
         <Alert type="danger" message={listError} /><EmptyState title="Assessments unavailable" description="Try loading the published assessment list again." actionText="Retry" onAction={() => { setListLoading(true); setLoadAttempt((value) => value + 1); }} />
-      </> : list.length === 0 ? <div className="card"><h2>No published assessments yet</h2><p>Explore Learning while staff prepare assessments.</p><Link className="btn btn-secondary" to="/learning">Browse learning</Link></div>
+      </> : list.length === 0 ? <div className="card"><h2>No published assessments yet</h2><p>Explore the Learning Hub while staff prepare assessments.</p><Link className="btn btn-secondary" to="/learning">Learning Hub</Link></div>
         : <div className="assessment-hub-list">{list.map((item) => <AssessmentCard key={item.id} assessment={item} topicName={candidateAssessmentTopic(item, topics) ? learningTopicTitle(candidateAssessmentTopic(item, topics)) : item.topic}
           onReview={candidateAssessmentTopic(item, topics) ? reviewTopic : undefined} reviewBusy={reviewingId === item.id} />)}</div>}
     </> : assessmentLoading ? <LoadingSpinner text="Loading assessment..." /> : assessmentError ? <>

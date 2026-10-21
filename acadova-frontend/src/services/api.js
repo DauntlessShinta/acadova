@@ -6,6 +6,7 @@
 import { authRecoveryReason } from '../utils/authRecovery';
 import { apiUrl } from '../utils/apiUrl';
 import { uploadResponse } from './uploadTransport';
+import { friendlyApiError, connectionErrorMessage } from '../utils/friendlyApiError';
 const API_BASE = import.meta.env.VITE_API_URL || '';
 
 let onUnauthorizedCallback = null;
@@ -51,7 +52,7 @@ export async function request(endpoint, options = {}) {
         onUnauthorizedCallback?.(reason);
       }
 
-      const errorMessage = data?.message || `Request failed with status ${response.status}`;
+      const errorMessage = friendlyApiError(data?.message, response.status, data?.code);
       const error = new Error(errorMessage);
       error.status = response.status;
       error.data = data;
@@ -66,7 +67,7 @@ export async function request(endpoint, options = {}) {
   } catch (err) {
     if (!err.status) {
       // Network or DNS error
-      err.message = err.message || 'Unable to connect to Acadova server';
+      err.message = connectionErrorMessage;
     }
     throw err;
   }

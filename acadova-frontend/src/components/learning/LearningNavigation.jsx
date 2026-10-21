@@ -11,9 +11,9 @@ export default function LearningNavigation({ disabled = false, onNavigate }) {
   contribute.set('view', 'contribute');
   const current = currentPath.startsWith('/learning/ai-study') ? 'ai' : currentPath.startsWith('/study-sets') ? 'study' : currentPath === '/assessments' ? 'assessments' : params.get('view') === 'contribute' ? 'contribute' : 'library';
   const items = [
-    ['library', 'Browse learning', '/learning' + (browse.size ? '?' + browse : '')],
+    ['library', 'Learning Hub', '/learning' + (browse.size ? '?' + browse : '')],
     ['assessments', 'Assessments', '/assessments'],
-    ['study', 'Study sets (free)', '/study-sets'],
+    ['study', 'Study Sets', '/study-sets'],
     ['ai', 'AI Study Tools', '/learning/ai-study'],
     ['contribute', 'Share a resource', '/learning?' + contribute],
   ];

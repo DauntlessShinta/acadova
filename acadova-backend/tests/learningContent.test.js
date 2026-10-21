@@ -175,8 +175,10 @@ test('learning routes enforce governance, safe previews, and no spending', async
     assert.equal((await call(`/moderator/learning/resources/${resourceId}/publish`, admin, 'POST',
       { creditCost: 25 })).status, 200);
     const paid = await call(`/learning/resources/${resourceId}`, student);
-    assert.equal(paid.body.data.locked, true);
-    assert.equal(Object.hasOwn(paid.body.data, 'textContent'), false);
+    const free=require('../config/studentExperience').active();
+    assert.equal(paid.body.data.locked, !free);
+    assert.equal(Object.hasOwn(paid.body.data, 'textContent'), free);
+    if(free)assert.equal(paid.body.data.creditCost,0);
     assert.equal(JSON.stringify((await call(`/learning/topics/${topicId}`, student)).body).includes('Protected lesson text'), false);
     assert.equal((await call(`/moderator/learning/resources/${resourceId}/reject`, moderator, 'POST',
       { reason: 'Not suitable' })).status, 404);
@@ -202,11 +204,11 @@ test('learning routes enforce governance, safe previews, and no spending', async
     assert.equal((await call(`/moderator/learning/modules/${moduleId}/publish`, moderator, 'POST', { creditCost: 0 })).status, 200);
     const freeModule = await call(`/learning/modules/${moduleId}`, student);
     assert.deepEqual(freeModule.body.data.resources.map((item) => item.id), [resourceId]);
-    assert.equal(Object.hasOwn(freeModule.body.data.resources[0], 'textContent'), false);
+    assert.equal(Object.hasOwn(freeModule.body.data.resources[0], 'textContent'), free);
     modules[0].creditCost = 30;
     const lockedModule = await call(`/learning/modules/${moduleId}`, student);
-    assert.equal(lockedModule.body.data.locked, true);
-    assert.equal(Object.hasOwn(lockedModule.body.data, 'resources'), false);
+    assert.equal(lockedModule.body.data.locked, !free);
+    assert.equal(Object.hasOwn(lockedModule.body.data, 'resources'), free);
     assert.equal((await call(`/moderator/learning/modules/${moduleId}/archive`, moderator, 'POST', {})).status, 200);
     assert.equal((await call(`/learning/modules/${moduleId}`, student)).status, 404);
     assert.equal((await call(`/moderator/learning/topics/${topicId}/archive`, moderator, 'POST', {})).status, 200);

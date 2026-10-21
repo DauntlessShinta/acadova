@@ -301,11 +301,12 @@ const SessionRoom = ({ id }) => {
   const newestMessages = () => { const list = messagesRef.current; if (list) list.scrollTop = list.scrollHeight; followMessages.current = true; setNewMessageCount(0); };
 
   // Display helpers never grant permission for unsupported response contracts.
-  const usesLegacyActions = session?.canonicalStatus == null;
+  const historicalReadOnly = freeLearning && session && session.economyVersion !== 'free-v1';
+  const usesLegacyActions = !historicalReadOnly && session?.canonicalStatus == null;
   const messagesAvailable = canMessageSession(session);
 
   const beginAction = () => {
-    if (actionInProgress.current) return false;
+    if (historicalReadOnly || actionInProgress.current) return false;
     actionInProgress.current = true;
     gate.current.invalidate();
     setRefreshing(false);
@@ -325,7 +326,7 @@ const SessionRoom = ({ id }) => {
   const isTeaching = perspective?.isTeaching;
   const counterpart = perspective?.counterpart;
   const displayStatus = session ? getSessionStatus(session) : null;
-  const nextStep = session
+  const nextStep = historicalReadOnly ? 'This older session is read-only. Contact staff for help with unresolved issues.' : session
     ? getSessionNextStep(session, isTeaching, counterpart?.name || 'your peer')
     : '';
 
@@ -570,7 +571,7 @@ const SessionRoom = ({ id }) => {
   }
 
   const scheduledLabel = formatSessionDateTime(session.scheduledAt);
-  const checkInStateVisible = ['accepted', 'scheduled', 'in_progress'].includes(session.status);
+  const checkInStateVisible = !historicalReadOnly && ['accepted', 'scheduled', 'in_progress'].includes(session.status);
   const agreedTime = session.scheduledAt ? new Date(session.scheduledAt).getTime() : NaN;
   const checkInOpen = Number.isFinite(agreedTime) && clockNow != null
     && clockNow >= agreedTime - 15 * 60 * 1000
@@ -650,7 +651,7 @@ const SessionRoom = ({ id }) => {
         {canReportNoShow && <button className="btn btn-primary btn-sm" type="button" disabled={actionLoading} onClick={handleNoShow}>Report no-show</button>}
         {usesLegacyActions && !freeLearning && !isTeaching && session.status === 'completed' && !session.confirmedAt && <button className="btn btn-primary btn-sm" type="button" disabled={actionLoading} onClick={handleConfirm}>Confirm completion and transfer {creditLabel}</button>}
         {canCheckIn && <button type="button" className={`btn btn-sm ${needsMeetingDetails ? 'btn-secondary' : 'btn-primary'}`} disabled={actionLoading} onClick={handleCheckIn}>Check in</button>}
-        {session.meetingMethod === 'online' && ['accepted', 'scheduled', 'in_progress'].includes(session.status) && resourceSource(session.meetingLink) && <a className="btn btn-secondary btn-sm" href={session.meetingLink} target="_blank" rel="noopener noreferrer">Join Meeting <ExternalLink size={14} aria-hidden="true" /><span className="sr-only"> (opens in a new tab)</span></a>}
+        {!historicalReadOnly && session.meetingMethod === 'online' && ['accepted', 'scheduled', 'in_progress'].includes(session.status) && resourceSource(session.meetingLink) && <a className="btn btn-secondary btn-sm" href={session.meetingLink} target="_blank" rel="noopener noreferrer">Join Meeting <ExternalLink size={14} aria-hidden="true" /><span className="sr-only"> (opens in a new tab)</span></a>}
         {needsMeetingDetails && <button type="button" className={`btn btn-sm ${hasRescheduleProposal ? 'btn-secondary' : 'btn-primary'}`} onClick={() => changeSection('details')}>Add meeting details</button>}
         {hasRescheduleProposal && <button className="btn btn-primary btn-sm" onClick={reviewProposal}>Review proposed time</button>}
       </section>
@@ -802,7 +803,7 @@ const SessionRoom = ({ id }) => {
                     aria-describedby={messageError ? 'session-message-error' : undefined}
                     onChange={(event) => { setMessageBody(event.target.value); setMessageError(''); setMessageNotice(''); }}
                   />
-                  <button type="submit" className="btn btn-primary" disabled={actionLoading || sendingMessage || !messageBody.trim()} aria-busy={sendingMessage}><Send size={16} aria-hidden="true" />{sendingMessage ? 'Sending...' : 'Send'}</button>
+                  <button type="submit" className="btn btn-primary" disabled={historicalReadOnly || actionLoading || sendingMessage || !messageBody.trim()} aria-busy={sendingMessage}><Send size={16} aria-hidden="true" />{sendingMessage ? 'Sending...' : 'Send'}</button>
                   </div>
                   {messageNotice && <p role="status" className="form-hint">{messageNotice}</p>}
                   {messageError && <span role="alert" className="form-error" id="session-message-error">{messageError}</span>}
@@ -852,7 +853,7 @@ const SessionRoom = ({ id }) => {
               <div><dt><UserRound size={16} /> Other participant</dt><dd>{counterpart?.name || 'Peer student'}</dd></div>
               <div><dt><Calendar size={16} /> Date and time</dt><dd>{scheduledLabel || 'Not scheduled'}</dd></div>
               <div><dt><MapPin size={16} /> Method</dt><dd>{meetingMethodLabel}</dd></div>
-              <div><dt>{freeSession?<CheckCircle2 size={16} />:<Coins size={16} />} {freeSession?'Free tutoring':freeLearning?'Historical credits':'Credits'}</dt><dd>{usesLegacyActions&&!freeLearning ? `${creditLabel} transferred after confirmation` : creditLabel}</dd></div>
+              <div><dt>{freeSession?<CheckCircle2 size={16} />:<Coins size={16} />} {freeSession?'Free tutoring':freeLearning?'Historical session':'Credits'}</dt><dd>{usesLegacyActions&&!freeLearning ? `${creditLabel} transferred after confirmation` : creditLabel}</dd></div>
             </dl>
 
             <div className="session-request-message">

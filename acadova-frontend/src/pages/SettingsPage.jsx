@@ -17,7 +17,7 @@ export default function SettingsPage() {
   }, []);
   const push = async () => {
     setBusy(true); setMessage('');
-    try { await requestPushPermission(); setMessage('Follow the browser alert prompt. Permission does not guarantee provider delivery.'); }
+    try { await requestPushPermission(); setMessage('Follow the prompt in your browser to allow alerts. You can always read notifications in Acadova.'); }
     catch (error) { setMessage(error.message || 'Browser alerts are unavailable. In-app notifications still work.'); }
     finally { setPermission(typeof Notification === 'undefined' ? 'unsupported' : Notification.permission); setBusy(false); }
   };
@@ -26,7 +26,7 @@ export default function SettingsPage() {
     <section className="card settings-section" aria-labelledby="notification-settings"><h2 id="notification-settings">Notifications</h2>
       <div className="settings-row"><div><h3>Notification sound</h3><p>Play a short sound for new notifications while Acadova is open. Saved for this account in this browser.</p></div>
         <button className="btn btn-secondary" type="button" role="switch" aria-checked={soundEnabled} aria-label="Notification sound" disabled={busy} onClick={async () => { setBusy(true); try { await toggleSound(); } finally { setBusy(false); } }}>{soundEnabled ? 'Sound on' : 'Sound off'}</button></div>
-      <div className="settings-row"><div><h3>Browser alerts</h3><p>Browser permission: <strong>{permission === 'default' ? 'Not requested' : permission === 'granted' ? 'Allowed' : permission === 'denied' ? 'Blocked' : 'Unsupported'}</strong>.</p><p>{!pushAvailable ? 'Push alerts are not configured or supported in this browser. In-app notifications remain available.' : permission === 'denied' ? 'To allow alerts, update this site’s permission in your browser settings.' : 'Alerts also require a configured Acadova push identity and an active provider subscription.'}</p></div>
+      <div className="settings-row"><div><h3>Browser alerts</h3><p>Browser permission: <strong>{permission === 'default' ? 'Not requested' : permission === 'granted' ? 'Allowed' : permission === 'denied' ? 'Blocked' : 'Unsupported'}</strong>.</p><p>{!pushAvailable ? 'Browser alerts are unavailable here. You can still read notifications in Acadova.' : permission === 'denied' ? 'To allow alerts, update this site’s permission in your browser settings.' : 'You can enable browser alerts when available. Your notifications will still appear in Acadova.'}</p></div>
         {pushAvailable && permission === 'default' && <button className="btn btn-secondary" type="button" disabled={busy} onClick={push}>Enable browser alerts</button>}</div>
       {message && <p role="status" className="form-hint">{message}</p>}
       <p className="form-hint">Your in-app notification history remains available from the bell.</p>

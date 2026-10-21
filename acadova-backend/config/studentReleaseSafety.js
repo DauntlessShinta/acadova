@@ -1,7 +1,7 @@
 // First Student release: all historical case dispositions stay deferred.
 // These constants are source-reviewed, never enabled by a client/environment.
 // The separately bundled recovery variant changes ONLY RECOVERY_WRITE_HOLD.
-const RECOVERY_WRITE_HOLD = false;
+const RECOVERY_WRITE_HOLD = true;
 const legacyCaseWritesAllowed = () => false;
 const recoveryWriteHold = () => RECOVERY_WRITE_HOLD;
 function requestGuard(req,res,next) {
